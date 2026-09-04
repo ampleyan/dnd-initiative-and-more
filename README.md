@@ -44,6 +44,17 @@ Open <http://localhost:3000>. On first startup, the server creates an `admin` ac
 
 Copy `.env.example` to `.env` to configure production credentials or optional integrations. Never commit `.env`.
 
+### Configuration
+
+The only required production settings are:
+
+| Variable | Purpose |
+|---|---|
+| `SESSION_SECRET` | Signs login sessions. Use a long random value. |
+| `ADMIN_PASSWORD` | Sets the initial administrator password on first startup. |
+
+Optional settings enable local audio, Foundry VTT imports, D&D Beyond seeding, Philips Hue, and Home Assistant. See [.env.example](.env.example) for the complete list. Integration credentials are stored locally in SQLite and should be treated as secrets.
+
 ## Docker
 
 ```bash
@@ -54,11 +65,27 @@ docker compose up --build -d
 
 The default deployment listens on <http://localhost:3001> and persists SQLite data in `./data`. The base Compose file does not mount personal audio libraries or Foundry data. To use either integration, mount a host directory into the container and set `AUDIO_SFX_DIR`, `AUDIO_AMBIENCES_DIR`, or `FOUNDRY_DATA_PATH` to its container path.
 
+### Free hosted preview
+
+For a quick free demo, deploy the Docker image as a Render Web Service. Set `NODE_ENV=production`, `SESSION_SECRET`, and `ADMIN_PASSWORD` in Render's environment settings. The free tier sleeps when idle and does not provide durable SQLite storage; use the in-app backup/export before experimenting and do not rely on the preview for important campaign data.
+
 ## Security and privacy
 
 This application is intended for trusted self-hosted use. Requests from loopback and RFC-1918 private-network addresses receive administrator access without a login; do not expose it directly to the public internet. Use a strong `SESSION_SECRET` in production.
 
 SQLite data, uploaded portraits, and uploaded sounds are local runtime data. They are ignored by Git. See [SECURITY.md](SECURITY.md) for vulnerability reporting and secret-handling guidance.
+
+### Backups and recovery
+
+Administrators can export tracker data as a versioned JSON backup from Settings and restore it with explicit confirmation. Backups include encounters, combatants, monsters, players, campaigns, sessions, spells, class features, sounds, and settings, but never passwords or uploaded files. Keep backups outside the repository and protect them like any other campaign data.
+
+## Architecture
+
+The application is a single Node.js process: Express serves the API and production frontend, Socket.IO broadcasts live encounter updates, and SQLite stores structured data. The frontend is React/TypeScript with Vite and Tailwind CSS. See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime boundaries, authentication, live updates, and integrations.
+
+## Contributing
+
+Bug reports and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first. Keep runtime databases, uploads, credentials, private network details, and personal filesystem paths out of issues and commits.
 
 ## Development
 
