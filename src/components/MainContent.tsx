@@ -256,6 +256,8 @@ interface MainContentProps {
   hueEnabledEffects?: Partial<Record<HueEffectName, boolean>>;
   hueEffectTargets?: Partial<Record<HueEffectName, HueEffectTargets>>;
   onToggleHue?: (v: boolean) => void;
+  haEnabled?: boolean;
+  onToggleHa?: (v: boolean) => void;
   onToggleHueSyncScene?: (v: boolean) => void;
   onToggleHueEffect?: (name: HueEffectName, v: boolean) => void;
   onToggleHueTarget?: (name: HueEffectName, target: 'players' | 'monsters', v: boolean) => void;
@@ -366,6 +368,8 @@ export const MainContent: React.FC<MainContentProps> = ({
   hueEnabledEffects,
   hueEffectTargets,
   onToggleHue,
+  haEnabled,
+  onToggleHa,
   onToggleHueSyncScene,
   onToggleHueEffect,
   onToggleHueTarget,
@@ -1189,7 +1193,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   effectTargets={hueEffectTargets ?? {}}
                   onToggleTarget={onToggleHueTarget ?? (() => {})}
                 />
-                <HomeAssistantSettingsPanel />
+                <HomeAssistantSettingsPanel enabled={haEnabled ?? false} onToggleEnabled={onToggleHa ?? (() => {})} />
               </div>
               <SpatialSettingsPanel
                 audioCtx={getAudioCtx ? getAudioCtx() : null}

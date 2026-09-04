@@ -141,14 +141,16 @@ export function createLightsRouter(getSetting: GetSetting, setSetting: SetSettin
       url:      getSetting('ha_url') ?? '',
       token:    getSetting('ha_token') ?? '',
       lightIds: (() => { try { return JSON.parse(getSetting('ha_light_ids') ?? '[]'); } catch { return []; } })(),
+      enabled:  getSetting('ha_enabled') === 'true',
     });
   });
 
   router.post('/ha/config', (req, res) => {
-    const { url, token, lightIds } = req.body;
+    const { url, token, lightIds, enabled } = req.body;
     if (url !== undefined) setSetting('ha_url', url);
     if (token !== undefined) setSetting('ha_token', token);
     if (lightIds !== undefined) setSetting('ha_light_ids', JSON.stringify(lightIds));
+    if (enabled !== undefined) setSetting('ha_enabled', enabled ? 'true' : 'false');
     res.json({ ok: true });
   });
 
@@ -195,6 +197,7 @@ export function createLightsRouter(getSetting: GetSetting, setSetting: SetSettin
     res.json({
       bridgeIp:       getSetting('hue_bridge_ip') ?? '',
       username:       getSetting('hue_username') ?? '',
+      enabled:        getSetting('hue_enabled') !== 'false',
       lightIds:       (() => { try { return JSON.parse(getSetting('hue_light_ids') ?? '[]'); } catch { return []; } })(),
       enabledEffects: (() => { try { return JSON.parse(getSetting('hue_enabled_effects') ?? '{}'); } catch { return {}; } })(),
       brightness:     parseInt(getSetting('hue_brightness') ?? '100'),
@@ -203,8 +206,9 @@ export function createLightsRouter(getSetting: GetSetting, setSetting: SetSettin
   });
 
   router.post('/hue/config', (req, res) => {
-    const { lightIds, enabledEffects, brightness, bridgeIp, syncSceneColor } = req.body;
+    const { lightIds, enabled, enabledEffects, brightness, bridgeIp, syncSceneColor } = req.body;
     if (bridgeIp !== undefined) setSetting('hue_bridge_ip', bridgeIp);
+    if (enabled !== undefined) setSetting('hue_enabled', enabled ? 'true' : 'false');
     if (lightIds !== undefined) setSetting('hue_light_ids', JSON.stringify(lightIds));
     if (enabledEffects !== undefined) setSetting('hue_enabled_effects', JSON.stringify(enabledEffects));
     if (brightness !== undefined) setSetting('hue_brightness', String(brightness));
@@ -213,13 +217,13 @@ export function createLightsRouter(getSetting: GetSetting, setSetting: SetSettin
   });
 
   router.post('/hue/scene-color', async (req, res) => {
-    const { colors } = req.body as { colors: string[] };
+    const { colors, hueEnabled, haEnabled } = req.body as { colors: string[]; hueEnabled?: boolean; haEnabled?: boolean };
     if (!colors || !colors.length) {
       db.prepare('DELETE FROM settings WHERE key = ?').run('hue_restore_state');
       return res.json({ ok: true, cleared: true });
     }
-    const targetLights: string[] = (() => { try { return JSON.parse(getSetting('hue_light_ids') ?? '[]'); } catch { return []; } })();
-    const targetHaLights: string[] = (() => { try { return JSON.parse(getSetting('ha_light_ids') ?? '[]'); } catch { return []; } })();
+    const targetLights: string[] = (hueEnabled ?? getSetting('hue_enabled') !== 'false') ? (() => { try { return JSON.parse(getSetting('hue_light_ids') ?? '[]'); } catch { return []; } })() : [];
+    const targetHaLights: string[] = (haEnabled ?? getSetting('ha_enabled') === 'true') ? (() => { try { return JSON.parse(getSetting('ha_light_ids') ?? '[]'); } catch { return []; } })() : [];
     if (!targetLights.length && !targetHaLights.length) return res.json({ ok: true, skipped: 'no lights' });
 
     const briScale = parseInt(getSetting('hue_brightness') ?? '100') / 100;
@@ -265,12 +269,14 @@ export function createLightsRouter(getSetting: GetSetting, setSetting: SetSettin
   });
 
   router.post('/hue/flash', async (req, res) => {
-    const { effect } = req.body as { effect: string };
+    const { effect, hueEnabled: requestedHueEnabled, haEnabled: requestedHaEnabled } = req.body as { effect: string; hueEnabled?: boolean; haEnabled?: boolean };
     const effectDef = HUE_EFFECTS[effect];
     if (!effectDef) return res.status(400).json({ error: 'Unknown effect' });
 
-    const targetLights: string[] = (() => { try { return JSON.parse(getSetting('hue_light_ids') ?? '[]'); } catch { return []; } })();
-    const targetHaLights: string[] = (() => { try { return JSON.parse(getSetting('ha_light_ids') ?? '[]'); } catch { return []; } })();
+    const hueEnabled = requestedHueEnabled ?? getSetting('hue_enabled') !== 'false';
+    const haEnabled = requestedHaEnabled ?? getSetting('ha_enabled') === 'true';
+    const targetLights: string[] = hueEnabled ? (() => { try { return JSON.parse(getSetting('hue_light_ids') ?? '[]'); } catch { return []; } })() : [];
+    const targetHaLights: string[] = haEnabled ? (() => { try { return JSON.parse(getSetting('ha_light_ids') ?? '[]'); } catch { return []; } })() : [];
     if (!targetLights.length && !targetHaLights.length) return res.json({ ok: true, skipped: 'no lights configured' });
 
     const briScale = parseInt(getSetting('hue_brightness') ?? '100') / 100;

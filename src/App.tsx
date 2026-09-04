@@ -286,21 +286,20 @@ export default function App() {
     setSounds(Array.isArray(fresh) ? fresh : []);
   }, []);
 
-  const [theme, setTheme] = React.useState<'dark' | 'pink'>(() =>
-    (localStorage.getItem('appTheme') as 'dark' | 'pink') ?? 'dark'
+  const [theme, setTheme] = React.useState<'light' | 'pink'>(() =>
+    localStorage.getItem('appTheme') === 'light' ? 'light' : 'pink'
   );
   React.useEffect(() => {
-    if (theme === 'pink') {
-      document.documentElement.classList.add('theme-pink');
-    } else {
-      document.documentElement.classList.remove('theme-pink');
-    }
+    const root = document.documentElement;
+    root.classList.toggle('theme-pink', theme === 'pink');
+    root.classList.toggle('theme-light', theme === 'light');
     localStorage.setItem('appTheme', theme);
   }, [theme]);
   const toggleTheme = React.useCallback(() =>
-    setTheme(t => t === 'dark' ? 'pink' : 'dark'), []);
+    setTheme(t => t === 'pink' ? 'light' : 'pink'), []);
 
   const [hueEnabled, setHueEnabled] = React.useState(() => localStorage.getItem('hueEnabled') === 'true');
+  const [haEnabled, setHaEnabled] = React.useState(() => localStorage.getItem('haEnabled') === 'true');
   const [hueSyncScene, setHueSyncScene] = React.useState(() => localStorage.getItem('hueSyncScene') === 'true');
   const [hueEnabledEffects, setHueEnabledEffects] = useLocalState<Partial<Record<HueEffectName, boolean>>>('hueEnabledEffects', {});
   const [hueEffectTargets, setHueEffectTargets] = useLocalState<Partial<Record<HueEffectName, HueEffectTargets>>>('hueEffectTargets', {});
@@ -345,7 +344,8 @@ export default function App() {
     navigate(`/encounters/${enc.id}`);
   }, [navigate]);
 
-  const handleToggleHue = (v: boolean) => { setHueEnabled(v); localStorage.setItem('hueEnabled', String(v)); };
+  const handleToggleHue = (v: boolean) => { setHueEnabled(v); localStorage.setItem('hueEnabled', String(v)); api.hue.saveConfig({ enabled: v }).catch(() => {}); };
+  const handleToggleHa = React.useCallback((v: boolean) => { setHaEnabled(v); localStorage.setItem('haEnabled', String(v)); }, []);
   const handleToggleHueEffect = (name: HueEffectName, v: boolean) => {
     setHueEnabledEffects(prev => ({ ...prev, [name]: v }));
   };
@@ -358,7 +358,9 @@ export default function App() {
   };
 
   useHueEffects(combatLog, { 
-    enabled: hueEnabled, 
+    enabled: hueEnabled || haEnabled,
+    hueEnabled,
+    haEnabled,
     enabledEffects: hueEnabledEffects, 
     effectTargets: hueEffectTargets, 
     combatants, 
@@ -494,10 +496,12 @@ export default function App() {
     triggerConCheck,
     clearConCheck,
     hueEnabled,
+    haEnabled,
     hueSyncScene,
     hueEnabledEffects,
     hueEffectTargets,
     onToggleHue: handleToggleHue,
+    onToggleHa: handleToggleHa,
     onToggleHueSyncScene: (v: boolean) => { setHueSyncScene(v); localStorage.setItem('hueSyncScene', String(v)); },
     onToggleHueEffect: handleToggleHueEffect,
     onToggleHueTarget: handleToggleHueTarget,

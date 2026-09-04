@@ -5,6 +5,8 @@ import { api } from '../api/client';
 
 export interface HueRuntimeConfig {
   enabled: boolean;
+  hueEnabled?: boolean;
+  haEnabled?: boolean;
   enabledEffects: Partial<Record<HueEffectName, boolean>>;
   effectTargets: Partial<Record<HueEffectName, HueEffectTargets>>;
   combatants: Combatant[];
@@ -26,7 +28,7 @@ export function useHueEffects(combatLog: LogEntry[], config: HueRuntimeConfig) {
     const syncColor = async () => {
       try {
         if (!config.backgroundImage) {
-          await api.hue.setSceneColor({ colors: [] });
+          await api.hue.setSceneColor({ colors: [], hueEnabled: config.hueEnabled, haEnabled: config.haEnabled });
           return;
         }
 
@@ -34,7 +36,7 @@ export function useHueEffects(combatLog: LogEntry[], config: HueRuntimeConfig) {
         const colors = await extractPalette(config.backgroundImage, 12);
         // If image failed to load, colors will be empty — skip API call
         if (!colors.length) return;
-        await api.hue.setSceneColor({ colors });
+        await api.hue.setSceneColor({ colors, hueEnabled: config.hueEnabled, haEnabled: config.haEnabled });
       } catch (e) {
         // Ignore non-critical color sync failures
       }
@@ -74,6 +76,6 @@ export function useHueEffects(combatLog: LogEntry[], config: HueRuntimeConfig) {
       }
     }
 
-    api.hue.flash({ effect: effectName }).catch(() => {});
+    api.hue.flash({ effect: effectName, hueEnabled: config.hueEnabled, haEnabled: config.haEnabled }).catch(() => {});
   }, [combatLog, config]);
 }

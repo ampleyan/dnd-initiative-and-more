@@ -14,9 +14,15 @@ interface HaConfig {
   url: string;
   token: string;
   lightIds: string[];
+  enabled?: boolean;
 }
 
-export const HomeAssistantSettingsPanel: React.FC = () => {
+interface HomeAssistantSettingsPanelProps {
+  enabled: boolean;
+  onToggleEnabled: (enabled: boolean) => void;
+}
+
+export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProps> = ({ enabled, onToggleEnabled }) => {
   const [config, setConfig] = useState<HaConfig | null>(null);
   const [lights, setLights] = useState<HaLight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,6 +36,7 @@ export const HomeAssistantSettingsPanel: React.FC = () => {
     try {
       const data = await api.ha.getConfig() as unknown as HaConfig;
       setConfig(data);
+      onToggleEnabled(data.enabled ?? false);
       setUrlInput(data.url);
       setTokenInput(data.token);
     } catch (e) {
@@ -39,7 +46,7 @@ export const HomeAssistantSettingsPanel: React.FC = () => {
 
   useEffect(() => {
     fetchConfig();
-  }, []);
+  }, [onToggleEnabled]);
 
   const fetchLights = useCallback(async () => {
     setLoading(true);
@@ -67,12 +74,17 @@ export const HomeAssistantSettingsPanel: React.FC = () => {
   const handleSaveConfig = async () => {
     setSaving(true);
     try {
-      await api.ha.saveConfig({ url: urlInput, token: tokenInput });
+      await api.ha.saveConfig({ url: urlInput, token: tokenInput, enabled: true });
       await fetchConfig();
     } finally {
       setSaving(false);
     }
   };
+
+  const toggleEnabled = useCallback((next: boolean) => {
+    onToggleEnabled(next);
+    api.ha.saveConfig({ enabled: next }).catch(() => {});
+  }, [onToggleEnabled]);
 
   const handleToggleLight = async (id: string) => {
     if (!config) return;
@@ -94,10 +106,25 @@ export const HomeAssistantSettingsPanel: React.FC = () => {
             <h2 className="font-headline font-bold text-on-surface text-lg">Home Assistant</h2>
             <p className="text-[10px] uppercase tracking-widest text-outline">Direct Light Integration</p>
           </div>
+          <div
+            role="switch"
+            aria-checked={enabled}
+            tabIndex={0}
+            onClick={() => toggleEnabled(!enabled)}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleEnabled(!enabled);
+              }
+            }}
+            className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${enabled ? 'bg-[#03A9F4]' : 'bg-surface-container-highest border border-outline/30'}`}
+          >
+            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </div>
         </div>
       </div>
 
-      <div className="p-5 space-y-6">
+      {enabled && <div className="p-5 space-y-6">
         {/* Setup Section */}
         <section className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -188,7 +215,7 @@ export const HomeAssistantSettingsPanel: React.FC = () => {
             )}
           </section>
         )}
-      </div>
+      </div>}
     </div>
   );
 };
