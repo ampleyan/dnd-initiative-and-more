@@ -1,6 +1,6 @@
 import React from 'react';
 import { Menu, ChevronRight, UserPlus, Users, Settings, Keyboard, Undo2, Redo2, LayoutDashboard, Swords, Shield, Music, MoreHorizontal } from 'lucide-react';
-import { Routes, Route, Navigate, useParams, useLocation, matchPath, NavLink } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, NavLink } from 'react-router-dom';
 import { CONDITIONS, INITIATIVE_COLORS } from './constants';
 import { cn, uuid } from './lib/utils';
 import { useAuth } from './hooks/useAuth';
@@ -37,6 +37,7 @@ import { playerToCombatant } from './hooks/useEncounterManagement';
 import { SessionBoard } from './components/SessionBoard';
 import { FloatingMusicPlayer } from './components/FloatingMusicPlayer';
 import { useLocalState } from './hooks/useLocalState';
+import { useRouterSync } from './hooks/useRouterSync';
 import type { SessionBoardHandle } from './components/SessionBoard';
 
 const HOTKEYS = [
@@ -49,57 +50,6 @@ const HOTKEYS = [
   { key: '⌘Z',      label: 'Undo' },
   { key: '⌘⇧Z',     label: 'Redo' },
 ];
-
-function useRouterSync({
-  setCurrentEncounterId,
-  setActiveCampaignId,
-  setIsPlayerView,
-  handleLoadEncounter,
-  fetchEncounterData,
-  savedEncounters,
-  currentEncounterId
-}: any) {
-  const location = useLocation();
-
-  React.useEffect(() => {
-    if (location.pathname.startsWith('/player')) {
-      setIsPlayerView(true);
-      const playerMatch = matchPath("/player/:id", location.pathname);
-      const playerEncId = playerMatch?.params?.id;
-      if (playerEncId && playerEncId !== currentEncounterId) {
-        setCurrentEncounterId(playerEncId);
-        fetchEncounterData(playerEncId);
-      }
-    } else {
-      setIsPlayerView(false);
-    }
-
-    const encMatch = matchPath("/encounters/:id", location.pathname);
-    const encId = encMatch?.params?.id;
-
-    if (encId) {
-      if (encId !== currentEncounterId) {
-        const enc = savedEncounters.find((e: Encounter) => e.id === encId);
-        if (enc) {
-          handleLoadEncounter(enc);
-        } else {
-          setCurrentEncounterId(encId);
-        }
-      }
-    } else if (location.pathname === '/encounters') {
-      setCurrentEncounterId(null);
-    }
-
-    const campMatch = matchPath("/campaigns/:id", location.pathname);
-    const campId = campMatch?.params?.id;
-
-    if (campId) {
-      setActiveCampaignId(campId);
-    } else if (location.pathname === '/campaigns') {
-      setActiveCampaignId(null);
-    }
-  }, [location.pathname, setCurrentEncounterId, setActiveCampaignId, setIsPlayerView, handleLoadEncounter, fetchEncounterData, savedEncounters, currentEncounterId]);
-}
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
