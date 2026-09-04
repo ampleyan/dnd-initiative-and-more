@@ -176,7 +176,6 @@ interface MainContentProps {
   handleRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
-  onSimulateEncounter?: (enc: Encounter) => void;
   setIsEncounterCreatorOpen: (open: boolean) => void;
   setIsInitiativeModalOpen: (open: boolean) => void;
   setIsSaveEncounterModalOpen: (open: boolean) => void;
@@ -307,7 +306,6 @@ export const MainContent: React.FC<MainContentProps> = ({
   handleRedo,
   canUndo,
   canRedo,
-  onSimulateEncounter,
   setIsEncounterCreatorOpen,
   setIsInitiativeModalOpen,
   setIsSaveEncounterModalOpen,
@@ -538,7 +536,6 @@ export const MainContent: React.FC<MainContentProps> = ({
               players={players}
               onLoadEncounter={handleLoadEncounter}
               loadingEncounterId={loadingEncounterId}
-              onSimulateEncounter={onSimulateEncounter || (() => {})}
               onNewEncounter={() => setIsEncounterCreatorOpen(true)}
               onUpdateEncounter={onUpdateEncounter}
               onDeleteEncounters={onDeleteEncounters}

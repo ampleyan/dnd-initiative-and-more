@@ -76,7 +76,6 @@ interface EncounterVaultProps {
   players: Player[];
   onLoadEncounter: (enc: Encounter) => void;
   loadingEncounterId?: string | null;
-  onSimulateEncounter: (enc: Encounter) => void;
   onNewEncounter: () => void;
   onUpdateEncounter?: (id: string, updates: Partial<Encounter>) => Promise<void>;
   onDeleteEncounters?: (ids: string[]) => void;
@@ -143,7 +142,6 @@ const EncounterCard: React.FC<{
   players: Player[];
   onLoad: (enc: Encounter) => void;
   loadingEncounterId?: string | null;
-  onSimulate: (enc: Encounter) => void;
   onEdit?: (enc: Encounter) => void;
   folderSettings?: FolderSettings;
   selectionMode?: boolean;
@@ -151,7 +149,7 @@ const EncounterCard: React.FC<{
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
   onDelete?: (id: string) => void;
-}> = ({ encounter, players, onLoad, loadingEncounterId, onSimulate, onEdit, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite, onDelete }) => {
+}> = ({ encounter, players, onLoad, loadingEncounterId, onEdit, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite, onDelete }) => {
   const combatants = encounter.combatants ?? [];
   const computed = computeDifficulty(combatants, players);
   const diffKey = computed ?? (encounter.difficulty || 'MEDIUM').toUpperCase();
@@ -170,12 +168,6 @@ const EncounterCard: React.FC<{
     backgroundImage: enc.backgroundImage || folderSettings?.backgroundImage,
     musicUrl: enc.musicUrl || folderSettings?.musicUrl,
   });
-  const mergedSimulate = (enc: Encounter) => onSimulate({
-    ...enc,
-    backgroundImage: enc.backgroundImage || folderSettings?.backgroundImage,
-    musicUrl: enc.musicUrl || folderSettings?.musicUrl,
-  });
-
   return (
     <div
       className={cn(
@@ -364,7 +356,6 @@ const EncounterListItem: React.FC<{
   players: Player[];
   onLoad: (enc: Encounter) => void;
   loadingEncounterId?: string | null;
-  onSimulate: (enc: Encounter) => void;
   onEdit?: (enc: Encounter) => void;
   folderSettings?: FolderSettings;
   selectionMode?: boolean;
@@ -372,7 +363,7 @@ const EncounterListItem: React.FC<{
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
   onDelete?: (id: string) => void;
-}> = ({ encounter, players, onLoad, loadingEncounterId, onSimulate, onEdit, onDelete, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite }) => {
+}> = ({ encounter, players, onLoad, loadingEncounterId, onEdit, onDelete, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite }) => {
   const combatants = encounter.combatants ?? [];
   const computed = computeDifficulty(combatants, players);
   const diffKey = computed ?? (encounter.difficulty || 'MEDIUM').toUpperCase();
@@ -385,12 +376,6 @@ const EncounterListItem: React.FC<{
     backgroundImage: enc.backgroundImage || folderSettings?.backgroundImage,
     musicUrl: enc.musicUrl || folderSettings?.musicUrl,
   });
-  const mergedSimulate = (enc: Encounter) => onSimulate({
-    ...enc,
-    backgroundImage: enc.backgroundImage || folderSettings?.backgroundImage,
-    musicUrl: enc.musicUrl || folderSettings?.musicUrl,
-  });
-
   const [showCombatants, setShowCombatants] = useState(false);
   const monsters = combatants.filter(c => c.type !== 'player');
   const pcs = combatants.filter(c => c.type === 'player');
@@ -534,7 +519,6 @@ const EncounterDisplay: React.FC<{
   players: Player[];
   onLoad: (enc: Encounter) => void;
   loadingEncounterId?: string | null;
-  onSimulate: (enc: Encounter) => void;
   onEdit?: (enc: Encounter) => void;
   folderSettings?: FolderSettings;
   selectionMode?: boolean;
@@ -542,12 +526,12 @@ const EncounterDisplay: React.FC<{
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
   onDelete?: (id: string) => void;
-}> = ({ mode, encounters, players, onLoad, loadingEncounterId, onSimulate, onEdit, folderSettings, selectionMode, selectedIds, onToggleSelect, onToggleFavorite, onDelete }) => {
+}> = ({ mode, encounters, players, onLoad, loadingEncounterId, onEdit, folderSettings, selectionMode, selectedIds, onToggleSelect, onToggleFavorite, onDelete }) => {
   if (mode === 'list') {
     return (
       <div className="space-y-1">
         {encounters.map(enc => (
-          <EncounterListItem key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onSimulate={onSimulate} onEdit={onEdit} onDelete={onDelete} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
+          <EncounterListItem key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onEdit={onEdit} onDelete={onDelete} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
         ))}
       </div>
     );
@@ -555,7 +539,7 @@ const EncounterDisplay: React.FC<{
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {encounters.map(enc => (
-        <EncounterCard key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onSimulate={onSimulate} onEdit={onEdit} onDelete={onDelete} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
+        <EncounterCard key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onEdit={onEdit} onDelete={onDelete} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
       ))}
     </div>
   );
@@ -639,7 +623,6 @@ const FolderSection: React.FC<{
   players: Player[];
   onLoad: (enc: Encounter) => void;
   loadingEncounterId?: string | null;
-  onSimulate: (enc: Encounter) => void;
   onEdit?: (enc: Encounter) => void;
   viewMode: ViewMode;
   defaultOpen?: boolean;
@@ -650,7 +633,7 @@ const FolderSection: React.FC<{
   onToggleSelect?: (id: string) => void;
   onDeleteGroup?: (ids: string[]) => void;
   onToggleFavorite?: (id: string) => void;
-}> = ({ label, encounters, players, onLoad, loadingEncounterId, onSimulate, onEdit, viewMode, defaultOpen = false, onSettingsClick, folderSettings, selectionMode, selectedIds, onToggleSelect, onDeleteGroup, onToggleFavorite }) => {
+}> = ({ label, encounters, players, onLoad, loadingEncounterId, onEdit, viewMode, defaultOpen = false, onSettingsClick, folderSettings, selectionMode, selectedIds, onToggleSelect, onDeleteGroup, onToggleFavorite }) => {
   const [open, setOpen] = useState(defaultOpen);
   const hasBg = !!folderSettings?.backgroundImage;
 
@@ -778,7 +761,7 @@ const FolderSection: React.FC<{
 
       {open && (
         <div className="px-4 mt-4">
-          <EncounterDisplay mode={viewMode} encounters={encounters} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onSimulate={onSimulate} onEdit={onEdit} folderSettings={folderSettings} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={encounters} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onEdit={onEdit} folderSettings={folderSettings} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
         </div>
       )}
     </div>
@@ -790,7 +773,6 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
   players,
   onLoadEncounter,
   loadingEncounterId,
-  onSimulateEncounter,
   onNewEncounter,
   onUpdateEncounter,
   onDeleteEncounters,
@@ -1144,7 +1126,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             Live
           </h3>
-          <EncounterDisplay mode={viewMode} encounters={active} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={active} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
         </section>
       )}
 
@@ -1155,7 +1137,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
             <Star className="w-3 h-3 fill-amber-400" />
             Favorites
           </h3>
-          <EncounterDisplay mode={viewMode} encounters={favorites} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={favorites} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
         </section>
       )}
 
@@ -1206,7 +1188,6 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
               players={players}
               onLoad={onLoadEncounter}
               loadingEncounterId={loadingEncounterId}
-              onSimulate={onSimulateEncounter}
               onEdit={setEditingEncounter}
               viewMode={viewMode}
               onSettingsClick={setEditingFolder}
@@ -1231,7 +1212,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
               <div className="h-px flex-1 bg-outline-variant/10" />
             </div>
           )}
-          <EncounterDisplay mode={viewMode} encounters={ungrouped} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={ungrouped} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
         </section>
       )}
 

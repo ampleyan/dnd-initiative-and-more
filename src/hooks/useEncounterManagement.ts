@@ -226,13 +226,6 @@ export function useEncounterManagement(params: EncounterManagementParams) {
     }
   };
 
-  const handleSimulateEncounter = (encounter: Encounter) => {
-    setCurrentEncounterId(encounter.id);
-    setEncounterName(encounter.name);
-    setIsEncounterActive(true);
-    navigate(`/encounters/${encounter.id}`, { state: { runSimulation: true } });
-  };
-
   const handleDeleteEncounters = async (ids: string[]) => {
     if (ids.length === 0) return;
     if (!window.confirm(`Delete ${ids.length} encounter${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
@@ -261,7 +254,6 @@ export function useEncounterManagement(params: EncounterManagementParams) {
     handleSaveEncounter,
     handleImportEncounters,
     handleLoadEncounter,
-    handleSimulateEncounter,
     handleNewEncounter,
     handleDeleteEncounters,
     handleUpdateEncounter,
