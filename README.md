@@ -41,7 +41,7 @@ Most combat trackers are either cloud-locked, subscription-gated, or tied to a s
 | ![Encounter creator](screenshots/encounter-creator.png) | ![Encounter vault](screenshots/encounter-vault.png) |
 | **Monster library** — browse the full bestiary | **Spellcasting** — apply spells and effects to targets |
 | ![Monster library](screenshots/monster-library.png) | ![Spellcasting](screenshots/spellcasting.png) |
-| **Adventure import** — pull encounters from 5etools, D&D Beyond, and Foundry | **Sound import** — add ambiences and effects from your library |
+| **Adventure import** — pull encounters from adventure files, D&D Beyond, and Foundry | **Sound import** — add ambiences and effects from your library |
 | ![Adventure import](screenshots/adventure-import.png) | ![Sound import](screenshots/sound-import.png) |
 | **Soundboard** — ambient audio and lighting cues | |
 | ![Soundboard](screenshots/soundboard.png) | |
@@ -99,7 +99,7 @@ Bug reports and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIB
 npm run lint       # TypeScript check
 npm test           # frontend and backend Vitest projects
 npm run build      # production Vite build
-npm run seed       # populate the library from 5etools data
+npm run seed       # populate the monster and spell library
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for system design, [CONTRIBUTING.md](CONTRIBUTING.md) for collaboration guidelines, and [docs/README.md](docs/README.md) for the documentation index.
