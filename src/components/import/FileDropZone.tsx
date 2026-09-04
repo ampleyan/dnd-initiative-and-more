@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { UploadCloud } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { MappedEntity, processJson } from './helpers';
+import { parseFoundryJournal } from '../../lib/adventureParser';
 
 interface FileDropZoneProps {
   onEntitiesParsed: (entities: MappedEntity[]) => void;
@@ -33,7 +34,6 @@ export const FileDropZone = React.memo<FileDropZoneProps>(({ onEntitiesParsed })
           const json = JSON.parse(content);
 
           if (isJournalFile) {
-            const { parseFoundryJournal } = await import('../../lib/adventureParser');
             const encounters = parseFoundryJournal(content);
             if (encounters.length > 0) {
               const mapped = encounters.map(enc => ({
