@@ -31,6 +31,21 @@ Most combat trackers are either cloud-locked, subscription-gated, or tied to a s
 - **Campaigns & sessions** — organize your table with a configurable session board.
 - **Soundboard** — optional spatial audio and smart-lighting effects for ambiance.
 
+## Screenshots
+
+| | |
+|---|---|
+| **Combat tracker** — run initiative, HP, and conditions | **Player view** — live, read-only view for the table |
+| ![Combat tracker](screenshots/combat-tracker.png) | ![Player view](screenshots/player-view.png) |
+| **Encounter creator** — build and scale encounters | **Encounter vault** — organize encounters by location | 
+| ![Encounter creator](screenshots/encounter-creator.png) | ![Encounter vault](screenshots/encounter-vault.png) |
+| **Monster library** — browse the full bestiary | **Spellcasting** — apply spells and effects to targets |
+| ![Monster library](screenshots/monster-library.png) | ![Spellcasting](screenshots/spellcasting.png) |
+| **Adventure import** — pull encounters from 5etools, D&D Beyond, and Foundry | **Sound import** — add ambiences and effects from your library |
+| ![Adventure import](screenshots/adventure-import.png) | ![Sound import](screenshots/sound-import.png) |
+| **Soundboard** — ambient audio and lighting cues | |
+| ![Soundboard](screenshots/soundboard.png) | |
+
 ## Quick start
 
 Requires Node.js 22 LTS (the Docker image uses Node 22).

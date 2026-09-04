@@ -19,3 +19,6 @@ coverage/
 /.gemini/skills
 .playwright-mcp/
 *.png
+# Showcase screenshots are intentionally tracked
+!screenshots/
+!screenshots/*.png
