@@ -155,7 +155,8 @@ html.theme-light [class*="bg-[#05070A]"] {
   background-color: #f7f8fa !important;
 }
 html.theme-light [class*="bg-[#0f1419]"],
-html.theme-light [class*="bg-[#0d0f14]"] {
+html.theme-light [class*="bg-[#0d0f14]"],
+html.theme-light [class*="bg-[#12141C]"] {
   background-color: #eceff3 !important;
   border-color: var(--color-outline-variant) !important;
 }

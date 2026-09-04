@@ -78,6 +78,15 @@ export interface Combatant {
   spellSlots?: SpellSlots;
   featureUses?: FeatureUses;
   polymorphForm?: PolymorphForm;
+  hidden?: boolean;
+  waveId?: string;
+}
+
+export interface EncounterWave {
+  id: string;
+  name: string;
+  revealRound?: number;
+  revealed: boolean;
 }
 
 export interface MonsterAction {
@@ -270,6 +279,7 @@ export interface Encounter {
   soundIds?: string[];
   notes?: EncounterNotes;
   favorite?: boolean;
+  waves?: EncounterWave[];
 }
 
 export interface Sound {

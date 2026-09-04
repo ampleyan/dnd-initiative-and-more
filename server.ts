@@ -21,6 +21,7 @@ import { createLightsRouter } from './routes/lights.ts';
 import { createDndBeyondRouter } from './routes/dnd-beyond.ts';
 import { createFoundryRouter } from './routes/foundry.ts';
 import { createImagesRouter } from './routes/images.ts';
+import { createBackupsRouter } from './routes/backups.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -90,6 +91,7 @@ async function startServer() {
 
   // Global API auth guard
   app.use('/api', requireAuth);
+  app.use('/api', createBackupsRouter(db, dbAvailable, requireAdmin));
 
   // Socket.IO — join rooms for per-encounter real-time updates
   io.on('connection', (socket) => {

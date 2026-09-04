@@ -87,6 +87,7 @@ export const encounters = {
   update: (id: string, data: Partial<Encounter>) => put<Encounter>(`/api/encounters/${id}`, data),
   delete: (id: string) => del<{ success: boolean }>(`/api/encounters/${id}`),
   bulkDelete: (ids: string[]) => del<{ success: boolean }>('/api/encounters/bulk', { ids }),
+  revealWave: (encounterId: string, waveId: string) => post<{ success: boolean; revealed: number }>(`/api/encounters/${encounterId}/waves/${waveId}/reveal`, {}),
 };
 
 // ── Combatants ────────────────────────────────────────────────────────────────
@@ -196,6 +197,12 @@ export const folderSettings = {
 
 export const db = {
   reset: () => post<{ success: boolean }>('/api/db/reset', {}),
+  exportBackup: async () => {
+    const res = await fetch('/api/backups/export');
+    if (!res.ok) throw new ApiError(res.status, 'Backup export failed');
+    return res.blob();
+  },
+  importBackup: (backup: unknown) => post<{ success: boolean }>('/api/backups/import', backup),
 };
 
 // ── Class features ────────────────────────────────────────────────────────────

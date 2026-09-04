@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, LogOut, X } from 'lucide-react';
+import { Plus, Trash2, LogOut, X, Download, Upload } from 'lucide-react';
 import { AuthUser } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { api } from '../api/client';
@@ -70,6 +70,31 @@ export const UsersSettings: React.FC<UsersSettingsProps> = ({ currentUser, onLog
 
   const closeModal = () => { setModalOpen(false); setError(''); setNewUsername(''); setNewPassword(''); setNewRole('user'); };
 
+  const handleExport = async () => {
+    try {
+      const blob = await api.db.exportBackup();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'dnd-initiative-backup.json';
+      link.click();
+      URL.revokeObjectURL(url);
+      showSuccess('Backup downloaded');
+    } catch (e) { showError(e instanceof Error ? e.message : 'Backup export failed'); }
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !confirm('Restore this backup? Current tracker data will be replaced.')) return;
+    try {
+      const backup = JSON.parse(await file.text());
+      await api.db.importBackup(backup);
+      showSuccess('Backup restored. Reloading…');
+      window.location.reload();
+    } catch (e) { showError(e instanceof Error ? e.message : 'Backup restore failed'); }
+  };
+
   return (
     <div className="space-y-6">
       {/* Account section */}
@@ -88,6 +113,20 @@ export const UsersSettings: React.FC<UsersSettingsProps> = ({ currentUser, onLog
           </button>
         </div>
       </div>
+
+      {currentUser.role === 'admin' && <div>
+        <h3 className="text-xs font-black uppercase tracking-widest text-outline mb-3">Data safety</h3>
+        <div className="bg-surface-container rounded-xl p-4 flex flex-wrap gap-2">
+          <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
+            <Download className="w-3.5 h-3.5" /> Export backup
+          </button>
+          <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-surface-container-high text-outline border border-outline/20 hover:text-on-surface cursor-pointer transition-colors">
+            <Upload className="w-3.5 h-3.5" /> Restore backup
+            <input type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
+          </label>
+          <p className="w-full text-[10px] text-outline/60">Backups include tracker data, not passwords or uploaded files.</p>
+        </div>
+      </div>}
 
       {/* Users list (admin only) */}
       {currentUser.role === 'admin' && (

@@ -300,22 +300,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           )}
 
-          {/* Basic/Full toggle */}
-          <button
-            onClick={handleToggleBasicMode}
-            title={isBasicMode ? 'Switch to Full mode' : 'Switch to Basic mode'}
-            className={cn(
-              "w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all hover:bg-white/5",
-              collapsed && "justify-center px-0",
-              isBasicMode ? "text-primary" : "text-outline"
-            )}
-          >
-            <Layers className="w-5 h-5 shrink-0" />
-            {!collapsed && (
-              <span className="font-medium text-sm">{isBasicMode ? 'Basic' : 'Full'}</span>
-            )}
-          </button>
-
           <div className={cn("border-t border-white/5 my-2", collapsed ? "mx-2" : "mx-0")} />
 
           {/* More menu — Combat Log, Session Stats, Help, What's New, Theme */}
@@ -327,7 +311,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               document.addEventListener('mousedown', handler);
               return () => document.removeEventListener('mousedown', handler);
             }, []);
-            if (isBasicMode) return null;
             const items = [
               { icon: ScrollText,  label: 'Combat Log',    color: 'text-slate-400',   action: onToggleLog,        active: showLog },
               { icon: BarChart2,   label: 'Session Stats', color: 'text-emerald-400', action: onShowSessionStats, active: false },
@@ -361,7 +344,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         collapsed ? "left-14 bottom-0" : "left-2 bottom-full mb-2"
                       )}
                     >
-                      {items.map(({ icon: Icon, label, color, action, active }) => (
+                      {!isBasicMode && items.map(({ icon: Icon, label, color, action, active }) => (
                         <button
                           key={label}
                           onClick={() => { action(); setOpen(false); }}
@@ -375,7 +358,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                         </button>
                       ))}
-                      <div className="border-t border-white/5 my-1" />
+                      {!isBasicMode && <div className="border-t border-white/5 my-1" />}
+                      <button
+                        onClick={() => { handleToggleBasicMode(); setOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-outline hover:text-on-surface hover:bg-white/5 transition-colors"
+                      >
+                        <Layers className={cn("w-4 h-4 shrink-0", isBasicMode ? "text-primary" : "text-violet-400")} />
+                        <span className="font-medium">{isBasicMode ? 'Full Mode' : 'Basic Mode'}</span>
+                      </button>
                       <button
                         onClick={() => { onToggleTheme?.(); setOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-outline hover:text-on-surface hover:bg-white/5 transition-colors"

@@ -105,6 +105,9 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
       ['encounters', 'lairActionsEnabled INTEGER DEFAULT 0'],
       ['encounters', 'favorite INTEGER DEFAULT 0'],
       ['encounters', 'notes TEXT DEFAULT NULL'],
+      ['encounters', "waves TEXT DEFAULT '[]'"],
+      ['combatants', 'hidden INTEGER DEFAULT 0'],
+      ['combatants', "waveId TEXT DEFAULT 'default'"],
     ];
 
     for (const [table, col] of migrations) {

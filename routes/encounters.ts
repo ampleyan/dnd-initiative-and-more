@@ -59,6 +59,7 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       encounterStats: e.encounterStats ? JSON.parse(e.encounterStats) : null,
       soundIds: e.soundIds ? JSON.parse(e.soundIds) : [],
       notes: e.notes ? JSON.parse(e.notes) : { general: '', rounds: [] },
+      waves: e.waves ? JSON.parse(e.waves) : [],
       combatants: combatantsByEncounter[e.id] ?? [],
     })));
   });
@@ -90,15 +91,17 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       trackingData: e.trackingData ? JSON.parse(e.trackingData) : null,
       soundIds: e.soundIds ? JSON.parse(e.soundIds) : [],
       notes: e.notes ? JSON.parse(e.notes) : { general: '', rounds: [] },
+      waves: e.waves ? JSON.parse(e.waves) : [],
     });
   });
 
   router.post('/encounters', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ success: false, message: 'DB not available' });
-    const { id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, animationLevel } = req.body;
+    const { id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, animationLevel, waves } = req.body;
     db.prepare('INSERT INTO encounters (id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, animationLevel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .run(id, name, currentRound || 1, isEncounterActive ? 1 : 0, showSummary ? 1 : 0, backgroundImage || '', youtubeUrl || '', musicUrl || '', folder || '', difficulty || '', backgroundOpacity ?? 0.22, panelOpacity ?? 0.92, sessionId || null, soundIds ? JSON.stringify(soundIds) : null, animationLevel ?? 'minimal');
     io.emit('encounter-updated', { encounterId: id });
+    if (waves) db.prepare('UPDATE encounters SET waves = ? WHERE id = ?').run(JSON.stringify(waves), id);
     res.status(201).json({ id, name });
   });
 
@@ -118,25 +121,27 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       trackingData = undefined, favorite = existing.favorite ?? 0,
       lairActionsEnabled = existing.lairActionsEnabled ?? 0,
       notes = undefined,
+      waves = undefined,
     } = req.body;
     const statsJson = typeof encounterStats === 'string' ? encounterStats : (encounterStats ? JSON.stringify(encounterStats) : existing.encounterStats);
     const soundIdsJson = soundIds !== undefined ? JSON.stringify(soundIds) : existing.soundIds;
     const trackingJson = trackingData !== undefined ? (typeof trackingData === 'string' ? trackingData : JSON.stringify(trackingData)) : existing.trackingData;
     const notesJson = notes !== undefined ? JSON.stringify(notes) : existing.notes;
+    const wavesJson = waves !== undefined ? JSON.stringify(waves) : existing.waves;
     db.prepare(`
       UPDATE encounters
       SET name = ?, currentRound = ?, currentTurnIndex = ?, isEncounterActive = ?,
           showSummary = ?, backgroundImage = ?, youtubeUrl = ?, musicUrl = ?,
           encounterStats = ?, folder = ?, completedAt = ?, difficulty = ?,
           backgroundOpacity = ?, panelOpacity = ?, soundIds = ?, animationLevel = ?,
-          trackingData = ?, favorite = ?, lairActionsEnabled = ?, notes = ?
+          trackingData = ?, favorite = ?, lairActionsEnabled = ?, notes = ?, waves = ?
       WHERE id = ?
     `).run(
       name, currentRound, currentTurnIndex, isEncounterActive ? 1 : 0,
       showSummary ? 1 : 0, backgroundImage, youtubeUrl, musicUrl,
       statsJson, folder, completedAt, difficulty,
       backgroundOpacity, panelOpacity, soundIdsJson, animationLevel,
-      trackingJson, favorite ? 1 : 0, lairActionsEnabled ? 1 : 0, notesJson, req.params.id
+      trackingJson, favorite ? 1 : 0, lairActionsEnabled ? 1 : 0, notesJson, wavesJson, req.params.id
     );
     io.to(`encounter:${req.params.id}`).emit('encounter-updated', { encounterId: req.params.id });
     res.json({ success: true });
@@ -221,12 +226,30 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
         featureIds: safeJson(c.featureIds, []),
         legendaryActions: safeJson(c.legendaryActions, undefined),
         polymorphForm: c.polymorph_form ? safeJson(c.polymorph_form, undefined) : undefined,
+        hidden: !!c.hidden,
+        waveId: c.waveId ?? 'default',
         vulnerabilities: lib ? safeJson(lib.vulnerabilities, []) : vuln,
         resistances: lib ? safeJson(lib.resistances, []) : res_,
         damageImmunities: lib ? safeJson(lib.damageImmunities, []) : dimm,
         conditionImmunities: lib ? safeJson(lib.conditionImmunities, []) : cimm,
       };
     }));
+  });
+
+  router.post('/encounters/:id/waves/:waveId/reveal', (req, res) => {
+    if (!dbAvailable) return res.status(503).json({ error: 'DB not available' });
+    const encounterId = req.params.id;
+    const waveId = req.params.waveId;
+    const result = db.prepare('UPDATE combatants SET hidden = 0 WHERE encounterId = ? AND waveId = ?').run(encounterId, waveId);
+    const existing = db.prepare('SELECT waves FROM encounters WHERE id = ?').get(encounterId) as any;
+    if (existing) {
+      let waves: any[] = [];
+      try { waves = JSON.parse(existing.waves || '[]'); } catch { waves = []; }
+      waves = waves.map(w => w.id === waveId ? { ...w, revealed: true } : w);
+      db.prepare('UPDATE encounters SET waves = ? WHERE id = ?').run(JSON.stringify(waves), encounterId);
+    }
+    io.to(`encounter:${encounterId}`).emit('encounter-updated', { encounterId });
+    res.json({ success: true, revealed: result.changes });
   });
 
   router.post('/combatants', (req, res) => {
@@ -257,6 +280,7 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       legendaryActions ? JSON.stringify(legendaryActions) : null,
       polymorphForm ? JSON.stringify(polymorphForm) : null
     );
+    db.prepare('UPDATE combatants SET hidden = ?, waveId = ? WHERE id = ?').run(req.body.hidden ? 1 : 0, req.body.waveId ?? 'default', id);
     io.to(`encounter:${encounterId}`).emit('encounter-updated', { encounterId });
     res.status(201).json({ success: true });
   });
