@@ -44,7 +44,6 @@ export function useAppState() {
   const [isEncounterCreatorOpen, setIsEncounterCreatorOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [showSummary, setShowSummary] = useState(false);
-  const [currentTurnStartedAt, setCurrentTurnStartedAt] = useState<number | null>(null);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -356,7 +355,6 @@ export function useAppState() {
         const allFallen = combatants.filter(c => c.type === 'player').every(c => c.hp.current <= 0);
         addLogEntryRef.current?.({ type: 'encounter_end', actorName: 'Encounter', detail: allFallen ? 'Defeat' : 'Victory!' });
         setIsEncounterActive(false);
-        setCurrentTurnStartedAt(null);
         setShowSummary(true);
         setCurrentRound(1);
         setCurrentTurnIndex(0);
@@ -412,7 +410,6 @@ export function useAppState() {
     setIsInitiativeModalOpen,
     setIsEditModalOpen,
     setEncounterStats,
-    setCurrentTurnStartedAt,
     combatLog,
     isSyncingRef,
     roundStartTimeRef,
@@ -509,7 +506,6 @@ export function useAppState() {
     isEncounterCreatorOpen, setIsEncounterCreatorOpen,
     isSidebarCollapsed, setIsSidebarCollapsed,
     showSummary, setShowSummary,
-    currentTurnStartedAt,
     navigate, location,
     editingCombatantId, setEditingCombatantId,
     quickActionCombatantId, setQuickActionCombatantId,

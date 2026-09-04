@@ -38,7 +38,6 @@ export interface CombatActionsParams {
   setIsInitiativeModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setIsEditModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setEncounterStats: React.Dispatch<React.SetStateAction<EncounterStats | null>>;
-  setCurrentTurnStartedAt: React.Dispatch<React.SetStateAction<number | null>>;
   combatLog: LogEntry[];
   isSyncingRef: React.MutableRefObject<number>;
   roundStartTimeRef: React.MutableRefObject<number | null>;
@@ -84,7 +83,6 @@ export function useCombatActions(params: CombatActionsParams) {
     setIsInitiativeModalOpen,
     setIsEditModalOpen,
     setEncounterStats,
-    setCurrentTurnStartedAt,
     combatLog,
     isSyncingRef,
     roundStartTimeRef,
@@ -421,7 +419,6 @@ export function useCombatActions(params: CombatActionsParams) {
 
     pushSnapshot();
     setCombatants(updatedCombatants);
-    setCurrentTurnStartedAt(Date.now());
     setCurrentRound(nextRound);
     setCurrentTurnIndex(nextIndex);
     setSelectedCombatantId(nextCombatant.id);
@@ -472,7 +469,6 @@ export function useCombatActions(params: CombatActionsParams) {
 
     pushSnapshot();
     setCombatants(updatedCombatants);
-    setCurrentTurnStartedAt(Date.now());
     setCurrentRound(prevRound);
     setCurrentTurnIndex(prevIndex);
     setSelectedCombatantId(prevCombatant.id);
@@ -588,7 +584,6 @@ export function useCombatActions(params: CombatActionsParams) {
     setIsInitiativeModalOpen(false);
     setCurrentRound(1);
     setCurrentTurnIndex(0);
-    setCurrentTurnStartedAt(Date.now());
 
     if (isDbAvailable && currentEncounterId) {
       const encId = currentEncounterId;
@@ -624,7 +619,6 @@ export function useCombatActions(params: CombatActionsParams) {
     addLogEntry({ type: 'encounter_end', actorName: 'Encounter', detail: allFallen ? 'Defeat' : 'Victory!' });
     setIsEncounterActive(false);
     resetHistory();
-    setCurrentTurnStartedAt(null);
     setShowSummary(true);
     setCurrentRound(1);
     setCurrentTurnIndex(0);
