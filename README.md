@@ -11,6 +11,12 @@ Prep encounters, run initiative, and share a live player view — no subscriptio
 <!-- Drop a screenshot or demo GIF at docs/demo.gif (a 20–30s clip of a real combat converts best) -->
 ![Initiative Tracker in action](docs/demo.gif)
 
+## Preview
+
+Try the hosted preview at <https://dnd-initiative-and-more.onrender.com/dashboard>.
+
+This is a free Render deployment intended for evaluation. The service may sleep when idle and its local SQLite data can be reset, so use a self-hosted deployment for important campaigns.
+
 ## Why
 
 Most combat trackers are either cloud-locked, subscription-gated, or tied to a single VTT. Initiative Tracker runs on your own hardware, works at the table without internet, and hands players a read-only view of the fight — all from one Docker command.
