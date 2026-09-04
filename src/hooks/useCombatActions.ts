@@ -28,10 +28,6 @@ export interface CombatActionsParams {
   isDbAvailable: boolean;
   combatantTracking: CombatantTracking;
   setCombatantTracking: React.Dispatch<React.SetStateAction<CombatantTracking>>;
-  actionHistory: EncounterSnapshot[];
-  setActionHistory: React.Dispatch<React.SetStateAction<EncounterSnapshot[]>>;
-  redoStack: EncounterSnapshot[];
-  setRedoStack: React.Dispatch<React.SetStateAction<EncounterSnapshot[]>>;
   pendingConChecks: Record<string, number>;
   setPendingConChecks: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   currentEncounterId: string | null;
@@ -80,8 +76,6 @@ export function useCombatActions(params: CombatActionsParams) {
     encounterName,
     isDbAvailable,
     combatantTracking, setCombatantTracking,
-    actionHistory, setActionHistory,
-    redoStack, setRedoStack,
     setPendingConChecks,
     currentEncounterId,
     setCurrentEncounterId,
@@ -102,7 +96,20 @@ export function useCombatActions(params: CombatActionsParams) {
     addLogEntry,
     navigate,
   } = params;
+  const [actionHistory, setActionHistory] = useState<EncounterSnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<EncounterSnapshot[]>([]);
+  const wasEncounterActiveRef = React.useRef(isEncounterActive);
   const playerPatchControllersRef = React.useRef<Map<string, AbortController>>(new Map());
+
+  const resetHistory = useCallback(() => {
+    setActionHistory([]);
+    setRedoStack([]);
+  }, []);
+
+  React.useEffect(() => {
+    if (wasEncounterActiveRef.current && !isEncounterActive) resetHistory();
+    wasEncounterActiveRef.current = isEncounterActive;
+  }, [isEncounterActive, resetHistory]);
 
   const pushSnapshot = () => {
     const snap: EncounterSnapshot = { combatants: [...combatants], currentRound, currentTurnIndex, combatantTracking: { ...combatantTracking } };
@@ -570,8 +577,7 @@ export function useCombatActions(params: CombatActionsParams) {
     }
 
     setCombatantTracking({});
-    setActionHistory([]);
-    setRedoStack([]);
+    resetHistory();
     roundDurationsRef.current = [];
     roundStartTimeRef.current = Date.now();
     autoEndingRef.current = false;
@@ -619,8 +625,7 @@ export function useCombatActions(params: CombatActionsParams) {
     const allFallen = combatants.filter(c => c.type === 'player').every(c => c.hp.current <= 0);
     addLogEntry({ type: 'encounter_end', actorName: 'Encounter', detail: allFallen ? 'Defeat' : 'Victory!' });
     setIsEncounterActive(false);
-    setActionHistory([]);
-    setRedoStack([]);
+    resetHistory();
     setCurrentTurnStartedAt(null);
     setShowSummary(true);
     setCurrentRound(1);
@@ -756,6 +761,8 @@ export function useCombatActions(params: CombatActionsParams) {
     handleHealAll,
     handleUndo,
     handleRedo,
+    canUndo: actionHistory.length > 0,
+    canRedo: redoStack.length > 0,
     triggerConCheck,
     clearConCheck,
     handlePolymorph,

@@ -13,7 +13,6 @@ import { useCampaignActions } from './useCampaignActions';
 import { useEncounterManagement } from './useEncounterManagement';
 import { sortWithCompanions } from '../lib/combatantUtils';
 import { computeEncounterStats, enrichStatsFromLog, CombatantTracking } from '../lib/encounterStats';
-import { EncounterSnapshot } from './useCombatActions';
 
 export function useAppState() {
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | null>(null);
@@ -77,8 +76,6 @@ export function useAppState() {
   const [isDbAvailable, setIsDbAvailable] = useState(true);
   const [encounterStats, setEncounterStats] = useState<EncounterStats | null>(null);
   const [combatantTracking, setCombatantTracking] = useState<CombatantTracking>({});
-  const [actionHistory, setActionHistory] = useState<EncounterSnapshot[]>([]);
-  const [redoStack, setRedoStack] = useState<EncounterSnapshot[]>([]);
   const [activeBackground, setActiveBackground] = useState('');
   const [activeYoutubeUrl, setActiveYoutubeUrl] = useState('');
   const [activeBackgroundOpacity, setActiveBackgroundOpacity] = useState(0.22);
@@ -360,8 +357,6 @@ export function useAppState() {
         const allFallen = combatants.filter(c => c.type === 'player').every(c => c.hp.current <= 0);
         addLogEntryRef.current?.({ type: 'encounter_end', actorName: 'Encounter', detail: allFallen ? 'Defeat' : 'Victory!' });
         setIsEncounterActive(false);
-        setActionHistory([]);
-        setRedoStack([]);
         setCurrentTurnStartedAt(null);
         setShowSummary(true);
         setCurrentRound(1);
@@ -409,8 +404,6 @@ export function useAppState() {
     encounterName,
     isDbAvailable,
     combatantTracking, setCombatantTracking,
-    actionHistory, setActionHistory,
-    redoStack, setRedoStack,
     pendingConChecks, setPendingConChecks,
     currentEncounterId, setCurrentEncounterId,
     setSelectedCombatantId,
@@ -547,8 +540,6 @@ export function useAppState() {
     combatLog,
     addLogEntry,
     pendingConChecks,
-    canUndo: actionHistory.length > 0,
-    canRedo: redoStack.length > 0,
     campaigns, setCampaigns,
     activeCampaignId, setActiveCampaignId,
     sessions, setSessions,
@@ -565,4 +556,3 @@ export function useAppState() {
     syncPlayerLog,
   };
 }
-
