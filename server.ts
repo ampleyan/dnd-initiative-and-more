@@ -9,7 +9,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 
 import { initDatabase } from './db/init.ts';
-import { createMiddleware, isLocalNetwork } from './routes/middleware.ts';
+import { createMiddleware, isLocalNetwork, lanAuthBypassEnabled } from './routes/middleware.ts';
 import { createSettingsHelpers } from './routes/settings.ts';
 import { createSeedFunctions } from './routes/seed.ts';
 import { createAuthRouter } from './routes/auth.ts';
@@ -100,7 +100,7 @@ async function startServer() {
     socket.on('dm-log-sync', ({ encounterId, show, entries }: { encounterId: string; show: boolean; entries: unknown[] }) => {
       const socketIp = socket.handshake.address;
       const session = (socket.request as any).session;
-      const authed = isLocalNetwork(socketIp) || (session?.userId && session?.role === 'admin');
+      const authed = (lanAuthBypassEnabled() && isLocalNetwork(socketIp)) || (session?.userId && session?.role === 'admin');
       if (!authed) return;
       io.to(`encounter:${encounterId}`).emit('player-log-updated', { show, entries });
     });

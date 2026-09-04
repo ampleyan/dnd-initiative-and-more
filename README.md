@@ -52,6 +52,7 @@ The only required production settings are:
 |---|---|
 | `SESSION_SECRET` | Signs login sessions. Use a long random value. |
 | `ADMIN_PASSWORD` | Sets the initial administrator password on first startup. |
+| `DISABLE_LAN_AUTH_BYPASS` | Set to `true` when publicly hosted to require login from every network. |
 
 Optional settings enable local audio, Foundry VTT imports, D&D Beyond seeding, Philips Hue, and Home Assistant. See [.env.example](.env.example) for the complete list. Integration credentials are stored locally in SQLite and should be treated as secrets.
 
@@ -72,6 +73,8 @@ For a quick free demo, deploy the Docker image as a Render Web Service. Set `NOD
 ## Security and privacy
 
 This application is intended for trusted self-hosted use. Requests from loopback and RFC-1918 private-network addresses receive administrator access without a login; do not expose it directly to the public internet. Use a strong `SESSION_SECRET` in production.
+
+For a public deployment such as Render, set `DISABLE_LAN_AUTH_BYPASS=true` so private-network detection cannot grant administrator access without login.
 
 SQLite data, uploaded portraits, and uploaded sounds are local runtime data. They are ignored by Git. See [SECURITY.md](SECURITY.md) for vulnerability reporting and secret-handling guidance.
 
