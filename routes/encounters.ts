@@ -45,6 +45,53 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       combatant.polymorphForm ? JSON.stringify(combatant.polymorphForm) : null,
     ];
   };
+  const formatCombatants = (combatants: any[]) => {
+    const safeJson = (val: string, fallback: any) => { try { return JSON.parse(val || JSON.stringify(fallback)); } catch { return fallback; } };
+    const monstersByName = new Map<string, any>();
+    (db.prepare('SELECT name, vulnerabilities, resistances, damageImmunities, conditionImmunities FROM monsters').all() as any[])
+      .forEach(monster => monstersByName.set(monster.name.toLowerCase(), monster));
+
+    return combatants.map((combatant: any) => {
+      const vulnerabilities = safeJson(combatant.vulnerabilities, []);
+      const resistances = safeJson(combatant.resistances, []);
+      const damageImmunities = safeJson(combatant.damageImmunities, []);
+      const conditionImmunities = safeJson(combatant.conditionImmunities, []);
+      const libraryMonster = combatant.type === 'monster' && !vulnerabilities.length && !resistances.length && !damageImmunities.length && !conditionImmunities.length
+        ? monstersByName.get((combatant.name ?? '').toLowerCase())
+        : null;
+
+      return {
+        ...combatant,
+        hp: { current: combatant.hp_current, max: combatant.hp_max },
+        tempHp: combatant.tempHp ?? 0,
+        isCurrentTurn: !!combatant.isCurrentTurn,
+        isFriendly: !!combatant.isFriendly,
+        conditions: safeJson(combatant.conditions, []),
+        tags: safeJson(combatant.tags, []),
+        customTagDescriptions: safeJson(combatant.customTagDescriptions, {}),
+        conditionTimers: safeJson(combatant.conditionTimers, {}),
+        concentratingOn: combatant.concentratingOn ?? undefined,
+        concentrationTargets: combatant.concentrationTargets ? safeJson(combatant.concentrationTargets, undefined) : undefined,
+        deathSaves: combatant.deathSaves ? safeJson(combatant.deathSaves, undefined) : undefined,
+        stats: safeJson(combatant.stats, {}),
+        actions: safeJson(combatant.actions, []),
+        abilities: safeJson(combatant.abilities, []),
+        spells: safeJson(combatant.spells, []),
+        spellSlots: combatant.spellSlots ? safeJson(combatant.spellSlots, null) : undefined,
+        featureUses: combatant.featureUses ? safeJson(combatant.featureUses, null) : undefined,
+        spellIds: safeJson(combatant.spellIds, []),
+        featureIds: safeJson(combatant.featureIds, []),
+        legendaryActions: safeJson(combatant.legendaryActions, undefined),
+        polymorphForm: combatant.polymorph_form ? safeJson(combatant.polymorph_form, undefined) : undefined,
+        hidden: !!combatant.hidden,
+        waveId: combatant.waveId ?? 'default',
+        vulnerabilities: libraryMonster ? safeJson(libraryMonster.vulnerabilities, []) : vulnerabilities,
+        resistances: libraryMonster ? safeJson(libraryMonster.resistances, []) : resistances,
+        damageImmunities: libraryMonster ? safeJson(libraryMonster.damageImmunities, []) : damageImmunities,
+        conditionImmunities: libraryMonster ? safeJson(libraryMonster.conditionImmunities, []) : conditionImmunities,
+      };
+    });
+  };
 
   router.get('/health', (req, res) => {
     res.json({ status: 'ok', dbAvailable, mode: dbAvailable ? 'persistent' : 'ephemeral' });
@@ -205,53 +252,13 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
   router.get('/encounters/:id/combatants', (req, res) => {
     if (!dbAvailable) return res.json([]);
     const combatants = db.prepare('SELECT * FROM combatants WHERE encounterId = ?').all(req.params.id);
-    const safeJson = (val: string, fallback: any) => { try { return JSON.parse(val || JSON.stringify(fallback)); } catch { return fallback; } };
-    // Pre-fetch monster library keyed by name (lowercase) so we can back-fill missing trait data
-    const monstersByName = new Map<string, any>();
-    (db.prepare('SELECT name, vulnerabilities, resistances, damageImmunities, conditionImmunities FROM monsters').all() as any[])
-      .forEach(m => monstersByName.set(m.name.toLowerCase(), m));
+    res.json(formatCombatants(combatants));
+  });
 
-    res.json(combatants.map((c: any) => {
-      const vuln  = safeJson(c.vulnerabilities, []);
-      const res_  = safeJson(c.resistances, []);
-      const dimm  = safeJson(c.damageImmunities, []);
-      const cimm  = safeJson(c.conditionImmunities, []);
-      // If combatant is a monster with empty trait data, pull from library
-      let lib: any = null;
-      if (c.type === 'monster' && !vuln.length && !res_.length && !dimm.length && !cimm.length) {
-        lib = monstersByName.get((c.name ?? '').toLowerCase());
-      }
-      return {
-        ...c,
-        hp: { current: c.hp_current, max: c.hp_max },
-        tempHp: c.tempHp ?? 0,
-        isCurrentTurn: !!c.isCurrentTurn,
-        isFriendly: !!c.isFriendly,
-        conditions: safeJson(c.conditions, []),
-        tags: safeJson(c.tags, []),
-        customTagDescriptions: safeJson(c.customTagDescriptions, {}),
-        conditionTimers: safeJson(c.conditionTimers, {}),
-        concentratingOn: c.concentratingOn ?? undefined,
-        concentrationTargets: c.concentrationTargets ? safeJson(c.concentrationTargets, undefined) : undefined,
-        deathSaves: c.deathSaves ? safeJson(c.deathSaves, undefined) : undefined,
-        stats: safeJson(c.stats, {}),
-        actions: safeJson(c.actions, []),
-        abilities: safeJson(c.abilities, []),
-        spells: safeJson(c.spells, []),
-        spellSlots: c.spellSlots ? safeJson(c.spellSlots, null) : undefined,
-        featureUses: c.featureUses ? safeJson(c.featureUses, null) : undefined,
-        spellIds: safeJson(c.spellIds, []),
-        featureIds: safeJson(c.featureIds, []),
-        legendaryActions: safeJson(c.legendaryActions, undefined),
-        polymorphForm: c.polymorph_form ? safeJson(c.polymorph_form, undefined) : undefined,
-        hidden: !!c.hidden,
-        waveId: c.waveId ?? 'default',
-        vulnerabilities: lib ? safeJson(lib.vulnerabilities, []) : vuln,
-        resistances: lib ? safeJson(lib.resistances, []) : res_,
-        damageImmunities: lib ? safeJson(lib.damageImmunities, []) : dimm,
-        conditionImmunities: lib ? safeJson(lib.conditionImmunities, []) : cimm,
-      };
-    }));
+  router.get('/encounters/:id/player-combatants', (req, res) => {
+    if (!dbAvailable) return res.json([]);
+    const combatants = db.prepare('SELECT * FROM combatants WHERE encounterId = ? AND (hidden = 0 OR hidden IS NULL)').all(req.params.id);
+    res.json(formatCombatants(combatants));
   });
 
   router.post('/encounters/:id/waves/:waveId/reveal', (req, res) => {

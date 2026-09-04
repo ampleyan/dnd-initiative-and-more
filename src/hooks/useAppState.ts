@@ -151,7 +151,9 @@ export function useAppState() {
     try {
       const [encResult, combResult, folderResult] = await Promise.allSettled([
         api.encounters.get(encounterId),
-        api.combatants.list(encounterId),
+        window.location.pathname.startsWith('/player/')
+          ? api.combatants.listForPlayer(encounterId)
+          : api.combatants.list(encounterId),
         api.folderSettings.list(),
       ]);
 

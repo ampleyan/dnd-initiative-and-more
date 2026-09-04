@@ -94,6 +94,7 @@ export const encounters = {
 
 export const combatants = {
   list:   (encounterId: string) => get<Combatant[]>(`/api/encounters/${encounterId}/combatants`),
+  listForPlayer: (encounterId: string) => get<Combatant[]>(`/api/encounters/${encounterId}/player-combatants`),
   create: (data: Partial<Combatant>) => post<Combatant>('/api/combatants', data),
   update: (id: string, data: Partial<Combatant>) => put<Combatant>(`/api/combatants/${id}`, data),
   delete: (id: string) => del<{ success: boolean }>(`/api/combatants/${id}`),
