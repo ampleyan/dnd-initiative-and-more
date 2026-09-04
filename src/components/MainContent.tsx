@@ -31,6 +31,7 @@ import { DraggableSoundpad } from './DraggableSoundpad';
 import { AnimationLevel, Combatant, Encounter, MonsterTemplate, MonsterAction, Spell, Player, LogEntry, Campaign, Session, ClassFeature, EncounterNotes } from '../types';
 import { api, ApiError } from '../api/client';
 import { useToast } from '../hooks/useToast';
+import { getCombatantLayout } from '../lib/combatantUtils';
 
 type NoteToken =
   | { type: 'text'; text: string }
@@ -500,19 +501,8 @@ export const MainContent: React.FC<MainContentProps> = ({
   };
 
   const combatLayout = React.useMemo(() => {
-    const mainSorted = combatants.filter(c => !c.ownerId).sort((a, b) => b.initiative - a.initiative);
-    const companionMap = new Map<string, Combatant[]>();
-    combatants.filter(c => c.ownerId).forEach(c => {
-      if (!companionMap.has(c.ownerId!)) companionMap.set(c.ownerId!, []);
-      companionMap.get(c.ownerId!)!.push(c);
-    });
-    const allSorted: Combatant[] = [];
-    for (const c of mainSorted) {
-      allSorted.push(c);
-      allSorted.push(...(companionMap.get(c.id) ?? []));
-    }
-    const mainIds = mainSorted.map(c => c.id);
-    return { mainSorted, companionMap, allSorted, mainIds };
+    const { mainSorted, companionsByOwner: companionMap, allSorted } = getCombatantLayout(combatants);
+    return { mainSorted, companionMap, allSorted, mainIds: mainSorted.map(c => c.id) };
   }, [combatants]);
 
   return (
@@ -776,7 +766,7 @@ export const MainContent: React.FC<MainContentProps> = ({
               />
 
               {isEncounterActive && !activeRowVisible && (() => {
-                const active = [...combatants].filter(c => !c.ownerId).sort((a, b) => b.initiative - a.initiative)[currentTurnIndex];
+                const active = combatLayout.allSorted[currentTurnIndex];
                 if (!active) return null;
                 const hpPct = active.hp.max > 0 ? Math.max(0, Math.min(100, (active.hp.current / active.hp.max) * 100)) : 0;
                 const hpColor = hpPct > 50 ? 'bg-emerald-500' : hpPct > 25 ? 'bg-amber-400' : 'bg-error';

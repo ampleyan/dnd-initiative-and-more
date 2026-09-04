@@ -1,18 +1,18 @@
 import { Combatant } from '../types';
 
-export function sortWithCompanions(cs: Combatant[]): Combatant[] {
-  const mains = cs.filter(c => !c.ownerId).sort((a, b) => b.initiative - a.initiative);
-  const byOwner = new Map<string, Combatant[]>();
+export function getCombatantLayout(cs: Combatant[]) {
+  const mainSorted = cs.filter(c => !c.ownerId).sort((a, b) => b.initiative - a.initiative);
+  const companionsByOwner = new Map<string, Combatant[]>();
   cs.filter(c => c.ownerId).forEach(c => {
-    if (!byOwner.has(c.ownerId!)) byOwner.set(c.ownerId!, []);
-    byOwner.get(c.ownerId!)!.push(c);
+    if (!companionsByOwner.has(c.ownerId!)) companionsByOwner.set(c.ownerId!, []);
+    companionsByOwner.get(c.ownerId!)!.push(c);
   });
-  const result: Combatant[] = [];
-  for (const c of mains) {
-    result.push(c);
-    result.push(...(byOwner.get(c.id) ?? []));
-  }
-  return result;
+  const allSorted = mainSorted.flatMap(c => [c, ...(companionsByOwner.get(c.id) ?? [])]);
+  return { mainSorted, companionsByOwner, allSorted };
+}
+
+export function sortWithCompanions(cs: Combatant[]): Combatant[] {
+  return getCombatantLayout(cs).allSorted;
 }
 
 /**
