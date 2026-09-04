@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 
 interface Release {
   version: string;
@@ -10,6 +10,47 @@ interface Release {
 }
 
 const RELEASES: Release[] = [
+  {
+    version: '1.9.0',
+    date: 'September 2026',
+    features: [
+      {
+        icon: '🧭',
+        title: 'Basic Mode',
+        description: 'A one-click toggle in the sidebar menu strips the interface down to just Encounters and Monsters — perfect for guests or new players sitting at the DM screen. Flip back to Full mode any time.',
+      },
+      {
+        icon: '☀️',
+        title: 'Light Theme',
+        description: 'A new light theme joins the existing dark and pink options. Switch it from the "More" menu in the sidebar, next to the mode toggle.',
+      },
+      {
+        icon: '💾',
+        title: 'Backup & Restore',
+        description: 'Export a versioned JSON backup of your whole tracker from Settings and restore it with explicit confirmation. Restores now validate the file first, so a bad or incomplete backup can no longer overwrite your data.',
+      },
+      {
+        icon: '🌊',
+        title: 'Hidden Waves & Condition Timers',
+        description: 'Stage reinforcements as hidden waves and reveal them mid-combat, and condition timers now count down right on each combatant.',
+      },
+      {
+        icon: '💡',
+        title: 'Home Assistant Lighting',
+        description: 'Home Assistant lighting is now toggleable alongside Philips Hue, so you can drive encounter mood cues from either system.',
+      },
+      {
+        icon: '📁',
+        title: 'Smoother Imports & Editing',
+        description: 'Imported encounters now appear immediately without a page refresh, you can select or deselect all encounters at once when importing, and you can pick an existing Location / Group when editing an encounter.',
+      },
+      {
+        icon: '🎲',
+        title: 'Fresh Look & Safer Hosting',
+        description: 'A new d20 app icon and favicon throughout, plus a DISABLE_LAN_AUTH_BYPASS option so you can require a login on every network when hosting publicly.',
+      },
+    ],
+  },
   {
     version: '1.8.0',
     date: 'July 2026',
