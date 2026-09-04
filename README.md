@@ -2,7 +2,7 @@
 
 **A self-hosted, open-source D&D 5e combat tracker for Dungeon Masters — an alternative to Improved Initiative and D&D Beyond's encounter tools that you own end to end.**
 
-Prep encounters, run initiative, and share a live player view — no subscription, no account, your data stays on your machine.
+Prep encounters, run initiative, and share a live player view
 
 ![CI](https://github.com/ampleyan/dnd-initiative-and-more/actions/workflows/ci.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -65,18 +65,6 @@ docker compose up --build -d
 ```
 
 The default deployment listens on <http://localhost:3001> and persists SQLite data in `./data`. The base Compose file does not mount personal audio libraries or Foundry data. To use either integration, mount a host directory into the container and set `AUDIO_SFX_DIR`, `AUDIO_AMBIENCES_DIR`, or `FOUNDRY_DATA_PATH` to its container path.
-
-### Free hosted preview
-
-For a quick free demo, deploy the Docker image as a Render Web Service. Set `NODE_ENV=production`, `SESSION_SECRET`, and `ADMIN_PASSWORD` in Render's environment settings. The free tier sleeps when idle and does not provide durable SQLite storage; use the in-app backup/export before experimenting and do not rely on the preview for important campaign data.
-
-## Security and privacy
-
-This application is intended for trusted self-hosted use. Requests from loopback and RFC-1918 private-network addresses receive administrator access without a login; do not expose it directly to the public internet. Use a strong `SESSION_SECRET` in production.
-
-For a public deployment such as Render, set `DISABLE_LAN_AUTH_BYPASS=true` so private-network detection cannot grant administrator access without login.
-
-SQLite data, uploaded portraits, and uploaded sounds are local runtime data. They are ignored by Git. See [SECURITY.md](SECURITY.md) for vulnerability reporting and secret-handling guidance.
 
 ### Backups and recovery
 
