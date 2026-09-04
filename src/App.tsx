@@ -31,13 +31,14 @@ import { useSoundboard } from './hooks/useSoundboard';
 import { getDisplayNames } from './lib/combatantUtils';
 import { useHueEffects } from './hooks/useHueEffects';
 import { HueEffectName, HueEffectTargets } from './lib/hueEffects';
-import { Combatant, MonsterAction, Encounter, LogEntry, Player, EncounterNotes } from './types';
+import { Combatant, Encounter, Player, EncounterNotes } from './types';
 import { api } from './api/client';
 import { playerToCombatant } from './hooks/useEncounterManagement';
 import { SessionBoard } from './components/SessionBoard';
 import { FloatingMusicPlayer } from './components/FloatingMusicPlayer';
 import { useLocalState } from './hooks/useLocalState';
 import { useRouterSync } from './hooks/useRouterSync';
+import { useActionExecution } from './hooks/useActionExecution';
 import type { SessionBoardHandle } from './components/SessionBoard';
 
 const HOTKEYS = [
@@ -171,7 +172,6 @@ export default function App() {
   const [isMobileRightPanelOpen, setIsMobileRightPanelOpen] = React.useState(false);
   const notesDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [actionModal, setActionModal] = React.useState<{ action: MonsterAction; actor: Combatant } | null>(null);
   const [showLog, setShowLog] = React.useState(false);
   const [showLogToPlayers, setShowLogToPlayers] = React.useState(false);
   const [showWhatsNew, setShowWhatsNew] = React.useState(() => !hasSeenWhatsNew());
@@ -180,6 +180,14 @@ export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
   const [isAddEnemyModalOpen, setIsAddEnemyModalOpen] = React.useState(false);
   const sessionBoardRef = React.useRef<SessionBoardHandle | null>(null);
+  const { actionModal, openActionModal, closeActionModal, handleActionApply } = useActionExecution({
+    combatants,
+    spells,
+    handleUpdateCombatant,
+    handleUpdateSpellSlot,
+    triggerConCheck,
+    addLogEntry,
+  });
 
   React.useEffect(() => {
     syncPlayerLog(showLogToPlayers, showLogToPlayers ? combatLog : []);
@@ -403,149 +411,6 @@ export default function App() {
     });
   }, [combatants, handleUpdateCombatant]);
 
-  const handleUseAction = React.useCallback((action: MonsterAction, actor: Combatant) => {
-    setActionModal({ action, actor });
-  }, []);
-
-  const handleActionApply = React.useCallback((params: {
-    targetIds: string[];
-    effect: 'damage' | 'heal' | 'none';
-    amount: number;
-    amountPerTarget?: Record<string, number>;
-    actionName: string;
-    actionCategory: MonsterAction['category'];
-    conditionsToAdd: string[];
-    applyConcentration: boolean;
-    damageType?: string;
-  }) => {
-    const { targetIds, effect, amount, amountPerTarget, actionName, actionCategory, conditionsToAdd, damageType } = params;
-    const actorCombatant = actionModal?.actor;
-
-    // Log the spell/action cast
-    if (actorCombatant) {
-      const spellLevel = actionCategory === 'spell'
-        ? spells.find(s => s.name.toLowerCase() === actionName.toLowerCase())?.level
-        : undefined;
-      addLogEntry({
-        type: actionCategory === 'spell' ? 'spell_cast' : 'action_used',
-        actorName: actorCombatant.name,
-        actorId: actorCombatant.id,
-        actionName,
-        actionCategory: actionCategory as LogEntry['actionCategory'],
-        detail: spellLevel != null ? String(spellLevel) : undefined,
-      });
-    }
-
-    // Build a working snapshot of all combatants we'll touch this frame
-    const pending = new Map<string, Combatant>(combatants.map(c => [c.id, { ...c }]));
-
-    // Break old concentration — strip tracked conditions from old targets in the snapshot
-    if (params.applyConcentration && actorCombatant) {
-      const actor = pending.get(actorCombatant.id);
-      if (actor?.concentratingOn) {
-        // Log the concentration break
-        addLogEntry({
-          type: 'concentration_end',
-          actorName: actorCombatant.name,
-          actorId: actorCombatant.id,
-          detail: actor.concentratingOn,
-        });
-        if (actor.concentrationTargets) {
-          for (const [targetId, appliedConditions] of Object.entries(actor.concentrationTargets)) {
-            const target = pending.get(targetId);
-            if (!target || appliedConditions.length === 0) continue;
-            pending.set(targetId, { ...target, conditions: target.conditions.filter(c => !appliedConditions.includes(c)) });
-          }
-        }
-      }
-    }
-
-    const newConcentrationTargets: Record<string, string[]> = {};
-
-    for (const targetId of targetIds) {
-      const target = pending.get(targetId);
-      if (!target) continue;
-
-      let updated: Combatant = { ...target };
-
-      const targetAmount = amountPerTarget ? (amountPerTarget[targetId] ?? 0) : amount;
-      if (effect === 'damage' && targetAmount > 0) {
-        const tempAbsorb = Math.min(target.tempHp ?? 0, targetAmount);
-        const newTemp = (target.tempHp ?? 0) - tempAbsorb;
-        const actualDamage = targetAmount - tempAbsorb;
-        const newHp = Math.max(0, target.hp.current - actualDamage);
-        updated = { ...updated, hp: { ...target.hp, current: newHp }, tempHp: newTemp };
-        if (target.concentratingOn && actualDamage > 0) {
-          triggerConCheck(targetId, Math.max(10, Math.floor(actualDamage / 2)));
-        }
-      } else if (effect === 'heal' && targetAmount > 0) {
-        const newHp = Math.min(target.hp.max, target.hp.current + targetAmount);
-        updated = { ...updated, hp: { ...target.hp, current: newHp } };
-      }
-
-      if (conditionsToAdd.length > 0) {
-        const existing = new Set(updated.conditions);
-        conditionsToAdd.forEach(c => existing.add(c));
-        updated = { ...updated, conditions: [...existing] };
-        if (params.applyConcentration) {
-          newConcentrationTargets[targetId] = conditionsToAdd;
-        }
-      }
-
-      pending.set(targetId, updated);
-    }
-
-    // Apply concentrating condition to caster in the snapshot
-    if (params.applyConcentration && actorCombatant) {
-      const actor = pending.get(actorCombatant.id);
-      if (actor) {
-        const newConditions = [...actor.conditions.filter(c => c !== 'concentrating'), 'concentrating'];
-        pending.set(actor.id, { ...actor, conditions: newConditions, concentratingOn: actionName, concentrationTargets: newConcentrationTargets });
-        addLogEntry({
-          type: 'concentration_start',
-          actorName: actorCombatant.name,
-          actorId: actorCombatant.id,
-          detail: actionName,
-        });
-      }
-    }
-
-    // Flush all pending changes in one pass
-    for (const [id, updated] of pending) {
-      const original = combatants.find(c => c.id === id);
-      if (original && JSON.stringify(original) !== JSON.stringify(updated)) {
-        const isDamageTarget = effect === 'damage' && targetIds.includes(id);
-        handleUpdateCombatant(updated, isDamageTarget ? damageType : undefined, actionName);
-      }
-    }
-
-    // Auto-deduct spell slot from caster
-    if (params.actionCategory === 'spell' && actorCombatant) {
-     
-      if (actorCombatant.type === 'player' && actorCombatant.playerId) {
-        const spell = spells.find(s => s.name.toLowerCase() === params.actionName.toLowerCase());
-       
-        if (spell && spell.level > 0) {
-          const slots = actorCombatant.spellSlots ?? {};
-          const slot = slots[spell.level];
-         
-          if (slot && slot.used < slot.total) {
-           
-            handleUpdateSpellSlot(actorCombatant.playerId, spell.level, slot.used + 1);
-          } else {
-           
-          }
-        } else {
-         
-        }
-      } else {
-       
-      }
-    }
-
-    setActionModal(null);
-  }, [combatants, handleUpdateCombatant, actionModal, spells, handleUpdateSpellSlot, triggerConCheck, addLogEntry]);
-
   const handleImportScene = React.useCallback((scene: { name: string; backgroundImg: string }) => {
     if (!currentEncounterId) return;
     api.encounters.update(currentEncounterId, { name: scene.name, backgroundImage: scene.backgroundImg } as any)
@@ -666,7 +531,7 @@ export default function App() {
     onDeleteEncounters: handleDeleteEncounters,
     onUpdateEncounter: handleUpdateEncounter,
     onImportAdventureAsCampaign: handleImportAdventureAsCampaign,
-    onUseSpellFromLibrary: (actor: Combatant, action: MonsterAction) => setActionModal({ actor, action }),
+    onUseSpellFromLibrary: (actor: Combatant, action: import('./types').MonsterAction) => openActionModal(action, actor),
     classFeatures,
     handleImportClassFeatures,
     currentUser: user,
@@ -983,7 +848,7 @@ export default function App() {
             currentEncounterId={currentEncounterId}
             activeTab={activeTab}
             combatants={combatants}
-            onUseAction={handleUseAction}
+            onUseAction={openActionModal}
             onUpdate={handleUpdateCombatant}
             spellLibrary={spells}
             encounterNotes={encounterNotes}
@@ -1075,7 +940,7 @@ export default function App() {
 {/* Action Execution Modal */}
       <ActionExecutionModal
         isOpen={actionModal !== null}
-        onClose={() => setActionModal(null)}
+        onClose={closeActionModal}
         actor={actionModal?.actor ?? null}
         action={actionModal?.action ?? null}
         combatants={combatants}
