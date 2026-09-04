@@ -3,6 +3,24 @@ import type { Server } from 'socket.io';
 
 export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server) {
   const router = Router();
+  const combatantValues = (combatant: any) => {
+    const hp = combatant.hp && typeof combatant.hp === 'object' ? combatant.hp : {};
+    return [
+      combatant.name, combatant.initiative, hp.current ?? 0, hp.max ?? 0, combatant.tempHp ?? 0,
+      combatant.ac, combatant.speed, combatant.subtitle, combatant.avatar, combatant.type,
+      combatant.isCurrentTurn ? 1 : 0, combatant.isFriendly ? 1 : 0,
+      JSON.stringify(combatant.conditions || []), JSON.stringify(combatant.tags || []), JSON.stringify(combatant.customTagDescriptions || {}),
+      JSON.stringify(combatant.conditionTimers || {}), combatant.concentratingOn ?? null, combatant.concentrationTargets ? JSON.stringify(combatant.concentrationTargets) : null,
+      combatant.deathSaves ? JSON.stringify(combatant.deathSaves) : null,
+      JSON.stringify(combatant.stats || {}), JSON.stringify(combatant.actions || []), JSON.stringify(combatant.abilities || []), JSON.stringify(combatant.spells || []),
+      combatant.ownerId ?? null, combatant.playerId ?? null,
+      JSON.stringify(combatant.vulnerabilities || []), JSON.stringify(combatant.resistances || []), JSON.stringify(combatant.damageImmunities || []), JSON.stringify(combatant.conditionImmunities || []),
+      combatant.spellSlots ? JSON.stringify(combatant.spellSlots) : null, combatant.featureUses ? JSON.stringify(combatant.featureUses) : null,
+      JSON.stringify(combatant.spellIds || []), JSON.stringify(combatant.featureIds || []),
+      combatant.legendaryActions ? JSON.stringify(combatant.legendaryActions) : null,
+      combatant.polymorphForm ? JSON.stringify(combatant.polymorphForm) : null,
+    ];
+  };
 
   router.get('/health', (req, res) => {
     res.json({ status: 'ok', dbAvailable, mode: dbAvailable ? 'persistent' : 'ephemeral' });
@@ -254,7 +272,7 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
 
   router.post('/combatants', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ success: false, message: 'DB not available' });
-    const { id, encounterId, name, initiative, hp, tempHp, ac, speed, subtitle, avatar, type, isCurrentTurn, isFriendly, conditions, tags, customTagDescriptions, conditionTimers, concentratingOn, concentrationTargets, deathSaves, stats, actions, abilities, spells, ownerId, playerId, vulnerabilities, resistances, damageImmunities, conditionImmunities, spellSlots, featureUses, spellIds, featureIds, legendaryActions, polymorphForm } = req.body;
+    const { id, encounterId, name } = req.body;
 
     // Ensure the parent encounter row exists (FK constraint). If the encounter
     // was created in-memory but not yet saved, create a minimal stub now.
@@ -269,16 +287,7 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       INSERT OR REPLACE INTO combatants (id, encounterId, name, initiative, hp_current, hp_max, tempHp, ac, speed, subtitle, avatar, type, isCurrentTurn, isFriendly, conditions, tags, customTagDescriptions, conditionTimers, concentratingOn, concentrationTargets, deathSaves, stats, actions, abilities, spells, ownerId, playerId, vulnerabilities, resistances, damageImmunities, conditionImmunities, spellSlots, featureUses, spellIds, featureIds, legendaryActions, polymorph_form)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      id, encounterId, name, initiative, hp.current, hp.max, tempHp ?? 0, ac, speed, subtitle, avatar, type, isCurrentTurn ? 1 : 0, isFriendly ? 1 : 0,
-      JSON.stringify(conditions || []), JSON.stringify(tags || []), JSON.stringify(customTagDescriptions || {}),
-      JSON.stringify(conditionTimers || {}), concentratingOn ?? null, concentrationTargets ? JSON.stringify(concentrationTargets) : null,
-      deathSaves ? JSON.stringify(deathSaves) : null,
-      JSON.stringify(stats || {}), JSON.stringify(actions || []), JSON.stringify(abilities || []), JSON.stringify(spells || []), ownerId ?? null, playerId ?? null,
-      JSON.stringify(vulnerabilities || []), JSON.stringify(resistances || []), JSON.stringify(damageImmunities || []), JSON.stringify(conditionImmunities || []),
-      spellSlots ? JSON.stringify(spellSlots) : null, featureUses ? JSON.stringify(featureUses) : null,
-      JSON.stringify(spellIds || []), JSON.stringify(featureIds || []),
-      legendaryActions ? JSON.stringify(legendaryActions) : null,
-      polymorphForm ? JSON.stringify(polymorphForm) : null
+      id, encounterId, ...combatantValues(req.body)
     );
     db.prepare('UPDATE combatants SET hidden = ?, waveId = ? WHERE id = ?').run(req.body.hidden ? 1 : 0, req.body.waveId ?? 'default', id);
     io.to(`encounter:${encounterId}`).emit('encounter-updated', { encounterId });
@@ -287,24 +296,13 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
 
   router.put('/combatants/:id', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ success: false, message: 'DB not available' });
-    const { encounterId, name, initiative, hp, tempHp, ac, speed, subtitle, avatar, type, isCurrentTurn, isFriendly, conditions, tags, customTagDescriptions, conditionTimers, concentratingOn, concentrationTargets, deathSaves, stats, actions, abilities, spells, ownerId, playerId, vulnerabilities, resistances, damageImmunities, conditionImmunities, spellSlots, featureUses, spellIds, featureIds, legendaryActions, polymorphForm } = req.body;
-    const hpObj = (hp && typeof hp === 'object') ? hp : {};
+    const { encounterId } = req.body;
     db.prepare(`
       UPDATE combatants
       SET name = ?, initiative = ?, hp_current = ?, hp_max = ?, tempHp = ?, ac = ?, speed = ?, subtitle = ?, avatar = ?, type = ?, isCurrentTurn = ?, isFriendly = ?, conditions = ?, tags = ?, customTagDescriptions = ?, conditionTimers = ?, concentratingOn = ?, concentrationTargets = ?, deathSaves = ?, stats = ?, actions = ?, abilities = ?, spells = ?, ownerId = ?, playerId = ?, vulnerabilities = ?, resistances = ?, damageImmunities = ?, conditionImmunities = ?, spellSlots = ?, featureUses = ?, spellIds = ?, featureIds = ?, legendaryActions = ?, polymorph_form = ?
       WHERE id = ?
     `).run(
-      name, initiative, hpObj.current ?? 0, hpObj.max ?? 0, tempHp ?? 0, ac, speed, subtitle, avatar, type, isCurrentTurn ? 1 : 0, isFriendly ? 1 : 0,
-      JSON.stringify(conditions || []), JSON.stringify(tags || []), JSON.stringify(customTagDescriptions || {}),
-      JSON.stringify(conditionTimers || {}), concentratingOn ?? null, concentrationTargets ? JSON.stringify(concentrationTargets) : null,
-      deathSaves ? JSON.stringify(deathSaves) : null,
-      JSON.stringify(stats || {}), JSON.stringify(actions || []), JSON.stringify(abilities || []), JSON.stringify(spells || []), ownerId ?? null, playerId ?? null,
-      JSON.stringify(vulnerabilities || []), JSON.stringify(resistances || []), JSON.stringify(damageImmunities || []), JSON.stringify(conditionImmunities || []),
-      spellSlots ? JSON.stringify(spellSlots) : null, featureUses ? JSON.stringify(featureUses) : null,
-      JSON.stringify(spellIds || []), JSON.stringify(featureIds || []),
-      legendaryActions ? JSON.stringify(legendaryActions) : null,
-      polymorphForm ? JSON.stringify(polymorphForm) : null,
-      req.params.id
+      ...combatantValues(req.body), req.params.id
     );
     if (req.body.hidden !== undefined || req.body.waveId !== undefined) {
       const current = db.prepare('SELECT hidden, waveId FROM combatants WHERE id = ?').get(req.params.id) as any;
@@ -365,22 +363,8 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       let updated = 0;
       for (const c of combatantList) {
         if (!c.id) { console.warn('Skipping combatant without id in bulk update'); continue; }
-        const { name, initiative, hp, tempHp, ac, speed, subtitle, avatar, type, isCurrentTurn, isFriendly, conditions, tags, customTagDescriptions, conditionTimers, concentratingOn, concentrationTargets, deathSaves, stats, actions, abilities, spells, ownerId, playerId, vulnerabilities, resistances, damageImmunities, conditionImmunities, spellSlots, featureUses, spellIds, featureIds, legendaryActions, polymorphForm } = c;
-        const hpObj = (hp && typeof hp === 'object') ? hp : {};
         stmt.run(
-          name, initiative, hpObj.current ?? 0, hpObj.max ?? 0, tempHp ?? 0, ac, speed, subtitle, avatar, type, isCurrentTurn ? 1 : 0, isFriendly ? 1 : 0,
-          JSON.stringify(conditions || []), JSON.stringify(tags || []), JSON.stringify(customTagDescriptions || {}),
-          JSON.stringify(conditionTimers || {}), concentratingOn ?? null, concentrationTargets ? JSON.stringify(concentrationTargets) : null,
-          deathSaves ? JSON.stringify(deathSaves) : null,
-          JSON.stringify(stats || {}), JSON.stringify(actions || []), JSON.stringify(abilities || []), JSON.stringify(spells || []), ownerId ?? null, playerId ?? null,
-          JSON.stringify(vulnerabilities || []), JSON.stringify(resistances || []), JSON.stringify(damageImmunities || []), JSON.stringify(conditionImmunities || []),
-          spellSlots ? JSON.stringify(spellSlots) : null,
-          featureUses ? JSON.stringify(featureUses) : null,
-          JSON.stringify(spellIds || []),
-          JSON.stringify(featureIds || []),
-          legendaryActions ? JSON.stringify(legendaryActions) : null,
-          polymorphForm ? JSON.stringify(polymorphForm) : null,
-          c.id
+          ...combatantValues(c), c.id
         );
         updated++;
       }
