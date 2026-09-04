@@ -68,7 +68,6 @@ function copyFoundryPortrait(imgPath: string | undefined, dataPathOverride: stri
 
   try {
     if (!fs.existsSync(PORTRAITS_DIR)) fs.mkdirSync(PORTRAITS_DIR, { recursive: true });
-    const ext = path.extname(imgPath) || '.webp';
     // Use a stable filename based on the relative path so re-imports overwrite the same file
     const safeName = imgPath.replace(/[^a-z0-9._-]/gi, '_').slice(-100);
     const dest = path.join(PORTRAITS_DIR, safeName);
@@ -156,13 +155,6 @@ const SIZE_MAP: Record<string, string> = {
   tiny: 'Tiny', sm: 'Small', med: 'Medium', lg: 'Large',
   huge: 'Huge', grg: 'Gargantuan',
 };
-
-function stripHtml(html: string): string {
-  return (html ?? '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ').trim();
-}
 
 const SCHOOL_MAP: Record<string, string> = {
   abj: 'Abjuration', con: 'Conjuration', div: 'Divination', enc: 'Enchantment',
