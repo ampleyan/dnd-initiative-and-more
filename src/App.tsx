@@ -685,8 +685,10 @@ export default function App() {
                 onClick={() => setIsMobileRightPanelOpen(v => !v)}
                 className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-bold text-sm transition-colors border border-white/8"
                 title="Details panel"
+                aria-label="Open details panel"
               >
                 <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Details</span>
               </button>
               <button
                 onClick={() => setIsAddEnemyModalOpen(true)}
