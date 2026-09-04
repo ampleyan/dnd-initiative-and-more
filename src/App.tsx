@@ -110,6 +110,7 @@ export default function App() {
     handleSaveEncounter,
     handleImportEncounters,
     handleImportMonsters,
+    handleUpdateFeatureUse,
     handleImportSpells,
     handleLoadEncounter,
     handleNewEncounter,
@@ -122,8 +123,6 @@ export default function App() {
     handleCreatePlayer,
     handleUpdatePlayer,
     handleUpdateSpellSlot,
-    handleUpdateFeatureUse,
-    handleRest,
     handleRemovePlayer,
     activeBackground,
     activeYoutubeUrl,
@@ -827,8 +826,6 @@ export default function App() {
             selectedCombatant={selectedCombatant || null}
             selectedDisplayName={displayNames.get(selectedCombatant?.id ?? '') ?? selectedCombatant?.name}
             setSelectedCombatantId={setSelectedCombatantId}
-            savedEncounters={savedEncounters}
-            handleLoadEncounter={handleLoadEncounter}
             isEncounterActive={isEncounterActive}
             handleNextTurn={handleNextTurn}
             setEditingCombatantId={setEditingCombatantId}
@@ -838,7 +835,6 @@ export default function App() {
             setIsQuickActionModalOpen={setIsQuickActionModalOpen}
             currentEncounterId={currentEncounterId}
             activeTab={activeTab}
-            combatants={combatants}
             onUseAction={openActionModal}
             onUpdate={handleUpdateCombatant}
             spellLibrary={spells}
@@ -846,10 +842,6 @@ export default function App() {
             onUpdateNotes={handleUpdateNotes}
             sidebarView={sidebarView}
             onSetSidebarView={setSidebarView}
-            onRestPlayer={(combatantId, type) => {
-              const c = combatants.find(x => x.id === combatantId);
-              if (c?.playerId) handleRest(c.playerId, type);
-            }}
             onUseFeature={(combatantId, featureId) => {
               const c = combatants.find(x => x.id === combatantId);
               if (!c?.playerId || !c.featureUses?.[featureId]) return;

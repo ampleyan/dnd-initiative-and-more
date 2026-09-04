@@ -7,11 +7,11 @@ function sanitizeHtml(html: string): string {
     .replace(/\bon\w+\s*=/gi, 'data-removed=')
     .replace(/javascript:/gi, '');
 }
-import { X, Sparkles, Zap, Edit2, Swords, Heart, Users, Shield, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
+import { X, Sparkles, Zap, Edit2, Swords, Users, Shield, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
 import { FoundryJournalPicker } from './FoundryJournalPicker';
 import { cn, clean5eTags } from '../lib/utils';
 import { getSpellIcon } from '../lib/spellIcons';
-import { Combatant, Encounter, MonsterAction, Spell, ClassFeature, EncounterNotes } from '../types';
+import { Combatant, MonsterAction, Spell, EncounterNotes } from '../types';
 import { getSpellSaveDc } from '../lib/combatantUtils';
 import { CR_TABLE } from '../constants/crTable';
 import { AvatarImg } from './AvatarImg';
@@ -260,27 +260,10 @@ function parseSpellcastingInfo(combatant: Combatant): { dc: number | null; attac
   };
 }
 
-function parseCRProfBonus(subtitle: string): number | null {
-  const m = subtitle.match(/\bCR\s+([\d\/]+)/i);
-  if (!m) return null;
-  const raw = m[1];
-  const cr = raw.includes('/') ? Number(raw.split('/')[0]) / Number(raw.split('/')[1]) : Number(raw);
-  if (cr < 5) return 2;
-  if (cr < 9) return 3;
-  if (cr < 13) return 4;
-  if (cr < 17) return 5;
-  if (cr < 21) return 6;
-  if (cr < 25) return 7;
-  if (cr < 29) return 8;
-  return 9;
-}
-
 interface RightSidebarProps {
   selectedCombatant: Combatant | null;
   selectedDisplayName?: string;
   setSelectedCombatantId: (id: string | null) => void;
-  savedEncounters: Encounter[];
-  handleLoadEncounter: (enc: Encounter) => void;
   isEncounterActive: boolean;
   handleNextTurn: () => void;
   setEditingCombatantId: (id: string) => void;
@@ -290,10 +273,8 @@ interface RightSidebarProps {
   setIsQuickActionModalOpen: (open: boolean) => void;
   currentEncounterId: string | null;
   activeTab: string;
-  combatants: Combatant[];
   onUseAction: (action: MonsterAction, actor: Combatant) => void;
   spellLibrary?: Spell[];
-  onRestPlayer?: (combatantId: string, type: 'short' | 'long') => void;
   onUseFeature?: (combatantId: string, featureId: string) => void;
   onUpdate?: (updated: Combatant) => void;
   isAdmin?: boolean;
@@ -309,8 +290,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   selectedCombatant,
   selectedDisplayName,
   setSelectedCombatantId,
-  savedEncounters,
-  handleLoadEncounter,
   isEncounterActive,
   handleNextTurn,
   setEditingCombatantId,
@@ -320,10 +299,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   setIsQuickActionModalOpen,
   currentEncounterId,
   activeTab,
-  combatants,
   onUseAction,
   spellLibrary,
-  onRestPlayer,
   onUseFeature,
   onUpdate,
   isAdmin,
