@@ -6,6 +6,7 @@ import { cn, uuid } from './lib/utils';
 import { useAuth } from './hooks/useAuth';
 import { LoginScreen } from './components/LoginScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { AppShell } from './components/AppShell';
 
 // Components
 import { Sidebar } from './components/Sidebar';
@@ -749,7 +750,8 @@ export default function App() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background text-on-background">
+    <AppShell
+      sidebar={<>
       {/* Sidebar */}
       <Sidebar
         isSidebarCollapsed={isSidebarCollapsed}
@@ -780,6 +782,8 @@ export default function App() {
         isMusicPaused={isMusicPaused}
         onToggleMusic={() => setIsMusicPaused(v => !v)}
       />
+      </>}
+      main={<>
 
       {/* Main Content */}
       <main className={cn(
@@ -1007,6 +1011,8 @@ export default function App() {
         {/* Floating YouTube Player — draggable, position persisted */}
         {youtubeId && !isPlayerView && <FloatingMusicPlayer youtubeId={youtubeId} isPaused={isMusicPaused} />}
       </main>
+      </>}
+      afterMain={<>
 
       {/* Right Sidebar - Details */}
       {!isPlayerView && (
@@ -1169,6 +1175,7 @@ export default function App() {
       />
 
       {!isPlayerView && <SessionBoard ref={sessionBoardRef} isEncounterActive={isEncounterActive} hideTrigger={isEncounterActive} />}
-    </div>
+      </>}
+    />
   );
 }
