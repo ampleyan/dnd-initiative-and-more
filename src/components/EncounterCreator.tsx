@@ -309,7 +309,7 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
 
           <div className="hidden sm:block w-px h-8 bg-white/10 mx-2" />
           <div className="min-w-0">
-            <h1 className="text-sm sm:text-2xl font-headline font-bold text-white tracking-tight truncate">Encounter Creator</h1>
+            <h1 className="text-sm sm:text-2xl font-headline font-bold text-on-surface tracking-tight truncate">Encounter Creator</h1>
           </div>
         </div>
       </header>
@@ -532,7 +532,7 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
                     type="text"
                     value={encounterName}
                     onChange={e => setEncounterName(e.target.value)}
-                    className="text-2xl font-headline font-bold text-white bg-transparent border-b border-white/20 focus:border-primary outline-none transition-colors min-w-0 flex-1"
+                    className="text-2xl font-headline font-bold text-on-surface bg-transparent border-b border-white/20 focus:border-primary outline-none transition-colors min-w-0 flex-1"
                     placeholder="Encounter name..."
                   />
                   <span className="px-2 py-0.5 bg-primary/20 text-primary text-[10px] font-black rounded uppercase tracking-wider shrink-0">

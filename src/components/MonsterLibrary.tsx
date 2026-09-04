@@ -716,7 +716,7 @@ export const MonsterLibrary: React.FC<MonsterLibraryProps> = ({
               className="bg-surface-container rounded-2xl border border-white/10 w-full max-w-lg overflow-y-auto max-h-[90vh]"
             >
               <div className="flex items-center justify-between p-6 border-b border-white/10">
-                <h2 className="text-xl font-headline font-bold text-white">Edit Player</h2>
+                <h2 className="text-xl font-headline font-bold text-on-surface">Edit Player</h2>
                 <button onClick={() => setEditingPlayer(null)} className="text-outline hover:text-white transition-colors">
                   <X className="w-5 h-5" />
                 </button>

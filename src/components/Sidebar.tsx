@@ -30,7 +30,7 @@ interface SidebarProps {
   onShowSessionStats: () => void;
   onShowHelp: () => void;
   showLog?: boolean;
-  theme?: 'dark' | 'pink';
+  theme?: 'light' | 'pink';
   onToggleTheme?: () => void;
   youtubeId?: string | null;
   youtubeUrl?: string | null;
@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onShowSessionStats,
   onShowHelp,
   showLog,
-  theme = 'dark',
+  theme = 'pink',
   onToggleTheme,
   youtubeId,
   youtubeUrl,
@@ -98,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       <div className={cn("p-5", collapsed && "px-0 flex flex-col items-center")}>
         <div className={cn("mb-6", collapsed && "mb-6 flex flex-col items-center")}>
-          <h1 className={cn("text-white font-headline font-bold text-2xl tracking-tight italic", collapsed && "text-center text-lg")}>
+          <h1 className={cn("text-on-surface font-headline font-bold text-2xl tracking-tight italic", collapsed && "text-center text-lg")}>
             {collapsed ? APP_SHORT_NAME : APP_NAME}
           </h1>
           {!collapsed && <p className="text-[10px] uppercase tracking-[0.2em] text-outline font-bold opacity-60">Dungeon Master Mode</p>}
@@ -381,9 +381,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-outline hover:text-on-surface hover:bg-white/5 transition-colors"
                       >
                         {theme === 'pink'
-                          ? <Moon className="w-4 h-4 shrink-0 text-primary" />
-                          : <Sun className="w-4 h-4 shrink-0 text-pink-400" />}
-                        <span className="font-medium">{theme === 'pink' ? 'Dark Theme' : 'Pink Theme'}</span>
+                          ? <Sun className="w-4 h-4 shrink-0 text-amber-400" />
+                          : <Moon className="w-4 h-4 shrink-0 text-pink-400" />}
+                        <span className="font-medium">{theme === 'pink' ? 'Light Theme' : 'Pink Theme'}</span>
                       </button>
                     </motion.div>
                   )}

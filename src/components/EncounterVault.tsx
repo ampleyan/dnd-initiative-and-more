@@ -949,7 +949,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-headline font-bold text-white tracking-tight">Encounters</h2>
+          <h2 className="text-3xl font-headline font-bold text-on-surface tracking-tight">Encounters</h2>
           <p className="text-outline text-sm mt-1">{encounters.length} saved scenarios</p>
         </div>
         

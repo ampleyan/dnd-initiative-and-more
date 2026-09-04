@@ -118,6 +118,53 @@ html.theme-pink body {
   font-family: "Manrope", sans-serif;
 }
 
+/* ── Light theme ──────────────────────────────────────────────────────── */
+html.theme-light {
+  /* Surface hierarchy — paper whites climbing to soft grey */
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #f4f6f9;
+  --color-surface-container:        #eceff3;
+  --color-surface-container-high:   #e2e6ec;
+  --color-surface-container-highest:#d8dde4;
+
+  /* Blue primary that reads on white */
+  --color-primary:           #2456d6;
+  --color-primary-container:  #d7e2ff;
+  --color-on-primary:         #ffffff;
+
+  --color-secondary:           #4a5560;
+  --color-secondary-container:  #d5dae2;
+
+  --color-error:           #ba1a1a;
+  --color-error-container:  #ffdad6;
+
+  /* Paper base with ink text */
+  --color-background:         #f7f8fa;
+  --color-on-background:      #1a1c1e;
+  --color-on-surface:         #1a1c1e;
+  --color-on-surface-variant: #43474e;
+
+  --color-outline:         #73777f;
+  --color-outline-variant: #c3c7cf;
+}
+
+/* Remap hardcoded dark bg classes (incl. /opacity variants) to light surfaces.
+   Attribute selectors catch every opacity suffix (e.g. /90, /95) robustly. */
+html.theme-light [class*="bg-[#0A0C12]"],
+html.theme-light [class*="bg-[#05070A]"] {
+  background-color: #f7f8fa !important;
+}
+html.theme-light [class*="bg-[#0f1419]"],
+html.theme-light [class*="bg-[#0d0f14]"] {
+  background-color: #eceff3 !important;
+  border-color: var(--color-outline-variant) !important;
+}
+
+html.theme-light body {
+  background-color: #f7f8fa;
+  color: #1a1c1e;
+}
+
 @keyframes waveform {
   0%, 100% { transform: scaleY(0.4); }
   50%       { transform: scaleY(1.0); }
