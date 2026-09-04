@@ -7,7 +7,8 @@ interface AddEnemyModalProps {
   isOpen: boolean;
   onClose: () => void;
   monsters: MonsterTemplate[];
-  onAdd: (monster: MonsterTemplate, initiative: number, count: number) => void;
+  onAdd: (monster: MonsterTemplate, initiative: number, count: number, hidden: boolean, waveId: string) => void;
+  existingWaves?: string[];
 }
 
 function dexMod(dex: number) {
@@ -27,11 +28,12 @@ function crSort(cr: string): number {
   return parseFloat(cr) || 0;
 }
 
-export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, monsters, onAdd }) => {
+export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, monsters, onAdd, existingWaves = [] }) => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<MonsterTemplate | null>(null);
   const [initiative, setInitiative] = useState('');
   const [count, setCount] = useState(1);
+  const [waveId, setWaveId] = useState('default');
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -40,6 +42,7 @@ export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, m
       setSelected(null);
       setInitiative('');
       setCount(1);
+      setWaveId('default');
       setTimeout(() => searchRef.current?.focus(), 50);
     }
   }, [isOpen]);
@@ -66,7 +69,7 @@ export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, m
   const handleAdd = () => {
     if (!selected) return;
     const init = Math.max(1, Math.min(30, parseInt(initiative) || 10));
-    onAdd(selected, init, count);
+    onAdd(selected, init, count, waveId !== 'default', waveId);
     // Stay open so DM can add more enemies
     setSelected(null);
     setInitiative('');
@@ -209,6 +212,15 @@ export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, m
                     </button>
                     <span className="text-xs text-outline">of {selected.name}</span>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-outline uppercase tracking-wider mb-2">Wave</label>
+                  <select value={waveId} onChange={e => setWaveId(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-xl px-3 py-2 text-sm text-on-surface">
+                    <option value="default">Visible now</option>
+                    {existingWaves.filter(w => w !== 'default').map(w => <option key={w} value={w}>{w} (hidden)</option>)}
+                    <option value="reinforcements">Reinforcements (hidden)</option>
+                  </select>
                 </div>
 
                 <div className="mt-auto">

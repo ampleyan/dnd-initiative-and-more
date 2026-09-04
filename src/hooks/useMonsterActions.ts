@@ -81,7 +81,7 @@ export function useMonsterActions(params: MonsterActionsParams) {
     }
   };
 
-  const handleAddMonsterToEncounter = async (monster: MonsterTemplate, initiative = 10, count = 1) => {
+  const handleAddMonsterToEncounter = async (monster: MonsterTemplate, initiative = 10, count = 1, hidden = false, waveId = 'default') => {
     const newCombatants: Combatant[] = Array.from({ length: count }, (_, i) => ({
       id: uuid(),
       name: count > 1 ? `${monster.name} ${i + 1}` : monster.name,
@@ -102,6 +102,8 @@ export function useMonsterActions(params: MonsterActionsParams) {
       actions: monster.actions ? [...monster.actions] : [],
       abilities: monster.abilities ? [...monster.abilities] : [],
       spells: monster.spells ? [...monster.spells] : [],
+      hidden,
+      waveId,
     }));
 
     setCombatants(prev => [...prev, ...newCombatants]);

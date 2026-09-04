@@ -280,7 +280,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
       animate={{ opacity: 1, x: 0 }}
       onClick={onSelect}
       className={cn(
-        "group relative flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-2xl transition-all duration-300",
+        "group relative flex items-center flex-wrap sm:flex-nowrap gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-2xl transition-all duration-300 w-full min-w-0 overflow-hidden",
         isActive
           ? "bg-surface-container-highest shadow-[0_0_40px_rgba(173,198,255,0.1)] ring-1 ring-primary/20"
           : isPanelSelected
@@ -597,7 +597,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 w-[260px] sm:w-[800px]">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0 w-full sm:w-[min(38vw,560px)]">
           <div className="flex-1">
             <div className="flex justify-between items-end mb-1.5">
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-outline">
@@ -671,7 +671,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
             {/* Conditions moved next to name, but keeping a small indicator here if needed or removing it */}
           </div>
 
-          <div className={cn("flex items-center gap-1 sm:gap-2 transition-opacity shrink-0", isActive ? "opacity-100" : "sm:opacity-0 sm:group-hover:opacity-100")}>
+          <div className={cn("flex items-center gap-1 sm:gap-2 transition-opacity shrink-0 flex-wrap justify-end min-w-0 max-w-[38%] overflow-hidden", isActive ? "opacity-100" : "sm:opacity-0 sm:group-hover:opacity-100")}>
             <div className="hidden sm:flex gap-0.5">
               {show('companion') && onAddCompanion && (
                 <button onClick={e => { e.stopPropagation(); setAddingCompanion(v => !v); setCompanionSearch(''); }} title="Add companion/minion" className="p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-emerald-400 transition-colors">

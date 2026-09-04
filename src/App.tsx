@@ -955,7 +955,8 @@ export default function App() {
         isOpen={isAddEnemyModalOpen}
         onClose={() => setIsAddEnemyModalOpen(false)}
         monsters={monsters}
-        onAdd={(monster, initiative, count) => handleAddMonsterToEncounter(monster, initiative, count)}
+        existingWaves={Array.from(new Set(combatants.map(c => c.waveId ?? 'default')))}
+        onAdd={(monster, initiative, count, hidden, waveId) => handleAddMonsterToEncounter(monster, initiative, count, hidden, waveId)}
       />
 
       {/* Session Stats Modal */}
