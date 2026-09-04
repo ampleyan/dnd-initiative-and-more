@@ -3,6 +3,30 @@ import type { Server } from 'socket.io';
 
 export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server) {
   const router = Router();
+  const formatEncounter = (encounter: any, view: 'list' | 'detail' | 'session') => {
+    const formatted = {
+      ...encounter,
+      lastModified: encounter.createdAt,
+      isEncounterActive: !!encounter.isEncounterActive,
+      showSummary: !!encounter.showSummary,
+      encounterStats: encounter.encounterStats ? JSON.parse(encounter.encounterStats) : null,
+    };
+
+    if (view === 'session') return formatted;
+
+    const collection = {
+      ...formatted,
+      soundIds: encounter.soundIds ? JSON.parse(encounter.soundIds) : [],
+      notes: encounter.notes ? JSON.parse(encounter.notes) : { general: '', rounds: [] },
+      waves: encounter.waves ? JSON.parse(encounter.waves) : [],
+    };
+
+    return view === 'list' ? collection : {
+      ...collection,
+      lairActionsEnabled: !!encounter.lairActionsEnabled,
+      trackingData: encounter.trackingData ? JSON.parse(encounter.trackingData) : null,
+    };
+  };
   const combatantValues = (combatant: any) => {
     const hp = combatant.hp && typeof combatant.hp === 'object' ? combatant.hp : {};
     return [
@@ -70,14 +94,7 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       (combatantsByEncounter[c.encounterId] ??= []).push({ type: c.type, subtitle: c.subtitle, name: c.name, avatar: c.avatar });
     }
     res.json(encounters.map((e: any) => ({
-      ...e,
-      lastModified: e.createdAt,
-      isEncounterActive: !!e.isEncounterActive,
-      showSummary: !!e.showSummary,
-      encounterStats: e.encounterStats ? JSON.parse(e.encounterStats) : null,
-      soundIds: e.soundIds ? JSON.parse(e.soundIds) : [],
-      notes: e.notes ? JSON.parse(e.notes) : { general: '', rounds: [] },
-      waves: e.waves ? JSON.parse(e.waves) : [],
+      ...formatEncounter(e, 'list'),
       combatants: combatantsByEncounter[e.id] ?? [],
     })));
   });
@@ -99,18 +116,7 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       WHERE e.id = ?
     `).get(req.params.id) as any;
     if (!e) return res.status(404).json({ error: 'Not found' });
-    res.json({
-      ...e,
-      lastModified: e.createdAt,
-      isEncounterActive: !!e.isEncounterActive,
-      showSummary: !!e.showSummary,
-      lairActionsEnabled: !!e.lairActionsEnabled,
-      encounterStats: e.encounterStats ? JSON.parse(e.encounterStats) : null,
-      trackingData: e.trackingData ? JSON.parse(e.trackingData) : null,
-      soundIds: e.soundIds ? JSON.parse(e.soundIds) : [],
-      notes: e.notes ? JSON.parse(e.notes) : { general: '', rounds: [] },
-      waves: e.waves ? JSON.parse(e.waves) : [],
-    });
+    res.json(formatEncounter(e, 'detail'));
   });
 
   router.post('/encounters', (req, res) => {
@@ -186,13 +192,7 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
   router.get('/sessions/:sessionId/encounters', (req, res) => {
     if (!dbAvailable) return res.json([]);
     const rows = db.prepare('SELECT * FROM encounters WHERE sessionId = ? ORDER BY createdAt DESC').all(req.params.sessionId);
-    res.json(rows.map((e: any) => ({
-      ...e,
-      lastModified: e.createdAt,
-      isEncounterActive: !!e.isEncounterActive,
-      showSummary: !!e.showSummary,
-      encounterStats: e.encounterStats ? JSON.parse(e.encounterStats) : null,
-    })));
+    res.json(rows.map((e: any) => formatEncounter(e, 'session')));
   });
 
   // Combatants
