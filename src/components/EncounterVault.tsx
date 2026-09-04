@@ -150,7 +150,8 @@ const EncounterCard: React.FC<{
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
-}> = ({ encounter, players, onLoad, loadingEncounterId, onSimulate, onEdit, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite }) => {
+  onDelete?: (id: string) => void;
+}> = ({ encounter, players, onLoad, loadingEncounterId, onSimulate, onEdit, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite, onDelete }) => {
   const combatants = encounter.combatants ?? [];
   const computed = computeDifficulty(combatants, players);
   const diffKey = computed ?? (encounter.difficulty || 'MEDIUM').toUpperCase();
@@ -319,12 +320,13 @@ const EncounterCard: React.FC<{
             {relativeDate(encounter.lastModified || new Date().toISOString())}
           </span>
           {!selectionMode && (
-            <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[9px] font-bold text-primary">
-              {loadingEncounterId === encounter.id
-                ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                : <Play className="w-2.5 h-2.5 fill-primary" />}
-              {loadingEncounterId === encounter.id ? 'Loading…' : encounter.isEncounterActive ? 'Resume' : 'Load'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[9px] font-bold text-primary">
+                {loadingEncounterId === encounter.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Play className="w-2.5 h-2.5 fill-primary" />}
+                {loadingEncounterId === encounter.id ? 'Loading…' : encounter.isEncounterActive ? 'Resume' : 'Load'}
+              </span>
+              {onDelete && <button onClick={e => { e.stopPropagation(); if (confirm(`Delete “${encounter.name}”?`)) onDelete(encounter.id); }} className="p-1.5 rounded-lg text-outline/50 hover:text-red-400 hover:bg-red-400/10 transition-colors" title="Delete encounter" aria-label={`Delete ${encounter.name}`}><Trash2 className="w-3.5 h-3.5" /></button>}
+            </div>
           )}
         </div>
       </div>
@@ -369,7 +371,8 @@ const EncounterListItem: React.FC<{
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
-}> = ({ encounter, players, onLoad, loadingEncounterId, onSimulate, onEdit, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite }) => {
+  onDelete?: (id: string) => void;
+}> = ({ encounter, players, onLoad, loadingEncounterId, onSimulate, onEdit, onDelete, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite }) => {
   const combatants = encounter.combatants ?? [];
   const computed = computeDifficulty(combatants, players);
   const diffKey = computed ?? (encounter.difficulty || 'MEDIUM').toUpperCase();
@@ -490,6 +493,7 @@ const EncounterListItem: React.FC<{
             >
               <Settings className="w-4 h-4" />
             </button>
+            {onDelete && <button onClick={e => { e.stopPropagation(); if (confirm(`Delete “${encounter.name}”?`)) onDelete(encounter.id); }} className="p-1.5 text-outline hover:text-red-400 transition-colors rounded-lg" title="Delete encounter" aria-label={`Delete ${encounter.name}`}><Trash2 className="w-4 h-4" /></button>}
             {combatants.length > 0 && (
               <button
                 onClick={e => { e.stopPropagation(); setShowCombatants(v => !v); }}
@@ -537,12 +541,13 @@ const EncounterDisplay: React.FC<{
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
-}> = ({ mode, encounters, players, onLoad, loadingEncounterId, onSimulate, onEdit, folderSettings, selectionMode, selectedIds, onToggleSelect, onToggleFavorite }) => {
+  onDelete?: (id: string) => void;
+}> = ({ mode, encounters, players, onLoad, loadingEncounterId, onSimulate, onEdit, folderSettings, selectionMode, selectedIds, onToggleSelect, onToggleFavorite, onDelete }) => {
   if (mode === 'list') {
     return (
       <div className="space-y-1">
         {encounters.map(enc => (
-          <EncounterListItem key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onSimulate={onSimulate} onEdit={onEdit} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
+          <EncounterListItem key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onSimulate={onSimulate} onEdit={onEdit} onDelete={onDelete} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
         ))}
       </div>
     );
@@ -550,7 +555,7 @@ const EncounterDisplay: React.FC<{
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {encounters.map(enc => (
-        <EncounterCard key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onSimulate={onSimulate} onEdit={onEdit} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
+        <EncounterCard key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onSimulate={onSimulate} onEdit={onEdit} onDelete={onDelete} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
       ))}
     </div>
   );
@@ -1139,7 +1144,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             Live
           </h3>
-          <EncounterDisplay mode={viewMode} encounters={active} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={active} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
         </section>
       )}
 
@@ -1150,7 +1155,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
             <Star className="w-3 h-3 fill-amber-400" />
             Favorites
           </h3>
-          <EncounterDisplay mode={viewMode} encounters={favorites} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={favorites} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
         </section>
       )}
 
@@ -1226,7 +1231,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
               <div className="h-px flex-1 bg-outline-variant/10" />
             </div>
           )}
-          <EncounterDisplay mode={viewMode} encounters={ungrouped} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={ungrouped} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onSimulate={onSimulateEncounter} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
         </section>
       )}
 

@@ -514,12 +514,23 @@ export const AdventureImportModal: React.FC<AdventureImportModalProps> = ({
             <p className="text-sm text-outline">
               Found {reviewEncounters.length} encounter{reviewEncounters.length !== 1 ? 's' : ''}
             </p>
-            <button
-              onClick={() => setStep('source')}
-              className="text-sm text-primary hover:underline"
-            >
-              Back
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => {
+                  const selectAll = selectedCount < reviewEncounters.length;
+                  setReviewEncounters(prev => prev.map(e => ({ ...e, selected: selectAll })));
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                {selectedCount === reviewEncounters.length ? 'Deselect all' : 'Select all'}
+              </button>
+              <button
+                onClick={() => setStep('source')}
+                className="text-sm text-primary hover:underline"
+              >
+                Back
+              </button>
+            </div>
           </div>
 
           {duplicateCount > 0 && (

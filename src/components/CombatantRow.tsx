@@ -478,6 +478,16 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
                     </div>
                   );
                 })}
+                {combatant.type === 'player' && combatant.spellSlots && (() => {
+                  const levels = Object.values(combatant.spellSlots).filter(Boolean);
+                  const total = levels.reduce((sum, slot) => sum + (slot?.total ?? 0), 0);
+                  const used = levels.reduce((sum, slot) => sum + (slot?.used ?? 0), 0);
+                  return total > 0 ? (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-violet-400/25 bg-violet-400/10 px-1.5 py-0.5 text-[9px] font-black text-violet-300" title="Spell slots remaining">
+                      ✦ {total - used}/{total}
+                    </span>
+                  ) : null;
+                })()}
                 {combatant.concentratingOn && (
                   <div className="group/tooltip relative">
                     <div className="flex items-center gap-0.5 px-1 h-5 rounded-md bg-violet-500/20 border border-violet-500/30">
