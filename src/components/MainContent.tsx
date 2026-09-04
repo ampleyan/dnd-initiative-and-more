@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import type { DragControls } from 'motion/react';
-import { Users, Save, Square, Monitor, ChevronLeft, ChevronRight, ExternalLink, ArrowLeft, Play, Edit2, Heart, UserPlus, Swords, Sparkles, AlertTriangle, Plus, Trash2, Music, X, Undo2, Redo2, MoreHorizontal } from 'lucide-react';
+import { Users, Save, Square, Monitor, ChevronLeft, ChevronRight, ExternalLink, ArrowLeft, Play, Edit2, Heart, UserPlus, Swords, Sparkles, AlertTriangle, Plus, Trash2, Music, Undo2, Redo2, MoreHorizontal } from 'lucide-react';
 import { TacticalSummary } from './TacticalSummary';
 import { AvatarImg } from './AvatarImg';
 import { CombatantRow } from './CombatantRow';
@@ -16,7 +16,6 @@ import { HueSettingsPanel } from './HueSettingsPanel';
 import { HomeAssistantSettingsPanel } from './HomeAssistantSettingsPanel';
 import { SpatialSettingsPanel } from './SpatialSettingsPanel';
 import { UsersSettings } from './UsersSettings';
-import { Modal } from './Modal';
 import { AuthUser } from '../hooks/useAuth';
 import { HueEffectName, HueEffectTargets } from '../lib/hueEffects';
 import { CampaignView } from './CampaignView';
@@ -226,7 +225,6 @@ interface MainContentProps {
   onLoadSessions?: (campaignId: string) => Promise<void>;
   onOpenEncounter?: (enc: Encounter) => void;
   onUpdateEncounter?: (id: string, updates: Partial<Encounter>) => Promise<void>;
-  setIsPlayerView: (v: boolean) => void;
   handlePrevTurn: () => void;
   handleNextTurn: () => void;
   handleNewEncounter: () => void;
@@ -337,7 +335,6 @@ export const MainContent: React.FC<MainContentProps> = ({
   onUpdatePlayer,
   onRemovePlayer,
   setActiveTab,
-  setIsPlayerView,
   handlePrevTurn,
   handleNextTurn,
   handleNewEncounter,

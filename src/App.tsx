@@ -469,7 +469,6 @@ export default function App() {
     onUpdatePlayer: handleUpdatePlayer,
     onRemovePlayer: handleRemovePlayer,
     setActiveTab,
-    setIsPlayerView,
     activeBackground,
     activeBackgroundOpacity,
     activePanelOpacity,
