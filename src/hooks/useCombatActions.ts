@@ -28,8 +28,6 @@ export interface CombatActionsParams {
   isDbAvailable: boolean;
   combatantTracking: CombatantTracking;
   setCombatantTracking: React.Dispatch<React.SetStateAction<CombatantTracking>>;
-  pendingConChecks: Record<string, number>;
-  setPendingConChecks: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   currentEncounterId: string | null;
   setCurrentEncounterId: React.Dispatch<React.SetStateAction<string | null>>;
   setSelectedCombatantId: React.Dispatch<React.SetStateAction<string | null>>;
@@ -76,7 +74,6 @@ export function useCombatActions(params: CombatActionsParams) {
     encounterName,
     isDbAvailable,
     combatantTracking, setCombatantTracking,
-    setPendingConChecks,
     currentEncounterId,
     setCurrentEncounterId,
     setSelectedCombatantId,
@@ -98,6 +95,7 @@ export function useCombatActions(params: CombatActionsParams) {
   } = params;
   const [actionHistory, setActionHistory] = useState<EncounterSnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<EncounterSnapshot[]>([]);
+  const [pendingConChecks, setPendingConChecks] = useState<Record<string, number>>({});
   const wasEncounterActiveRef = React.useRef(isEncounterActive);
   const playerPatchControllersRef = React.useRef<Map<string, AbortController>>(new Map());
 
@@ -763,6 +761,7 @@ export function useCombatActions(params: CombatActionsParams) {
     handleRedo,
     canUndo: actionHistory.length > 0,
     canRedo: redoStack.length > 0,
+    pendingConChecks,
     triggerConCheck,
     clearConCheck,
     handlePolymorph,

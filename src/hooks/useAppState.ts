@@ -82,7 +82,6 @@ export function useAppState() {
   const [activePanelOpacity, setActivePanelOpacity] = useState(0.92);
   const [activeAnimationLevel, setActiveAnimationLevel] = useState<AnimationLevel>('minimal');
   const [activeSoundIds, setActiveSoundIds] = useState<string[]>([]);
-  const [pendingConChecks, setPendingConChecks] = useState<Record<string, number>>({});
   const [loadingEncounterId, setLoadingEncounterId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [masterVolume, setMasterVolume] = useState(1.0);
@@ -404,7 +403,6 @@ export function useAppState() {
     encounterName,
     isDbAvailable,
     combatantTracking, setCombatantTracking,
-    pendingConChecks, setPendingConChecks,
     currentEncounterId, setCurrentEncounterId,
     setSelectedCombatantId,
     setShowSummary,
@@ -539,7 +537,6 @@ export function useAppState() {
     activeSoundIds,
     combatLog,
     addLogEntry,
-    pendingConChecks,
     campaigns, setCampaigns,
     activeCampaignId, setActiveCampaignId,
     sessions, setSessions,
