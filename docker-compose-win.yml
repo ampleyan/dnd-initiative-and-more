@@ -3,18 +3,26 @@ services:
     build: .
     ports:
       - "3001:3000"
+    env_file:
+      - .env
     volumes:
       - ./data:/app/data
+      - E:\DnD\tabletopaudio:/app/data/tabletopaudio
+      - E:\DnD\FoundryVTT\Data:/mnt/foundry:ro
     environment:
-      DB_PATH: /app/data/dnd_tracker.db
-      NODE_ENV: production
-      SESSION_SECRET: ${SESSION_SECRET:-}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      AUDIO_SFX_DIR: ${AUDIO_SFX_DIR:-}
-      AUDIO_AMBIENCES_DIR: ${AUDIO_AMBIENCES_DIR:-}
-      FOUNDRY_DATA_PATH: ${FOUNDRY_DATA_PATH:-}
-      HUE_BRIDGE_IP: ${HUE_BRIDGE_IP:-}
-      HUE_USERNAME: ${HUE_USERNAME:-}
-      HA_URL: ${HA_URL:-}
-      HA_TOKEN: ${HA_TOKEN:-}
+      - DB_PATH=/app/data/dnd_tracker.db
+      - NODE_ENV=production
+      # Paths to audio folders inside the container.
+      # Default: subfolders of the mounted ./data volume.
+      # Change if you mount the audio folders to different container paths above.
+      - AUDIO_SFX_DIR=/app/data/tabletopaudio/sfx
+      - AUDIO_AMBIENCES_DIR=/app/data/tabletopaudio/ambiences
+      - FOUNDRY_DATA_PATH=/mnt/foundry
+      # Optional: pre-configure Hue bridge and Home Assistant so you never need to enter them via UI.
+      # Once saved via the UI, these env vars are no longer needed (values persist in the DB).
+      - HUE_BRIDGE_IP=192.168.129.0
+#      - HUE_USERNAME=<your-long-living-hue-token>
+      - HA_URL=http://kodisrv:8123
+      - HA_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjOThjMDVhMWQ5ZWE0NDNkYmRlYWE4OGM1OTEzMzhkZCIsImlhdCI6MTc3NTEyOTk1NywiZXhwIjoyMDkwNDg5OTU3fQ.uVPsnTkgfrdhP0Pm6IlbfJoY4PskHtc6Da_XXZ9dBnc
     restart: always
+

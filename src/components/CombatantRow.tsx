@@ -280,7 +280,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
       animate={{ opacity: 1, x: 0 }}
       onClick={onSelect}
       className={cn(
-        "group relative flex items-center flex-wrap sm:flex-nowrap gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-2xl transition-all duration-300 w-full min-w-0 overflow-hidden",
+        "group relative flex items-center flex-wrap sm:flex-nowrap gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-2xl transition-all duration-300 w-full min-w-0",
         isActive
           ? "bg-surface-container-highest shadow-[0_0_40px_rgba(173,198,255,0.1)] ring-1 ring-primary/20"
           : isPanelSelected

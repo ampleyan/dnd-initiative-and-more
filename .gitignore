@@ -22,3 +22,4 @@ coverage/
 # Showcase screenshots are intentionally tracked
 !screenshots/
 !screenshots/*.png
+/data
