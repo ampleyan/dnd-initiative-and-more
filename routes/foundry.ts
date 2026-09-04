@@ -240,6 +240,21 @@ function getTypeStr(details: any, traits: any): string {
   return `${size} ${type}${sub}`;
 }
 
+function getFoundrySpellSlots(sysSpells: any): Record<number, { total: number; used: number }> | undefined {
+  const entries = Object.entries(sysSpells ?? {})
+    .map(([key, slot]: [string, any]) => {
+      const match = key.match(/^spell(\d+)$/);
+      if (!match || !(slot?.max > 0)) return null;
+      return [Number(match[1]), {
+        total: slot.max as number,
+        used: Math.max(0, (slot.max - (slot.value ?? slot.max)) as number),
+      }] as const;
+    })
+    .filter((entry): entry is [number, { total: number; used: number }] => entry !== null);
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
 function transformFoundryActor(actor: any, items: any[], dataPathOverride?: string): any {
   const sys = actor.system ?? {};
   const abilities = sys.abilities ?? {};
@@ -304,17 +319,8 @@ function transformFoundryActor(actor: any, items: any[], dataPathOverride?: stri
     : undefined;
 
   // Spell slots: try Foundry sys.spells first, fall back to class-based computation
-  const sysSpells = sys.spells ?? {};
-  const foundrySlotEntries = Object.entries(sysSpells)
-    .map(([key, slot]: [string, any]) => {
-      const match = key.match(/^spell(\d+)$/);
-      if (!match || !(slot?.max > 0)) return null;
-      return [Number(match[1]), { total: slot.max as number, used: Math.max(0, (slot.max - (slot.value ?? slot.max)) as number) }] as const;
-    })
-    .filter((e): e is [number, { total: number; used: number }] => e !== null);
-  const spellSlots = foundrySlotEntries.length > 0
-    ? Object.fromEntries(foundrySlotEntries)
-    : (totalLevel != null ? computeSpellSlots(totalLevel, classItems.map((c: any) => c.name)) : undefined);
+  const spellSlots = getFoundrySpellSlots(sys.spells)
+    ?? (totalLevel != null ? computeSpellSlots(totalLevel, classItems.map((c: any) => c.name)) : undefined);
 
   const id = (actor.name as string).toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   const source = actor.flags?.plutonium?.source ?? actor.flags?.['scene-packer']?.name ?? 'foundry';
@@ -430,7 +436,6 @@ const WARLOCK_SLOTS: Record<number, { slots: number; level: number }> = {
 
 function computeSpellSlots(level: number, classNames: string[]): Record<number, { total: number; used: number }> | undefined {
   const names = classNames.map(n => n.toLowerCase());
-  const classLevels: Record<string, number> = {};
   // classNames may include level, e.g. ["Barbarian", "Warlock"] from items
   // but we get actual levels from class items separately — here level = total level passed in
   const isFullCaster = names.some(n => ['bard','cleric','druid','sorcerer','wizard'].includes(n));
@@ -511,17 +516,8 @@ function transformFoundryCharacter(actor: any, items: any[], dataPathOverride?: 
     .filter((a: any) => a.description);
 
   // Spell slots: try Foundry sys.spells first (persisted usage), fall back to class-based computation
-  const sysSpells = sys.spells ?? {};
-  const foundrySlotEntries = Object.entries(sysSpells)
-    .map(([key, slot]: [string, any]) => {
-      const match = key.match(/^spell(\d+)$/);
-      if (!match || !(slot?.max > 0)) return null;
-      return [Number(match[1]), { total: slot.max as number, used: Math.max(0, (slot.max - (slot.value ?? slot.max)) as number) }] as const;
-    })
-    .filter((e): e is [number, { total: number; used: number }] => e !== null);
-  const spellSlots = foundrySlotEntries.length > 0
-    ? Object.fromEntries(foundrySlotEntries)
-    : computeSpellSlots(level, classItems.map((c: any) => c.name));
+  const spellSlots = getFoundrySpellSlots(sys.spells)
+    ?? computeSpellSlots(level, classItems.map((c: any) => c.name));
 
   return {
     name: actor.name,
