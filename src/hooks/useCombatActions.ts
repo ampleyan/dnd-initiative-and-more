@@ -300,6 +300,25 @@ export function useCombatActions(params: CombatActionsParams) {
     handleUpdateCombatant(buildReverted(combatant));
   };
 
+  const persistSnapshot = (snapshot: EncounterSnapshot, action: 'undo' | 'redo') => {
+    if (!isDbAvailable || !currentEncounterId) return;
+
+    api.combatants.bulkUpdate(
+      currentEncounterId,
+      snapshot.combatants.map(c => ({ ...c, encounterId: currentEncounterId })),
+      { currentRound: snapshot.currentRound, currentTurnIndex: snapshot.currentTurnIndex }
+    ).catch((error: unknown) => console.error(`[${action}] persist failed:`, error));
+
+    for (const combatant of snapshot.combatants) {
+      if (combatant.type === 'player' && combatant.playerId) {
+        api.players.patch(combatant.playerId, {
+          spellSlots: combatant.spellSlots,
+          featureUses: combatant.featureUses,
+        }).catch((error: unknown) => console.error(`[${action}] player sync failed:`, error));
+      }
+    }
+  };
+
   const handleUndo = () => {
     if (actionHistory.length === 0) return;
     const snap = actionHistory[actionHistory.length - 1];
@@ -310,19 +329,7 @@ export function useCombatActions(params: CombatActionsParams) {
     setCurrentRound(snap.currentRound);
     setCurrentTurnIndex(snap.currentTurnIndex);
     setCombatantTracking(snap.combatantTracking);
-    if (isDbAvailable && currentEncounterId) {
-      api.combatants.bulkUpdate(
-        currentEncounterId,
-        snap.combatants.map(c => ({ ...c, encounterId: currentEncounterId })),
-        { currentRound: snap.currentRound, currentTurnIndex: snap.currentTurnIndex }
-      ).catch((e: unknown) => console.error('[undo] persist failed:', e));
-      for (const c of snap.combatants) {
-        if (c.type === 'player' && c.playerId) {
-          api.players.patch(c.playerId, { spellSlots: c.spellSlots, featureUses: c.featureUses })
-            .catch((e: unknown) => console.error('[undo] player sync failed:', e));
-        }
-      }
-    }
+    persistSnapshot(snap, 'undo');
   };
 
   const handleRedo = () => {
@@ -335,19 +342,7 @@ export function useCombatActions(params: CombatActionsParams) {
     setCurrentRound(snap.currentRound);
     setCurrentTurnIndex(snap.currentTurnIndex);
     setCombatantTracking(snap.combatantTracking);
-    if (isDbAvailable && currentEncounterId) {
-      api.combatants.bulkUpdate(
-        currentEncounterId,
-        snap.combatants.map(c => ({ ...c, encounterId: currentEncounterId })),
-        { currentRound: snap.currentRound, currentTurnIndex: snap.currentTurnIndex }
-      ).catch((e: unknown) => console.error('[redo] persist failed:', e));
-      for (const c of snap.combatants) {
-        if (c.type === 'player' && c.playerId) {
-          api.players.patch(c.playerId, { spellSlots: c.spellSlots, featureUses: c.featureUses })
-            .catch((e: unknown) => console.error('[redo] player sync failed:', e));
-        }
-      }
-    }
+    persistSnapshot(snap, 'redo');
   };
 
   const handleNextTurn = () => {
