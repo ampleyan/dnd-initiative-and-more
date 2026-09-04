@@ -835,6 +835,37 @@ async function readSpellsAll(worldId: string, dataPathOverride: string | undefin
   return { spells: allSpells.slice(opts.offset, opts.offset + opts.limit), total };
 }
 
+type FoundryActorQuery = {
+  world: string;
+  pack?: string;
+  search?: string;
+  offset?: string;
+  limit?: string;
+  full?: string;
+  ids?: string;
+  dataPath?: string;
+};
+
+async function readActorsForRequest(query: FoundryActorQuery, actorType?: 'character') {
+  const parsedIds = query.ids ? query.ids.split(',').filter(Boolean) : undefined;
+  const options = {
+    search: query.search,
+    ids: parsedIds,
+    offset: parseInt(query.offset ?? '0'),
+    limit: Math.min(parseInt(query.limit ?? '50'), 200),
+    withItems: query.full === '1',
+    ...(actorType ? { actorType } : {}),
+  };
+
+  if (query.pack) {
+    const dbPath = path.join(getWorldsDir(query.dataPath), query.world, 'packs', query.pack);
+    if (!fs.existsSync(dbPath)) return null;
+    return readActors(dbPath, options);
+  }
+
+  return readActorsAll(query.world, query.dataPath, options);
+}
+
 export function createFoundryRouter(portraitsDir: string = '') {
   PORTRAITS_DIR = portraitsDir;
   const router = Router();
@@ -904,20 +935,8 @@ export function createFoundryRouter(portraitsDir: string = '') {
     console.log(`[foundry] GET /foundry/actors world=${world} pack=${pack ?? '(all)'} search=${search ?? ''} full=${full} ids=${parsedIds?.join(',') ?? 'none'} offset=${offset} limit=${limit}`);
 
     try {
-      let result: { actors: any[]; total: number };
-      if (pack) {
-        const dbPath = path.join(getWorldsDir(dataPath), world, 'packs', pack);
-        if (!fs.existsSync(dbPath)) return res.status(404).json({ error: 'Pack database not found' });
-        result = await readActors(dbPath, {
-          search, ids: parsedIds, offset: parseInt(offset),
-          limit: Math.min(parseInt(limit), 200), withItems: full === '1',
-        });
-      } else {
-        result = await readActorsAll(world, dataPath, {
-          search, ids: parsedIds, offset: parseInt(offset),
-          limit: Math.min(parseInt(limit), 200), withItems: full === '1',
-        });
-      }
+      const result = await readActorsForRequest({ world, pack, search, offset, limit, full, ids, dataPath });
+      if (!result) return res.status(404).json({ error: 'Pack database not found' });
       console.log(`[foundry] responding with ${result.actors.length} actors (total=${result.total})`);
       res.json(result);
     } catch (e: any) {
@@ -957,22 +976,9 @@ export function createFoundryRouter(portraitsDir: string = '') {
   router.get('/foundry/characters', async (req, res) => {
     const { world, pack, search, offset = '0', limit = '50', full = '0', ids, dataPath } = req.query as Record<string, string>;
     if (!world) return res.status(400).json({ error: 'world required' });
-    const parsedIds = ids ? ids.split(',').filter(Boolean) : undefined;
     try {
-      let result: { actors: any[]; total: number };
-      if (pack) {
-        const dbPath = path.join(getWorldsDir(dataPath), world, 'packs', pack);
-        if (!fs.existsSync(dbPath)) return res.status(404).json({ error: 'Actor database not found' });
-        result = await readActors(dbPath, {
-          search, ids: parsedIds, offset: parseInt(offset),
-          limit: Math.min(parseInt(limit), 200), withItems: full === '1', actorType: 'character',
-        });
-      } else {
-        result = await readActorsAll(world, dataPath, {
-          search, ids: parsedIds, offset: parseInt(offset),
-          limit: Math.min(parseInt(limit), 200), withItems: full === '1', actorType: 'character',
-        });
-      }
+      const result = await readActorsForRequest({ world, pack, search, offset, limit, full, ids, dataPath }, 'character');
+      if (!result) return res.status(404).json({ error: 'Actor database not found' });
       res.json(result);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
