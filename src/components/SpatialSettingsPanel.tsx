@@ -187,37 +187,6 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
         </div>
       </section>
 
-      <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-4">
-        <h3 className="font-headline font-bold text-sm flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-primary" />
-          HRTF Calibration
-        </h3>
-        <p className="text-[11px] text-outline leading-relaxed">
-          The soundboard uses Head-Related Transfer Function (HRTF) to simulate 3D space.
-          For best results with a 5.1 soundbar, ensure the soundbar's "Virtual Surround" mode is <strong>OFF</strong> to avoid double-processing.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div className="p-4 bg-surface-container-high border border-white/5 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-outline">Panning Model</span>
-              <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">HRTF (HQ)</span>
-            </div>
-            <p className="text-[9px] text-outline/60 leading-tight">
-              Calculates spatial position using frequency-response patterns that mimic how human ears perceive direction.
-            </p>
-          </div>
-          <div className="p-4 bg-surface-container-high border border-white/5 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-outline">Distance Model</span>
-              <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">Inverse</span>
-            </div>
-            <p className="text-[9px] text-outline/60 leading-tight">
-              Simulates natural sound drop-off: gain = refDistance / (refDistance + rolloffFactor * (distance - refDistance)).
-            </p>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
