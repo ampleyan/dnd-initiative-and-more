@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Play, Users, Skull, Swords, Clock, Zap, ChevronDown, ChevronRight, MapPin, LayoutGrid, List, ArrowUpDown, Folder, FolderOpen, Settings, Image as ImageIcon, Music, ArrowRight, Trash2, CheckSquare, Square, X, Edit2, Loader2, Filter, SlidersHorizontal, Search, Star } from 'lucide-react';
+import { Plus, Play, Users, Skull, Swords, Clock, Zap, ChevronDown, ChevronRight, LayoutGrid, List, ArrowUpDown, Folder, FolderOpen, Settings, Image as ImageIcon, Music, ArrowRight, Trash2, CheckSquare, Square, X, Loader2, SlidersHorizontal, Search, Star } from 'lucide-react';
 import { Encounter, Player, FolderSettings, Sound } from '../types';
 import { cn } from '../lib/utils';
 import { Modal } from './Modal';
@@ -368,8 +368,6 @@ const EncounterListItem: React.FC<{
   const computed = computeDifficulty(combatants, players);
   const diffKey = computed ?? (encounter.difficulty || 'MEDIUM').toUpperCase();
   const diff = DIFFICULTY_STYLES[diffKey] ?? DIFFICULTY_STYLES.MEDIUM;
-  const playerCount = combatants.filter(c => c.type === 'player').length;
-  const monsterCount = combatants.filter(c => c.type !== 'player').length;
   const bg = encounter.backgroundImage || folderSettings?.backgroundImage;
   const mergedLoad = (enc: Encounter) => onLoad({
     ...enc,
@@ -844,12 +842,6 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
     } catch (e) {
       console.error(e);
     }
-  };
-
-  const toggleViewMode = () => {
-    const next = viewMode === 'grid' ? 'list' : 'grid';
-    setViewMode(next);
-    localStorage.setItem('vaultViewMode', next);
   };
 
   const sortedAndFiltered = useMemo(() => {
