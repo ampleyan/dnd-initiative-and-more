@@ -6,6 +6,7 @@ import { DAMAGE_COLORS, DamageType } from '../lib/damageTypes';
 import { AvatarImg } from './AvatarImg';
 import { CombatLog } from './CombatLog';
 import { cn } from '../lib/utils';
+import { sortWithCompanions } from '../lib/combatantUtils';
 import { CONDITIONS, INITIATIVE_COLORS } from '../constants';
 
 function initiativeColor(initiative: number): string {
@@ -199,17 +200,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
     return () => timers.forEach(clearTimeout);
   }, [combatants, combatLog, animationLevel]);
 
-  const sorted = useMemo(() => {
-    const mains = [...combatants].filter(c => !c.ownerId).sort((a, b) => b.initiative - a.initiative);
-    const byOwner = new Map<string, Combatant[]>();
-    combatants.filter(c => c.ownerId).forEach(c => {
-      if (!byOwner.has(c.ownerId!)) byOwner.set(c.ownerId!, []);
-      byOwner.get(c.ownerId!)!.push(c);
-    });
-    const result: Combatant[] = [];
-    for (const c of mains) { result.push(c); result.push(...(byOwner.get(c.id) ?? [])); }
-    return result;
-  }, [combatants]);
+  const sorted = useMemo(() => sortWithCompanions(combatants), [combatants]);
 
   const activeIdx = sorted.findIndex(c => c.isCurrentTurn);
   const nextIdx = isEncounterActive && sorted.length > 1
