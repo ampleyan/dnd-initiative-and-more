@@ -229,16 +229,20 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const activeCombatantConditions = new Set(activeCombatant?.conditions ?? []);
 
   const allConditions = useMemo(() => {
-    const map = new Map<string, string[]>();
+    const map = new Map<string, { names: string[]; timers: number[] }>();
     combatants.forEach(c => {
       c.conditions.forEach(condId => {
-        if (!map.has(condId)) map.set(condId, []);
-        map.get(condId)!.push(c.name);
+        if (!map.has(condId)) map.set(condId, { names: [], timers: [] });
+        const entry = map.get(condId)!;
+        entry.names.push(c.name);
+        const rounds = c.conditionTimers?.[condId];
+        if (rounds !== undefined) entry.timers.push(rounds);
       });
     });
-    return Array.from(map.entries()).map(([id, names]) => ({
+    return Array.from(map.entries()).map(([id, { names, timers }]) => ({
       condition: CONDITIONS.find(cd => cd.id === id),
       names,
+      timers,
       isBeneficial: BENEFICIAL_IDS.has(id),
       isOnActiveCombatant: activeCombatantConditions.has(id),
     })).filter(entry => entry.condition != null)
@@ -353,7 +357,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {allConditions.map(({ condition, names, isBeneficial, isOnActiveCombatant }) => (
+                  {allConditions.map(({ condition, names, timers, isBeneficial, isOnActiveCombatant }) => (
                     <div
                       key={condition!.id}
                       className={cn(
@@ -396,6 +400,15 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                           {names.join(', ')}
                         </span>
                       </div>
+                      {timers.length > 0 && (
+                        <div className="pl-4 mb-1 flex flex-wrap gap-1">
+                          {timers.map((rounds, i) => (
+                            <span key={`${condition!.id}-${i}`} className="inline-flex items-center rounded-md bg-amber-400/20 border border-amber-300/30 px-2 py-0.5 text-[10px] font-black text-amber-200">
+                              {rounds} {rounds === 1 ? 'round left' : 'rounds left'}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className={cn(
                         'text-[10px] font-body leading-relaxed pl-4',
                         isOnActiveCombatant
@@ -1109,4 +1122,3 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
     </>
   );
 };
-

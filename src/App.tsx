@@ -741,7 +741,7 @@ export default function App() {
                 <Route path="/settings" element={<MainContent {...mainContentProps} activeTab="settings" />} />
                 <Route path="/player/:id" element={
                   <PlayerView
-                    combatants={combatants}
+                    combatants={combatants.filter(c => !c.hidden)}
                     currentTurnIndex={currentTurnIndex}
                     isEncounterActive={isEncounterActive}
                     currentRound={currentRound}

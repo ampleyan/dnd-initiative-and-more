@@ -520,7 +520,7 @@ export const MainContent: React.FC<MainContentProps> = ({
     <AnimatePresence mode="wait">
       {isPlayerView ? (
         <PlayerView
-          combatants={combatants}
+          combatants={combatants.filter(c => !c.hidden)}
           currentTurnIndex={currentTurnIndex}
           isEncounterActive={isEncounterActive}
           currentRound={currentRound}
@@ -585,6 +585,16 @@ export const MainContent: React.FC<MainContentProps> = ({
                   </button>
                   <p className="text-outline text-sm">Round {currentRound}</p>
                 </div>
+                {combatants.some(c => c.hidden) && (
+                  <div className="flex items-center gap-2 flex-wrap w-full order-3 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Hidden waves</span>
+                    {Array.from(new Set(combatants.filter(c => c.hidden).map(c => c.waveId ?? 'default'))).map(waveId => (
+                      <button key={waveId} onClick={async () => { await api.encounters.revealWave(currentEncounterId!, waveId); const refreshed = await api.encounters.get(currentEncounterId!); handleLoadEncounter(refreshed); }} className="rounded-md bg-amber-400/20 border border-amber-300/30 px-2 py-1 text-[10px] font-bold text-amber-200 hover:bg-amber-400/30">
+                        Reveal {waveId}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="flex gap-2 flex-wrap items-center">
                   {isEncounterActive && (
                     <>

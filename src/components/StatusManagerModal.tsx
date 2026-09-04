@@ -40,9 +40,10 @@ export const StatusManagerModal: React.FC<StatusManagerModalProps> = ({
   useEffect(() => {
     if (combatant) {
       setConcentrationInput(combatant.concentratingOn ?? '');
+      setConditionTimers(Object.fromEntries(Object.entries(combatant.conditionTimers ?? {}).map(([id, rounds]) => [id, String(rounds)])));
       prevCombatantId.current = combatant.id;
     }
-  }, [combatant?.id, combatant?.concentratingOn]);
+  }, [combatant?.id, combatant?.concentratingOn, combatant?.conditionTimers]);
 
   if (!combatant) return null;
 

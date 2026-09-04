@@ -306,6 +306,10 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       polymorphForm ? JSON.stringify(polymorphForm) : null,
       req.params.id
     );
+    if (req.body.hidden !== undefined || req.body.waveId !== undefined) {
+      const current = db.prepare('SELECT hidden, waveId FROM combatants WHERE id = ?').get(req.params.id) as any;
+      db.prepare('UPDATE combatants SET hidden = ?, waveId = ? WHERE id = ?').run(req.body.hidden === undefined ? current?.hidden ?? 0 : (req.body.hidden ? 1 : 0), req.body.waveId ?? current?.waveId ?? 'default', req.params.id);
+    }
     if (encounterId) io.to(`encounter:${encounterId}`).emit('encounter-updated', { encounterId });
     res.json({ success: true });
   });

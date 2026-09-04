@@ -459,10 +459,12 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
                         condition.color || "bg-surface-container-highest"
                       )}>
                         <Icon className="w-3 h-3 text-white" />
-                        {rounds !== undefined && (
-                          <span className="text-[8px] font-bold text-white/80">{rounds}</span>
-                        )}
                       </div>
+                      {rounds !== undefined && (
+                        <span className="absolute left-1/2 -translate-x-1/2 top-full mt-0.5 whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 text-[8px] font-black text-white shadow-lg">
+                          {rounds} {rounds === 1 ? 'round' : 'rounds'}
+                        </span>
+                      )}
                       <div className="invisible group-hover/tooltip:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#1A1C23] text-white rounded-xl border border-white/10 shadow-2xl z-50 min-w-[150px] pointer-events-none">
                         <div className="flex items-center gap-2 mb-1">
                           <div className={cn("w-2 h-2 rounded-full", condition.color)} />
@@ -703,6 +705,13 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
             )}
             <div className="hidden sm:block w-px h-4 bg-outline/20 shrink-0" />
             <div className="flex gap-0.5">
+              <button
+                onClick={e => { e.stopPropagation(); const waveId = combatant.waveId ?? (window.prompt('Wave name', 'reinforcements') || 'default'); onUpdate({ ...combatant, hidden: !combatant.hidden, waveId }); }}
+                title={combatant.hidden ? 'Reveal to players' : 'Hide from players / assign wave'}
+                className={cn('p-1.5 hover:bg-surface-container-highest rounded-lg transition-colors', combatant.hidden ? 'text-amber-300' : 'text-outline hover:text-amber-300')}
+              >
+                <EyeOff className="w-3.5 h-3.5" />
+              </button>
               {show('conditions') && (
                 <button onClick={e => { e.stopPropagation(); onStatus(); }} title="Conditions" className="p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-primary transition-colors">
                   <Sparkles className="w-3.5 h-3.5" />
