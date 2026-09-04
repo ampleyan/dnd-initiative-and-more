@@ -1,7 +1,7 @@
 import React from 'react';
 import { Menu, ChevronRight, UserPlus, Users, Settings, Keyboard, Undo2, Redo2, LayoutDashboard, Swords, Shield, Music, MoreHorizontal } from 'lucide-react';
-import { Routes, Route, Navigate, useParams, NavLink } from 'react-router-dom';
-import { CONDITIONS, INITIATIVE_COLORS } from './constants';
+import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
+import { CONDITIONS } from './constants';
 import { cn, uuid } from './lib/utils';
 import { useAuth } from './hooks/useAuth';
 import { LoginScreen } from './components/LoginScreen';
@@ -10,12 +10,10 @@ import { AppShell } from './components/AppShell';
 
 // Components
 import { Sidebar } from './components/Sidebar';
-import { TopBar } from './components/TopBar';
 import { EncounterSummary } from './components/EncounterSummary';
 import { EncounterCreator } from './components/EncounterCreator';
 
 // Modals
-import { MobileNav } from './components/MobileNav';
 import { RightSidebar } from './components/RightSidebar';
 import { MainContent } from './components/MainContent';
 import { PlayerView } from './components/PlayerView';
@@ -247,7 +245,6 @@ export default function App() {
     setVolume: handleSetVolume,
     getAudioCtx,
     spatialMode,
-    audioRefs,
   } = useSoundboard(masterVolume, isMuted);
 
   React.useEffect(() => {
@@ -398,11 +395,6 @@ export default function App() {
     [...combatants].sort((a, b) => b.initiative - a.initiative), [combatants]);
   const displayNames = React.useMemo(() =>
     getDisplayNames(sortedCombatants), [sortedCombatants]);
-  const activeConditions = React.useMemo(() =>
-    Array.from(new Set(combatants.flatMap(c => c.conditions)))
-      .map(id => CONDITIONS.find(cond => cond.id === id))
-      .filter(Boolean), [combatants]);
-
   const handleClearAllConditions = React.useCallback(() => {
     combatants.forEach(c => {
       if (c.conditions.length > 0) {
@@ -417,11 +409,6 @@ export default function App() {
       .then(() => fetchEncounterData(currentEncounterId))
       .catch(console.error);
   }, [currentEncounterId, fetchEncounterData]);
-
-  const getInitiativeColor = (initiative: number) => {
-    const idx = Math.min(Math.max(Math.floor(initiative), 1), 20) - 1;
-    return INITIATIVE_COLORS[idx];
-  };
 
   useRouterSync({
     setCurrentEncounterId,
