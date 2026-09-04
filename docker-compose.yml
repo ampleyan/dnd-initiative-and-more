@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      DB_PATH: /app/data/dnd_tracker.db
+      NODE_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      AUDIO_SFX_DIR: ${AUDIO_SFX_DIR:-}
+      AUDIO_AMBIENCES_DIR: ${AUDIO_AMBIENCES_DIR:-}
+      FOUNDRY_DATA_PATH: ${FOUNDRY_DATA_PATH:-}
+      HUE_BRIDGE_IP: ${HUE_BRIDGE_IP:-}
+      HUE_USERNAME: ${HUE_USERNAME:-}
+      HA_URL: ${HA_URL:-}
+      HA_TOKEN: ${HA_TOKEN:-}
+    restart: always

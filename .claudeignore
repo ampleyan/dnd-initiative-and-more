@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.eggs/
+dist/
+build/
+.git/
+.tox/
+.venv/
+venv/
+*.log
+*.lock
+node_modules/
+.next/
+static/collected/
+media/

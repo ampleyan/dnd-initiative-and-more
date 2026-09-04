@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  
+  --color-surface-container-lowest: #0a0f14;
+  --color-surface-container-low: #171c22;
+  --color-surface-container: #1b2026;
+  --color-surface-container-high: #252a30;
+  --color-surface-container-highest: #30353b;
+  
+  --color-primary: #adc6ff;
+  --color-primary-container: #0366d6;
+  --color-on-primary: #002e69;
+  
+  --color-secondary: #bec7d2;
+  --color-secondary-container: #414a53;
+  
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  
+  --color-background: #0f1419;
+  --color-on-background: #dee3eb;
+  --color-on-surface: #dee3eb;
+  --color-on-surface-variant: #c2c6d6;
+  
+  --color-outline: #8c909f;
+  --color-outline-variant: #424753;
+}
+
+@layer base {
+
+  body {
+    @apply bg-background text-on-background font-body antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface-container/80 backdrop-blur-xl border border-outline-variant/10;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-outline-variant/30 rounded-full;
+  }
+
+  .prose-desc p { margin-bottom: 0.5em; }
+  .prose-desc p:last-child { margin-bottom: 0; }
+  .prose-desc strong, .prose-desc em { @apply text-on-surface/80; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Pink / Bright theme ──────────────────────────────────────────────── */
+html.theme-pink {
+  /* ── Midnight Void — obsidian void + neon pink ── */
+
+  /* Surface hierarchy — no borders, depth via tonal shifts */
+  --color-surface-container-lowest: #0a0c10;
+  --color-surface-container-low:    #111318;
+  --color-surface-container:        #1a1d24;
+  --color-surface-container-high:   #23262c;
+  --color-surface-container-highest:#2a2e36;
+
+  /* Neon pink primary */
+  --color-primary:           #ff87bd;
+  --color-primary-container: #ff6cb3;
+  --color-on-primary:        #60003a;
+
+  /* Deep indigo secondary + tertiary violet */
+  --color-secondary:           #a18eff;
+  --color-secondary-container: #42465a;
+
+  --color-error:           #ff6e84;
+  --color-error-container: #5c0010;
+
+  /* Void base */
+  --color-background:         #0c0e12;
+  --color-on-background:      #f6f6fc;
+  --color-on-surface:         #f6f6fc;
+  --color-on-surface-variant: #c0bfd0;
+
+  /* Ghost borders — felt, not seen */
+  --color-outline:         #8891a8;
+  --color-outline-variant: #46484d40;
+}
+
+/* Override hardcoded dark bg classes */
+html.theme-pink .bg-\[\#0A0C12\],
+html.theme-pink .bg-\[\#0A0C12\]\/90,
+html.theme-pink .bg-\[\#0f1419\],
+html.theme-pink .bg-\[\#05070A\] {
+  background-color: #0c0e12 !important;
+}
+
+html.theme-pink body {
+  background-color: #0c0e12;
+  color: #f6f6fc;
+  font-family: "Manrope", sans-serif;
+}
+
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.4); }
+  50%       { transform: scaleY(1.0); }
+}
+.bar-1 { animation: waveform 0.8s ease-in-out infinite; }
+.bar-2 { animation: waveform 0.8s ease-in-out 0.15s infinite; }
+.bar-3 { animation: waveform 0.8s ease-in-out 0.3s infinite; }
+.bar-4 { animation: waveform 0.8s ease-in-out 0.45s infinite; }
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+.animate-pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
