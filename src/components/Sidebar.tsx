@@ -1,11 +1,12 @@
 import React from 'react';
 import { version } from '../../package.json';
-import { LayoutDashboard, Swords, BookOpen, UploadCloud, Plus, ChevronRight, ChevronLeft, ChevronDown, Square, Settings, ScrollText, BarChart2, Sparkles, Map, Shield, HelpCircle, Music, Sun, Moon, MoreHorizontal, Play, Pause, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Swords, BookOpen, UploadCloud, Plus, ChevronRight, ChevronLeft, ChevronDown, Square, Settings, ScrollText, BarChart2, Sparkles, Map, Shield, HelpCircle, Music, Sun, Moon, MoreHorizontal, Play, Pause, ExternalLink, Layers } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { APP_NAME, APP_SHORT_NAME } from '../lib/appConfig';
 import { SidebarItem } from './SidebarItem';
 import { motion, AnimatePresence } from 'motion/react';
-import { useLocation, NavLink } from 'react-router-dom';
+import { useLocation, NavLink, useNavigate } from 'react-router-dom';
+import { useLocalState } from '../hooks/useLocalState';
 
 interface SidebarProps {
   isSidebarCollapsed: boolean;
@@ -67,6 +68,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleMusic,
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isBasicMode, setIsBasicMode] = useLocalState<boolean>('basic-mode', false);
+
+  function handleToggleBasicMode() {
+    const next = !isBasicMode;
+    setIsBasicMode(next);
+    if (next) {
+      const hidden = ['/dashboard', '/campaigns', '/spells', '/abilities', '/soundboard', '/import', '/settings'];
+      if (hidden.some(p => location.pathname.startsWith(p))) {
+        navigate('/encounters');
+      }
+    }
+  }
+
   if (isPlayerView) return null;
 
   // During combat, always show icon-only so soundboard/nav remain accessible
@@ -93,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         
         <nav className="flex flex-col w-full gap-1">
           {/* Home + Campaigns combined */}
-          {(() => {
+          {!isBasicMode && (() => {
             const isDashActive = location.pathname === '/dashboard' || location.pathname === '/';
             const isCampActive = location.pathname.startsWith('/campaigns');
             const isExpanded = isDashActive || isCampActive;
@@ -184,6 +199,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               document.addEventListener('mousedown', h);
               return () => document.removeEventListener('mousedown', h);
             }, []);
+            if (isBasicMode) {
+              return (
+                <SidebarItem
+                  icon={BookOpen}
+                  label="Library"
+                  collapsed={collapsed}
+                  iconColor="text-red-400"
+                  to="/monsters"
+                />
+              );
+            }
             const links = [
               { icon: BookOpen,  label: 'Library',   color: 'text-red-400',   to: '/monsters'   },
               { icon: Sparkles,  label: 'Spells',    color: 'text-sky-400',   to: '/spells'     },
@@ -238,34 +264,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })()}
 
-          <SidebarItem
-            icon={Music}
-            label="Soundboard"
-            collapsed={collapsed}
-            iconColor="text-pink-400"
-            to="/soundboard"
-          />
-
-          <div className={cn("border-t border-white/10 mt-2 mb-3", collapsed ? "mx-2" : "mx-0")} />
-
-          {!collapsed && (
-            <p className="text-[9px] uppercase tracking-[0.15em] font-bold text-outline/40 px-4 pb-1">Tools</p>
+          {!isBasicMode && (
+            <SidebarItem
+              icon={Music}
+              label="Soundboard"
+              collapsed={collapsed}
+              iconColor="text-pink-400"
+              to="/soundboard"
+            />
           )}
 
-          <SidebarItem
-            icon={UploadCloud}
-            label="Import"
-            collapsed={collapsed}
-            iconColor="text-sky-400"
-            to="/import"
-          />
-          <SidebarItem
-            icon={Settings}
-            label="Settings"
-            collapsed={collapsed}
-            iconColor="text-amber-400"
-            to="/settings"
-          />
+          {!isBasicMode && (
+            <>
+              <div className={cn("border-t border-white/10 mt-2 mb-3", collapsed ? "mx-2" : "mx-0")} />
+              {!collapsed && (
+                <p className="text-[9px] uppercase tracking-[0.15em] font-bold text-outline/40 px-4 pb-1">Tools</p>
+              )}
+              <SidebarItem
+                icon={UploadCloud}
+                label="Import"
+                collapsed={collapsed}
+                iconColor="text-sky-400"
+                to="/import"
+              />
+            </>
+          )}
+
+          {!isBasicMode && (
+            <SidebarItem
+              icon={Settings}
+              label="Settings"
+              collapsed={collapsed}
+              iconColor="text-amber-400"
+              to="/settings"
+            />
+          )}
+
+          {/* Basic/Full toggle */}
+          <button
+            onClick={handleToggleBasicMode}
+            title={isBasicMode ? 'Switch to Full mode' : 'Switch to Basic mode'}
+            className={cn(
+              "w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all hover:bg-white/5",
+              collapsed && "justify-center px-0",
+              isBasicMode ? "text-primary" : "text-outline"
+            )}
+          >
+            <Layers className="w-5 h-5 shrink-0" />
+            {!collapsed && (
+              <span className="font-medium text-sm">{isBasicMode ? 'Basic' : 'Full'}</span>
+            )}
+          </button>
 
           <div className={cn("border-t border-white/5 my-2", collapsed ? "mx-2" : "mx-0")} />
 
@@ -278,6 +327,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               document.addEventListener('mousedown', handler);
               return () => document.removeEventListener('mousedown', handler);
             }, []);
+            if (isBasicMode) return null;
             const items = [
               { icon: ScrollText,  label: 'Combat Log',    color: 'text-slate-400',   action: onToggleLog,        active: showLog },
               { icon: BarChart2,   label: 'Session Stats', color: 'text-emerald-400', action: onShowSessionStats, active: false },

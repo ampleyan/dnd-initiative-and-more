@@ -2,6 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Map, Swords, BookOpen, Sparkles, Shield, Settings, Music } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { NavLink } from 'react-router-dom';
+import { useLocalState } from '../hooks/useLocalState';
 
 interface MobileNavProps {
   onClearEncounter?: () => void;
@@ -19,9 +20,16 @@ const NAV_ITEMS = [
 ];
 
 export const MobileNav: React.FC<MobileNavProps> = ({ onClearEncounter }) => {
+  const [isBasicMode] = useLocalState<boolean>('basic-mode', false);
+
+  const BASIC_ROUTES = new Set(['/encounters', '/monsters']);
+  const visibleItems = isBasicMode
+    ? NAV_ITEMS.filter(item => BASIC_ROUTES.has(item.to))
+    : NAV_ITEMS;
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface-container-lowest h-16 flex items-center z-40 border-t border-outline-variant/10 overflow-x-auto scrollbar-none">
-      {NAV_ITEMS.map(({ to, icon: Icon, label, color, clear }) => (
+      {visibleItems.map(({ to, icon: Icon, label, color, clear }) => (
         <NavLink
           key={to}
           to={to}
