@@ -1,5 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0A0C12"/>
-  <polygon points="256,64 448,176 448,336 256,448 64,336 64,176" fill="none" stroke="#ADC6FF" stroke-width="20"/>
-  <text x="256" y="300" font-family="serif" font-size="200" font-weight="bold" text-anchor="middle" fill="#ADC6FF">20</text>
+  <rect width="512" height="512" rx="112" fill="#0f1419"/>
+  <g stroke="#0f1419" stroke-width="18" stroke-linejoin="round" stroke-linecap="round">
+    <!-- base silhouette -->
+    <polygon points="256,44 452,158 452,354 256,468 60,354 60,158" fill="#9fb8f4"/>
+    <!-- top-left and top-right facets -->
+    <polygon points="60,158 256,44 256,120 128,330" fill="#b9ccfb"/>
+    <polygon points="452,158 256,44 256,120 384,330" fill="#b9ccfb"/>
+    <!-- left / right side facets -->
+    <polygon points="60,158 128,330 60,354" fill="#7f9cec"/>
+    <polygon points="452,158 384,330 452,354" fill="#7f9cec"/>
+    <!-- bottom facets -->
+    <polygon points="60,354 128,330 256,468" fill="#6d8ada"/>
+    <polygon points="452,354 384,330 256,468" fill="#6d8ada"/>
+    <polygon points="128,330 384,330 256,468" fill="#5c79c9"/>
+    <!-- central front face -->
+    <polygon points="256,120 384,330 128,330" fill="#eaf0ff"/>
+  </g>
+  <text x="256" y="298" font-family="'Space Grotesk','Arial Black',sans-serif" font-size="128" font-weight="800" text-anchor="middle" fill="#26375c">20</text>
 </svg>
