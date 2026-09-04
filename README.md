@@ -1,15 +1,29 @@
 # Initiative Tracker
 
-A self-hosted D&D 5e initiative and encounter tracker for Dungeon Masters. It combines encounter prep, live combat tracking, a read-only player view, monster/spell references, campaigns, sound, and optional Foundry VTT and lighting integrations.
+**A self-hosted, open-source D&D 5e combat tracker for Dungeon Masters — an alternative to Improved Initiative and D&D Beyond's encounter tools that you own end to end.**
+
+Prep encounters, run initiative, and share a live player view — no subscription, no account, your data stays on your machine.
+
+![CI](https://github.com/ampleyan/dnd-initiative-and-more/actions/workflows/ci.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Node 22](https://img.shields.io/badge/node-22_LTS-green.svg)
+
+<!-- Drop a screenshot or demo GIF at docs/demo.gif (a 20–30s clip of a real combat converts best) -->
+![Initiative Tracker in action](docs/demo.gif)
+
+## Why
+
+Most combat trackers are either cloud-locked, subscription-gated, or tied to a single VTT. Initiative Tracker runs on your own hardware, works at the table without internet, and hands players a read-only view of the fight — all from one Docker command.
 
 ## Features
 
-- Create, save, filter, scale, and resume encounters.
-- Track initiative, HP, temporary HP, conditions, concentration, death saves, spell slots, feature uses, polymorph, legendary actions, lair actions, and undo/redo.
-- Share a live player view through Socket.IO.
-- Import D&D Beyond and Foundry VTT data; parse adventure material into encounters.
-- Organize campaigns and sessions, and use a configurable session board.
-- Run a soundboard with optional spatial audio and lighting effects.
+- **Encounter prep** — create, save, filter, scale to party size, and resume encounters.
+- **Full 5e combat** — initiative, HP/temp HP, conditions, concentration, death saves, spell slots, feature uses, polymorph, legendary & lair actions, and undo/redo.
+- **Live player view** — share the fight in real time over Socket.IO; players see what they should, nothing they shouldn't.
+- **Basic Mode** — a one-click toggle that strips the UI down to just Encounters and Monsters for guests and new players.
+- **Import anything** — pull in D&D Beyond and Foundry VTT data, or parse adventure text straight into encounters.
+- **Campaigns & sessions** — organize your table with a configurable session board.
+- **Soundboard** — optional spatial audio and smart-lighting effects for ambiance.
 
 ## Quick start
 
