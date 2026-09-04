@@ -11,15 +11,27 @@ function buildBackup(db: any) {
   return { format: 'dnd-initiative-backup', version: FORMAT_VERSION, exportedAt: new Date().toISOString(), tables };
 }
 
-function validateBackup(value: any): string[] {
+function validateBackup(db: any, value: any): string[] {
   if (!value || value.format !== 'dnd-initiative-backup') return ['format must be dnd-initiative-backup'];
   if (value.version !== FORMAT_VERSION) return [`unsupported backup version: ${String(value.version)}`];
   if (!value.tables || typeof value.tables !== 'object' || Array.isArray(value.tables)) return ['tables must be an object'];
   const errors: string[] = [];
   for (const table of TABLES) {
-    if (value.tables[table] !== undefined && !Array.isArray(value.tables[table])) errors.push(`${table} must be an array`);
-    for (const row of value.tables[table] ?? []) {
+    if (!Object.hasOwn(value.tables, table)) {
+      errors.push(`${table} is missing`);
+      continue;
+    }
+    if (!Array.isArray(value.tables[table])) {
+      errors.push(`${table} must be an array`);
+      continue;
+    }
+    const columns = new Set((db.prepare(`PRAGMA table_info("${table}")`).all() as { name: string }[]).map(column => column.name));
+    for (const row of value.tables[table]) {
       if (!row || typeof row !== 'object' || Array.isArray(row)) errors.push(`${table} contains an invalid row`);
+      else {
+        const unknownColumns = Object.keys(row).filter(column => !columns.has(column));
+        if (unknownColumns.length) errors.push(`${table} contains unknown columns: ${unknownColumns.join(', ')}`);
+      }
     }
   }
   return errors;
@@ -35,7 +47,7 @@ export function createBackupsRouter(db: any, dbAvailable: boolean, requireAdmin:
 
   router.post('/backups/import', requireAdmin, (req, res) => {
     if (!dbAvailable) return res.status(503).json({ error: 'DB not available' });
-    const errors = validateBackup(req.body);
+    const errors = validateBackup(db, req.body);
     if (errors.length) return res.status(400).json({ error: 'Invalid backup', details: errors });
     try {
       db.transaction(() => {
@@ -58,4 +70,3 @@ export function createBackupsRouter(db: any, dbAvailable: boolean, requireAdmin:
   });
   return router;
 }
-
