@@ -1231,6 +1231,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
           initialBackgroundImage={editingEncounter.backgroundImage}
           initialYoutubeUrl={editingEncounter.youtubeUrl}
           initialSoundIds={editingEncounter.soundIds}
+          existingFolders={encounters.map(e => e.folder).filter((f): f is string => !!f)}
           sounds={sounds}
           title="Edit Encounter"
         />

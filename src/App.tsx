@@ -332,8 +332,9 @@ export default function App() {
         }
       }
     }
+    setSavedEncounters(await api.encounters.list());
     navigate(`/campaigns/${campaign.id}`);
-  }, [handleCreateCampaign, handleCreateSession, players, navigate]);
+  }, [handleCreateCampaign, handleCreateSession, players, navigate, setSavedEncounters]);
 
   const handleBackToCampaigns = React.useCallback(() => {
     navigate('/campaigns');
