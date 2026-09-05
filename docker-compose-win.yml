@@ -7,8 +7,13 @@ services:
       - .env
     volumes:
       - ./data:/app/data
-      - E:\DnD\tabletopaudio:/app/data/tabletopaudio
-      - E:\DnD\FoundryVTT\Data:/mnt/foundry:ro
+      - type: bind
+        source: E:\DnD\tabletopaudio
+        target: /app/data/tabletopaudio
+      - type: bind
+        source: E:\DnD\FoundryVTT\Data
+        target: /mnt/foundry
+        read_only: true
     environment:
       - DB_PATH=/app/data/dnd_tracker.db
       - NODE_ENV=production

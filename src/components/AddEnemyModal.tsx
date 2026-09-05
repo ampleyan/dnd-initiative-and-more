@@ -34,6 +34,7 @@ export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, m
   const [initiative, setInitiative] = useState('');
   const [count, setCount] = useState(1);
   const [waveId, setWaveId] = useState('default');
+  const [startHidden, setStartHidden] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, m
       setInitiative('');
       setCount(1);
       setWaveId('default');
+      setStartHidden(false);
       setTimeout(() => searchRef.current?.focus(), 50);
     }
   }, [isOpen]);
@@ -69,7 +71,7 @@ export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, m
   const handleAdd = () => {
     if (!selected) return;
     const init = Math.max(1, Math.min(30, parseInt(initiative) || 10));
-    onAdd(selected, init, count, waveId !== 'default', waveId);
+    onAdd(selected, init, count, startHidden, waveId.trim() || 'default');
     // Stay open so DM can add more enemies
     setSelected(null);
     setInitiative('');
@@ -215,12 +217,26 @@ export const AddEnemyModal: React.FC<AddEnemyModalProps> = ({ isOpen, onClose, m
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-outline uppercase tracking-wider mb-2">Wave</label>
-                  <select value={waveId} onChange={e => setWaveId(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-xl px-3 py-2 text-sm text-on-surface">
-                    <option value="default">Visible now</option>
-                    {existingWaves.filter(w => w !== 'default').map(w => <option key={w} value={w}>{w} (hidden)</option>)}
-                    <option value="reinforcements">Reinforcements (hidden)</option>
-                  </select>
+                  <label className="block text-xs font-bold text-outline uppercase tracking-wider mb-2" htmlFor="enemy-wave-name">Wave name</label>
+                  <input
+                    id="enemy-wave-name"
+                    list="enemy-wave-options"
+                    value={waveId}
+                    onChange={e => {
+                      setWaveId(e.target.value);
+                      setStartHidden(!!e.target.value.trim() && e.target.value.trim() !== 'default');
+                    }}
+                    placeholder="Choose a wave or enter a new name"
+                    className="w-full bg-surface-container border border-white/10 rounded-xl px-3 py-2 text-sm text-on-surface"
+                  />
+                  <datalist id="enemy-wave-options">
+                    {Array.from(new Set(['default', ...existingWaves])).map(w => <option key={w} value={w} />)}
+                  </datalist>
+                  <p className="mt-1 text-[10px] text-outline">Use the same name to group NPCs, or a new name for another wave.</p>
+                  <label className="mt-2 flex items-center gap-2 text-xs text-on-surface">
+                    <input type="checkbox" checked={startHidden} onChange={e => setStartHidden(e.target.checked)} />
+                    Start concealed
+                  </label>
                 </div>
 
                 <div className="mt-auto">

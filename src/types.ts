@@ -240,6 +240,7 @@ export interface AudioScene {
 export interface EncounterRoundNote {
   round: number;
   text: string;
+  readout?: string;
 }
 
 export interface EncounterNotes {

@@ -278,7 +278,67 @@ describe('Combatants API', () => {
   });
 });
 
-// ── Monsters CRUD (with spells field) ────────────────────────────────────────
+describe('Encounter round notes', () => {
+  it('preserves categorized notes by encounter and round across reloads and unrelated updates', async () => {
+    const agent = await loginAdmin();
+    for (const id of ['round-notes-a', 'round-notes-b']) {
+      expect((await agent.post('/api/encounters').send({ id, name: id })).status).toBe(201);
+    }
+    const notes = {
+      general: 'Encounter setup',
+      rounds: [
+        { round: 2, text: 'NPC action', readout: 'Read aloud' },
+        { round: 3, text: 'Other action' },
+      ],
+    };
+    expect((await agent.put('/api/encounters/round-notes-a').send({ notes })).status).toBe(200);
+    expect((await agent.get('/api/encounters/round-notes-a')).body.notes).toEqual(notes);
+    expect((await agent.get('/api/encounters')).body.find((e: any) => e.id === 'round-notes-a').notes).toEqual(notes);
+    expect((await agent.put('/api/encounters/round-notes-a').send({ currentRound: 4 })).status).toBe(200);
+    expect((await agent.get('/api/encounters/round-notes-a')).body.notes).toEqual(notes);
+    expect((await agent.get('/api/encounters/round-notes-b')).body.notes).toEqual({ general: '', rounds: [] });
+  });
+});
+
+describe('Encounter waves', () => {
+  it('persists independent NPC visibility per encounter and wave', async () => {
+    const agent = await loginAdmin();
+    const encounterId = 'wave encounter/#1';
+    const waveId = 'East gate / #2';
+    for (const id of [encounterId, 'other-wave-encounter']) {
+      expect((await agent.post('/api/encounters').send({
+        id, name: id, waves: [{ id: waveId, name: waveId, revealed: false }],
+      })).status).toBe(201);
+    }
+    const fixtures = [
+      { id: 'wave-first', encounterId, waveId, type: 'monster', hidden: true },
+      { id: 'wave-second', encounterId, waveId: 'second', type: 'monster', hidden: true },
+      { id: 'wave-player', encounterId, waveId, type: 'player', hidden: false },
+      { id: 'wave-other-encounter', encounterId: 'other-wave-encounter', waveId, type: 'monster', hidden: true },
+    ];
+    for (const fixture of fixtures) {
+      expect((await agent.post('/api/combatants').send({
+        ...fixture, name: fixture.id, initiative: 10, hp: { current: 10, max: 10 }, ac: 10,
+      })).status).toBe(201);
+    }
+    const encounterPath = `/api/encounters/${encodeURIComponent(encounterId)}`;
+    const wavePath = `${encounterPath}/waves/${encodeURIComponent(waveId)}`;
+    expect((await agent.post(`${wavePath}/reveal`)).body).toEqual({ success: true, revealed: 1 });
+    expect((await agent.get(`${encounterPath}/player-combatants`)).body.map((c: any) => c.id).sort())
+      .toEqual(['wave-first', 'wave-player']);
+    expect((await agent.get(encounterPath)).body.waves[0].revealed).toBe(true);
+    expect((await agent.post(`${wavePath}/conceal/`)).body).toEqual({ success: true, concealed: 1 });
+    expect((await agent.get(`${encounterPath}/player-combatants`)).body.map((c: any) => c.id))
+      .toEqual(['wave-player']);
+    expect((await agent.get(`${encounterPath}/combatants`)).body.find((c: any) => c.id === 'wave-first').hidden).toBe(true);
+    expect((await agent.get(encounterPath)).body.waves[0].revealed).toBe(false);
+    expect((await agent.get('/api/encounters/other-wave-encounter/combatants')).body[0].hidden).toBe(true);
+    expect((await agent.post(`${encounterPath}/waves/second/reveal`)).body.revealed).toBe(1);
+    expect((await agent.get(`${encounterPath}/player-combatants`)).body.map((c: any) => c.id).sort())
+      .toEqual(['wave-player', 'wave-second']);
+  });
+});
+
 describe('Monsters API', () => {
   it('creates a monster with spells', async () => {
     const agent = await loginAdmin();

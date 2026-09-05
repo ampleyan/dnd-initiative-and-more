@@ -37,6 +37,7 @@ import { FloatingMusicPlayer } from './components/FloatingMusicPlayer';
 import { useLocalState } from './hooks/useLocalState';
 import { useRouterSync } from './hooks/useRouterSync';
 import { useActionExecution } from './hooks/useActionExecution';
+import { useToast } from './hooks/useToast';
 import type { SessionBoardHandle } from './components/SessionBoard';
 
 const HOTKEYS = [
@@ -163,10 +164,11 @@ export default function App() {
     isMuted, setIsMuted,
   } = useAppState();
 
-  const [encounterNotes, setEncounterNotes] = React.useState<EncounterNotes>({ general: '', rounds: [] });
+  const { showError } = useToast();
+  const [noteDrafts, setNoteDrafts] = React.useState<Map<string, EncounterNotes>>(() => new Map());
+  const pendingNotesRef = React.useRef(new Map<string, { notes: EncounterNotes; saving: boolean }>());
   const [sidebarView, setSidebarView] = React.useState<'details' | 'notes'>('details');
   const [isMobileRightPanelOpen, setIsMobileRightPanelOpen] = React.useState(false);
-  const notesDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showLog, setShowLog] = React.useState(false);
   const [showLogToPlayers, setShowLogToPlayers] = React.useState(false);
@@ -378,19 +380,52 @@ export default function App() {
   React.useEffect(() => { setIsMusicPaused(false); }, [youtubeId]);
 
   const currentEncounter = savedEncounters.find(e => e.id === currentEncounterId);
+  const encounterNotes = (currentEncounterId ? noteDrafts.get(currentEncounterId) : undefined)
+    ?? currentEncounter?.notes ?? { general: '', rounds: [] };
 
   React.useEffect(() => {
-    setEncounterNotes(currentEncounter?.notes ?? { general: '', rounds: [] });
-  }, [currentEncounterId]);
+    const warnAboutUnsavedNotes = (event: BeforeUnloadEvent) => {
+      if (!pendingNotesRef.current.size) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnAboutUnsavedNotes);
+    return () => window.removeEventListener('beforeunload', warnAboutUnsavedNotes);
+  }, []);
 
-  const handleUpdateNotes = React.useCallback((notes: EncounterNotes) => {
-    setEncounterNotes(notes);
-    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current);
-    notesDebounceRef.current = setTimeout(() => {
-      if (!currentEncounterId || !isDbAvailable) return;
-      api.encounters.update(currentEncounterId, { notes }).catch(console.error);
-    }, 400);
-  }, [currentEncounterId, isDbAvailable]);
+  const handleUpdateNotes = React.useCallback(async (notes: EncounterNotes) => {
+    const id = currentEncounterId;
+    if (!id || !currentEncounter) return;
+    setNoteDrafts(prev => new Map(prev).set(id, notes));
+    const pending = pendingNotesRef.current.get(id) ?? { notes, saving: false };
+    pending.notes = notes;
+    pendingNotesRef.current.set(id, pending);
+    if (pending.saving) return;
+    if (!isDbAvailable) {
+      showError('Notes are not saved: the database is unavailable. Keep this page open and edit to retry.');
+      return;
+    }
+    pending.saving = true;
+    try {
+      while (true) {
+        const nextNotes = pending.notes;
+        await api.encounters.update(id, { notes: nextNotes });
+        if (pending.notes !== nextNotes) continue;
+        setSavedEncounters(prev => prev.map(e => e.id === id ? { ...e, notes: nextNotes } : e));
+        pendingNotesRef.current.delete(id);
+        setNoteDrafts(prev => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        break;
+      }
+    } catch {
+      showError(`Notes for ${currentEncounter?.name ?? 'this encounter'} could not be saved. Keep this page open and edit to retry.`);
+    } finally {
+      pending.saving = false;
+    }
+  }, [currentEncounterId, currentEncounter, isDbAvailable, setSavedEncounters, showError]);
 
   const sortedCombatants = React.useMemo(() =>
     [...combatants].sort((a, b) => b.initiative - a.initiative), [combatants]);
@@ -839,6 +874,7 @@ export default function App() {
             onUpdate={handleUpdateCombatant}
             spellLibrary={spells}
             encounterNotes={encounterNotes}
+            notesLoaded={!!currentEncounter}
             onUpdateNotes={handleUpdateNotes}
             sidebarView={sidebarView}
             onSetSidebarView={setSidebarView}

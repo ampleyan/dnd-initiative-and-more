@@ -87,7 +87,8 @@ export const encounters = {
   update: (id: string, data: Partial<Encounter>) => put<Encounter>(`/api/encounters/${id}`, data),
   delete: (id: string) => del<{ success: boolean }>(`/api/encounters/${id}`),
   bulkDelete: (ids: string[]) => del<{ success: boolean }>('/api/encounters/bulk', { ids }),
-  revealWave: (encounterId: string, waveId: string) => post<{ success: boolean; revealed: number }>(`/api/encounters/${encounterId}/waves/${waveId}/reveal`, {}),
+  revealWave: (encounterId: string, waveId: string) => post<{ success: boolean; revealed: number }>(`/api/encounters/${encodeURIComponent(encounterId)}/waves/${encodeURIComponent(waveId)}/reveal`, {}),
+  concealWave: (encounterId: string, waveId: string) => post<{ success: boolean; concealed: number }>(`/api/encounters/${encodeURIComponent(encounterId)}/waves/${encodeURIComponent(waveId)}/conceal`, {}),
 };
 
 // ── Combatants ────────────────────────────────────────────────────────────────

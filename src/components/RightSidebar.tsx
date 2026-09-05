@@ -279,6 +279,7 @@ interface RightSidebarProps {
   onUpdate?: (updated: Combatant) => void;
   isAdmin?: boolean;
   encounterNotes: EncounterNotes;
+  notesLoaded?: boolean;
   onUpdateNotes: (notes: EncounterNotes) => void;
   sidebarView: 'details' | 'notes';
   onSetSidebarView: (view: 'details' | 'notes') => void;
@@ -305,6 +306,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   onUpdate,
   isAdmin,
   encounterNotes,
+  notesLoaded = true,
   onUpdateNotes,
   sidebarView,
   onSetSidebarView,
@@ -412,13 +414,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
             }`}
           >
             Notes
-            {(encounterNotes.general.trim() || encounterNotes.rounds.some(r => r.text.trim())) && (
+            {(encounterNotes.general.trim() || encounterNotes.rounds.some(r => r.text.trim() || r.readout?.trim())) && (
               <span className="absolute top-1.5 right-3 w-1.5 h-1.5 rounded-full bg-primary" />
             )}
           </button>
         </div>
         {sidebarView === 'notes' ? (
-                <div className="flex-1 overflow-y-auto p-3 space-y-4">
+                <fieldset disabled={!notesLoaded} className="flex-1 min-w-0 overflow-y-auto p-3 space-y-4">
+                  {!notesLoaded && <p role="status" className="text-xs text-outline">Loading encounter notes…</p>}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[9px] font-black uppercase tracking-widest text-outline">General</span>
@@ -451,10 +454,11 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                             <input
                               type="number"
                               min={1}
+                              aria-label={`Round number for round ${rn.round}`}
                               value={rn.round}
                               onChange={e => {
-                                const newRound = parseInt(e.target.value, 10);
-                                if (isNaN(newRound)) return;
+                                const newRound = Number(e.target.value);
+                                if (!Number.isInteger(newRound) || newRound < 1) return;
                                 if (encounterNotes.rounds.some(r => r.round !== rn.round && r.round === newRound)) return;
                                 const updated = encounterNotes.rounds.map(r =>
                                   r.round === rn.round ? { ...r, round: newRound } : r
@@ -463,18 +467,34 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                               }}
                               className="w-8 bg-surface-container-highest border border-outline/20 rounded px-1 py-1 text-xs text-on-surface text-center focus:outline-none focus:border-primary/50"
                             />
-                            <textarea
-                              value={rn.text}
-                              onChange={e => {
-                                const updated = encounterNotes.rounds.map(r =>
-                                  r.round === rn.round ? { ...r, text: e.target.value } : r
-                                );
-                                onUpdateNotes({ ...encounterNotes, rounds: updated });
-                              }}
-                              placeholder={`Round ${rn.round} plan…`}
-                              rows={2}
-                              className="flex-1 bg-surface-container-highest border border-outline/20 rounded-lg px-2 py-1 text-xs text-on-surface resize-none focus:outline-none focus:border-primary/50 placeholder:text-outline/40"
-                            />
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <label className="block text-[10px] font-bold text-sky-300">
+                                Readout
+                                <textarea
+                                  aria-label={`Readout for round ${rn.round}`}
+                                  value={rn.readout ?? ''}
+                                  onChange={e => onUpdateNotes({ ...encounterNotes, rounds: encounterNotes.rounds.map(r =>
+                                    r.round === rn.round ? { ...r, readout: e.target.value } : r
+                                  ) })}
+                                  placeholder="Read aloud to the players…"
+                                  rows={3}
+                                  className="mt-1 w-full bg-sky-500/5 border border-sky-400/30 rounded-lg px-2 py-1 text-xs font-normal text-on-surface resize-y focus:outline-none focus:border-sky-400 placeholder:text-outline/40"
+                                />
+                              </label>
+                              <label className="block text-[10px] font-bold text-amber-300">
+                                NPC actions
+                                <textarea
+                                  aria-label={`NPC actions for round ${rn.round}`}
+                                  value={rn.text}
+                                  onChange={e => onUpdateNotes({ ...encounterNotes, rounds: encounterNotes.rounds.map(r =>
+                                    r.round === rn.round ? { ...r, text: e.target.value } : r
+                                  ) })}
+                                  placeholder={`Round ${rn.round} NPC actions…`}
+                                  rows={3}
+                                  className="mt-1 w-full bg-amber-500/5 border border-amber-400/30 rounded-lg px-2 py-1 text-xs font-normal text-on-surface resize-y focus:outline-none focus:border-amber-400 placeholder:text-outline/40"
+                                />
+                              </label>
+                            </div>
                             <button
                               onClick={() => {
                                 const updated = encounterNotes.rounds.filter(r => r.round !== rn.round);
@@ -503,7 +523,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       + Add round
                     </button>
                   </div>
-                </div>
+                </fieldset>
               ) : (
           <AnimatePresence mode="wait">
             {displayedCombatant ? (

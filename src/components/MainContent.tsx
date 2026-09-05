@@ -414,6 +414,26 @@ export const MainContent: React.FC<MainContentProps> = ({
 }) => {
   const currentEncounter = savedEncounters?.find((e: any) => e.id === currentEncounterId);
   const dmNotes = currentEncounter?.description;
+  const { showError } = useToast();
+  const [changingWave, setChangingWave] = React.useState<string | null>(null);
+  const waveEncounterRef = React.useRef(currentEncounterId);
+  React.useEffect(() => { waveEncounterRef.current = currentEncounterId; }, [currentEncounterId]);
+
+  const changeWaveVisibility = async (waveId: string, hidden: boolean) => {
+    if (!currentEncounterId || changingWave !== null) return;
+    const encounterId = currentEncounterId;
+    setChangingWave(waveId);
+    try {
+      if (hidden) await api.encounters.concealWave(encounterId, waveId);
+      else await api.encounters.revealWave(encounterId, waveId);
+      const refreshed = await api.encounters.get(encounterId);
+      if (waveEncounterRef.current === encounterId) await handleLoadEncounter(refreshed);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : 'Could not update wave visibility');
+    } finally {
+      setChangingWave(null);
+    }
+  };
 
   const [activeRowVisible, setActiveRowVisible] = React.useState(true);
   const activeRowObserverRef = React.useRef<IntersectionObserver | null>(null);
@@ -569,16 +589,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                   </button>
                   <p className="text-outline text-sm">Round {currentRound}</p>
                 </div>
-                {combatants.some(c => c.hidden) && (
-                  <div className="flex items-center gap-2 flex-wrap w-full order-3 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Hidden waves</span>
-                    {Array.from(new Set(combatants.filter(c => c.hidden).map(c => c.waveId ?? 'default'))).map(waveId => (
-                      <button key={waveId} onClick={async () => { await api.encounters.revealWave(currentEncounterId!, waveId); const refreshed = await api.encounters.get(currentEncounterId!); handleLoadEncounter(refreshed); }} className="rounded-md bg-amber-400/20 border border-amber-300/30 px-2 py-1 text-[10px] font-bold text-amber-200 hover:bg-amber-400/30">
-                        Reveal {waveId}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 <div className="flex gap-2 flex-wrap items-center">
                   {isEncounterActive && (
                     <>
@@ -729,6 +739,33 @@ export const MainContent: React.FC<MainContentProps> = ({
                 </div>
               </div>
 
+              {combatants.some(c => c.type === 'monster') && (
+                <div className="flex items-center gap-3 flex-wrap rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">NPC waves</span>
+                  {Array.from(new Set(combatants.filter(c => c.type === 'monster').map(c => c.waveId ?? 'default'))).map(waveId => {
+                    const members = combatants.filter(c => c.type === 'monster' && (c.waveId ?? 'default') === waveId);
+                    const hiddenCount = members.filter(c => c.hidden).length;
+                    return (
+                      <div key={waveId} className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-on-surface">{waveId} <span className="text-outline">· {members.length - hiddenCount}/{members.length} visible</span></span>
+                        <button
+                          aria-label={`Reveal ${waveId}`}
+                          disabled={changingWave !== null || hiddenCount === 0}
+                          onClick={() => changeWaveVisibility(waveId, false)}
+                          className="rounded-md bg-amber-400/20 border border-amber-300/30 px-2 py-1 text-xs font-bold text-amber-200 hover:bg-amber-400/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >Reveal</button>
+                        <button
+                          aria-label={`Conceal ${waveId}`}
+                          disabled={changingWave !== null || hiddenCount === members.length}
+                          onClick={() => changeWaveVisibility(waveId, true)}
+                          className="rounded-md border border-outline/30 px-2 py-1 text-xs font-bold text-on-surface hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >Conceal</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {dmNotes && (
                 <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 overflow-hidden">
                   <button
@@ -759,13 +796,16 @@ export const MainContent: React.FC<MainContentProps> = ({
                 currentRound={currentRound}
               />
 
-              {isEncounterActive && !activeRowVisible && (() => {
+              {isEncounterActive && (() => {
                 const active = combatLayout.allSorted[currentTurnIndex];
                 if (!active) return null;
                 const hpPct = active.hp.max > 0 ? Math.max(0, Math.min(100, (active.hp.current / active.hp.max) * 100)) : 0;
                 const hpColor = hpPct > 50 ? 'bg-emerald-500' : hpPct > 25 ? 'bg-amber-400' : 'bg-error';
                 return (
-                  <div className="sticky top-0 z-20 flex items-center gap-3 px-3 py-2 bg-[#0f1419]/95 backdrop-blur border border-primary/30 rounded-xl shadow-lg mb-1">
+                  <div
+                    aria-hidden={activeRowVisible}
+                    className={`sticky top-0 z-20 flex items-center gap-3 px-3 py-2 bg-[#0f1419]/95 backdrop-blur border border-primary/30 rounded-xl shadow-lg mb-1 ${activeRowVisible ? 'invisible' : ''}`}
+                  >
                     <AvatarImg src={active.avatar} name={active.name} className="w-7 h-7 rounded-lg border border-primary/30 shrink-0 text-xs" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
@@ -851,15 +891,25 @@ export const MainContent: React.FC<MainContentProps> = ({
                   </div>
                 </div>
                 {(() => {
-                  const note = encounterNotes?.rounds.find(r => r.round === currentRound)?.text;
-                  if (!isEncounterActive || !note?.trim()) return null;
-                  const activeCombatantId = combatants[currentTurnIndex]?.id;
+                  const roundNote = encounterNotes?.rounds.find(r => r.round === currentRound);
+                  const note = roundNote?.text ?? '';
+                  if (!isEncounterActive || (!note.trim() && !roundNote?.readout?.trim())) return null;
+                  const activeCombatantId = combatLayout.allSorted[currentTurnIndex]?.id;
                   const tokens = onUseSpellFromLibrary
                     ? tokenizeNote(note, combatants, activeCombatantId)
                     : [{ type: 'text' as const, text: note }];
                   return (
-                    <div className="mx-2 mb-2 px-3 py-1.5 rounded-lg bg-surface-container border border-outline/20 text-sm text-on-surface shrink-0 flex items-start gap-2">
-                      <span className="text-outline/60 text-xs font-bold shrink-0 mt-0.5">R{currentRound}</span>
+                    <>
+                    {roundNote?.readout?.trim() && (
+                      <div className="mx-2 mb-2 px-3 py-2 rounded-lg bg-sky-500/5 border border-sky-400/30 flex items-start gap-2">
+                        <span className="text-sky-300 text-xs font-bold shrink-0">R{currentRound} · Readout</span>
+                        <p className="flex-1 text-xs text-on-surface leading-relaxed whitespace-pre-wrap">{roundNote.readout}</p>
+                        <button onClick={() => onSwitchSidebarToNotes?.()} className="text-xs text-sky-300 hover:text-on-surface shrink-0">edit</button>
+                      </div>
+                    )}
+                    {note.trim() && (
+                    <div className="mx-2 mb-2 px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-400/30 text-sm text-on-surface shrink-0 flex items-start gap-2">
+                      <span className="text-amber-300 text-xs font-bold shrink-0 mt-0.5">R{currentRound} · NPC actions</span>
                       <span className="flex-1 text-xs leading-relaxed">
                         {tokens.map((tok, i) =>
                           tok.type === 'text' ? (
@@ -883,6 +933,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                         edit
                       </button>
                     </div>
+                    )}
+                    </>
                   );
                 })()}
                 {(() => {

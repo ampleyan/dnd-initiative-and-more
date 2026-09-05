@@ -261,20 +261,26 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
     res.json(formatCombatants(combatants));
   });
 
-  router.post('/encounters/:id/waves/:waveId/reveal', (req, res) => {
+  router.post(['/encounters/:id/waves/:waveId/reveal', '/encounters/:id/waves/:waveId/conceal'], (req, res) => {
     if (!dbAvailable) return res.status(503).json({ error: 'DB not available' });
     const encounterId = req.params.id;
     const waveId = req.params.waveId;
-    const result = db.prepare('UPDATE combatants SET hidden = 0 WHERE encounterId = ? AND waveId = ?').run(encounterId, waveId);
-    const existing = db.prepare('SELECT waves FROM encounters WHERE id = ?').get(encounterId) as any;
-    if (existing) {
-      let waves: any[] = [];
-      try { waves = JSON.parse(existing.waves || '[]'); } catch { waves = []; }
-      waves = waves.map(w => w.id === waveId ? { ...w, revealed: true } : w);
-      db.prepare('UPDATE encounters SET waves = ? WHERE id = ?').run(JSON.stringify(waves), encounterId);
-    }
+    const hidden = /\/conceal\/?$/i.test(req.path);
+    const updated = db.transaction(() => {
+      const result = db.prepare("UPDATE combatants SET hidden = ? WHERE encounterId = ? AND COALESCE(waveId, 'default') = ? AND type = 'monster'").run(hidden ? 1 : 0, encounterId, waveId);
+      const existing = db.prepare('SELECT waves FROM encounters WHERE id = ?').get(encounterId) as any;
+      if (existing) {
+        let waves: any[] = [];
+        try { waves = JSON.parse(existing.waves || '[]'); } catch { waves = []; }
+        if (Array.isArray(waves)) {
+          waves = waves.map(w => w?.id === waveId ? { ...w, revealed: !hidden } : w);
+          db.prepare('UPDATE encounters SET waves = ? WHERE id = ?').run(JSON.stringify(waves), encounterId);
+        }
+      }
+      return result.changes;
+    })();
     io.to(`encounter:${encounterId}`).emit('encounter-updated', { encounterId });
-    res.json({ success: true, revealed: result.changes });
+    res.json({ success: true, [hidden ? 'concealed' : 'revealed']: updated });
   });
 
   router.post('/combatants', (req, res) => {
