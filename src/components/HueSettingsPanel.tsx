@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Lightbulb, Wifi, RefreshCw, CheckCircle2, XCircle, Sliders, Zap, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { EFFECT_CONFIGS, HueEffectName, HueEffectTargets } from '../lib/hueEffects';
 import { api } from '../api/client';
 import { DEFAULT_HUE_SCENES, HueScene, normalizeHueScenes } from '../lib/hueScenes';
+import { HueImagePalette } from './HueImagePalette';
 
 interface HueLight {
   id: string;
@@ -56,6 +57,9 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
   const [updatingIp, setUpdatingIp] = useState(false);
   const [ipSuccess, setIpSuccess] = useState(false);
   const [scenes, setScenes] = useState<HueScene[]>(DEFAULT_HUE_SCENES);
+  const [savingScenes, setSavingScenes] = useState(false);
+  const [sceneError, setSceneError] = useState('');
+  const sceneSavePending = useRef(false);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -133,7 +137,7 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
     setConfig(updated);
     setSavingConfig(true);
     try {
-      await api.hue.saveConfig(updated as unknown as Record<string, unknown>);
+      await api.hue.saveConfig({ lightIds: newIds });
     } finally {
       setSavingConfig(false);
     }
@@ -145,7 +149,7 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
     setConfig(updated);
     setSavingConfig(true);
     try {
-      await api.hue.saveConfig(updated as unknown as Record<string, unknown>);
+      await api.hue.saveConfig({ lightIds });
     } finally {
       setSavingConfig(false);
     }
@@ -180,9 +184,22 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
   };
 
   const updateScenes = async (nextScenes: HueScene[]) => {
-    setScenes(nextScenes);
-    setConfig(prev => prev ? { ...prev, scenes: nextScenes } : prev);
-    await api.hue.saveConfig({ scenes: nextScenes });
+    if (sceneSavePending.current) return false;
+    sceneSavePending.current = true;
+    setSavingScenes(true);
+    setSceneError('');
+    try {
+      await api.hue.saveConfig({ scenes: nextScenes });
+      setScenes(nextScenes);
+      setConfig(prev => prev ? { ...prev, scenes: nextScenes } : prev);
+      return true;
+    } catch (error) {
+      setSceneError(error instanceof Error ? error.message : 'Could not save Hue scenes.');
+      return false;
+    } finally {
+      sceneSavePending.current = false;
+      setSavingScenes(false);
+    }
   };
 
   const updateScene = (id: string, patch: Partial<HueScene>) => {
@@ -216,9 +233,9 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
   const isPaired = !!config?.username;
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="col-span-full grid min-w-0 grid-cols-1 items-start gap-6 @[50rem]/settings:grid-cols-2 @[76rem]/settings:grid-cols-3 @[76rem]/settings:grid-rows-[auto_min-content_1fr]">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="col-span-full flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
             <Lightbulb className="w-5 h-5 text-amber-400" />
@@ -239,7 +256,7 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
 
       {/* Bridge setup — only shown when integration is enabled */}
       {enabled && (
-      <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-4">
+      <section className="min-w-0 bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-headline font-bold text-sm flex items-center gap-2">
             <Wifi className="w-4 h-4 text-primary" />
@@ -255,7 +272,7 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
 
         <div className="flex gap-2">
           <input
-            className="flex-1 bg-surface-container-high border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50 font-mono"
+            className="min-w-0 flex-1 bg-surface-container-high border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50 font-mono"
             placeholder="192.168.1.x"
             value={bridgeIpInput}
             onChange={e => setBridgeIpInput(e.target.value)}
@@ -325,8 +342,8 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
 
       {/* Light selection */}
       {isPaired && (
-        <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
+        <section className="min-w-0 bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-4 @[76rem]/settings:col-start-1 @[76rem]/settings:row-start-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-headline font-bold text-sm flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-amber-400" />
               Select Lights
@@ -432,7 +449,7 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
 
       {/* Effect toggles */}
       {isPaired && (
-        <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-3">
+        <section className="min-w-0 bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-3 @[76rem]/settings:col-start-2 @[76rem]/settings:row-start-2 @[76rem]/settings:row-span-2">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-headline font-bold text-sm flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary" />
@@ -449,7 +466,7 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
               <p className="text-[11px] text-outline">Enable Hue integration above to activate effects</p>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-1 gap-1.5">
             {EFFECT_CONFIGS.map(effect => {
               const isOn = enabledEffects[effect.name] !== false;
               const targets = effectTargets[effect.name] ?? { players: true, monsters: true };
@@ -514,17 +531,25 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
       )}
 
       {isPaired && (
-        <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-3">
+        <section className="min-w-0 bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-3 @[76rem]/settings:col-start-3 @[76rem]/settings:row-start-2 @[76rem]/settings:row-span-2">
+          {sceneError && <p role="alert" className="text-xs text-error">{sceneError}</p>}
+          <fieldset disabled={savingScenes} className="min-w-0 space-y-3">
           <div className="flex items-center justify-between">
             <div><h3 className="font-headline font-bold text-sm">Hue Scenes</h3><p className="text-[10px] text-outline">Scenes available from encounter controls.</p></div>
             <button onClick={addScene} className="rounded-lg border border-primary/30 px-2.5 py-1.5 text-[10px] font-bold text-primary hover:bg-primary/10">Add scene</button>
           </div>
           <div className="space-y-2">
             {scenes.map(scene => <div key={scene.id} className="rounded-xl border border-white/10 bg-surface-container-high p-3 space-y-2">
-              <div className="flex gap-2"><input value={scene.label} onChange={event => updateScene(scene.id, { label: event.target.value })} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-on-surface" /><button onClick={() => removeScene(scene.id)} disabled={scenes.length <= 1} className="px-2 text-[10px] text-error disabled:opacity-30">Delete</button></div>
-              <div className="grid grid-cols-3 gap-2">{scene.colors.slice(0, 3).map((color, index) => <input key={`${scene.id}-${index}`} type="color" value={color} onChange={event => updateScene(scene.id, { colors: scene.colors.map((item, colorIndex) => colorIndex === index ? event.target.value : item) })} className="h-9 w-full cursor-pointer rounded border border-white/10 bg-transparent" />)}</div>
+              <div className="flex gap-2"><input key={scene.label} aria-label={`${scene.label} scene name`} defaultValue={scene.label} onBlur={event => {
+                const label = event.target.value.trim();
+                event.target.value = scene.label;
+                if (label && label !== scene.label) updateScene(scene.id, { label });
+              }} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-on-surface" /><button onClick={() => removeScene(scene.id)} disabled={scenes.length <= 1} className="px-2 text-[10px] text-error disabled:opacity-30">Delete</button></div>
+              <div className="grid grid-cols-3 gap-2">{scene.colors.map((color, index) => <input key={`${scene.id}-${index}`} type="color" aria-label={`${scene.label} color ${index + 1}`} value={color} onChange={event => updateScene(scene.id, { colors: scene.colors.map((item, colorIndex) => colorIndex === index ? event.target.value : item) })} className="h-9 w-full cursor-pointer rounded border border-white/10 bg-transparent" />)}</div>
+              <HueImagePalette onSave={colors => updateScenes(scenes.map(item => item.id === scene.id ? { ...item, colors } : item))} />
             </div>)}
           </div>
+          </fieldset>
         </section>
       )}
     </div>

@@ -96,11 +96,11 @@ export const UsersSettings: React.FC<UsersSettingsProps> = ({ currentUser, onLog
   };
 
   return (
-    <div className="space-y-6">
+    <div className="col-span-full grid grid-cols-1 @[50rem]/settings:grid-cols-2 @[76rem]/settings:grid-cols-3 items-start gap-6">
       {/* Account section */}
-      <div>
-        <h3 className="text-xs font-black uppercase tracking-widest text-outline mb-3">Account</h3>
-        <div className="bg-surface-container rounded-xl p-4 flex items-center justify-between">
+      <details className="min-w-0 rounded-xl border border-outline-variant/20 p-4">
+        <summary className="cursor-pointer text-sm font-bold text-on-surface">Account</summary>
+        <div className="mt-3 bg-surface-container rounded-xl p-4 flex flex-wrap gap-2 items-center justify-between">
           <div>
             <p className="text-sm font-bold text-on-surface">{currentUser.username}</p>
             <p className="text-xs text-outline capitalize">{currentUser.role}</p>
@@ -112,11 +112,11 @@ export const UsersSettings: React.FC<UsersSettingsProps> = ({ currentUser, onLog
             <LogOut className="w-3.5 h-3.5" /> Sign out
           </button>
         </div>
-      </div>
+      </details>
 
-      {currentUser.role === 'admin' && <div>
-        <h3 className="text-xs font-black uppercase tracking-widest text-outline mb-3">Data safety</h3>
-        <div className="bg-surface-container rounded-xl p-4 flex flex-wrap gap-2">
+      {currentUser.role === 'admin' && <details className="min-w-0 rounded-xl border border-outline-variant/20 p-4">
+        <summary className="cursor-pointer text-sm font-bold text-on-surface">Data safety</summary>
+        <div className="mt-3 bg-surface-container rounded-xl p-4 flex flex-wrap gap-2">
           <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
             <Download className="w-3.5 h-3.5" /> Export backup
           </button>
@@ -126,13 +126,13 @@ export const UsersSettings: React.FC<UsersSettingsProps> = ({ currentUser, onLog
           </label>
           <p className="w-full text-[10px] text-outline/60">Backups include tracker data, not passwords or uploaded files.</p>
         </div>
-      </div>}
+      </details>}
 
       {/* Users list (admin only) */}
       {currentUser.role === 'admin' && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-black uppercase tracking-widest text-outline">Users</h3>
+        <details className="min-w-0 rounded-xl border border-outline-variant/20 p-4">
+          <summary className="cursor-pointer text-sm font-bold text-on-surface">Users</summary>
+          <div className="flex items-center justify-end my-3">
             <button
               onClick={() => setModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
@@ -158,7 +158,7 @@ export const UsersSettings: React.FC<UsersSettingsProps> = ({ currentUser, onLog
               </div>
             ))}
           </div>
-        </div>
+        </details>
       )}
 
       {/* Create User modal */}
