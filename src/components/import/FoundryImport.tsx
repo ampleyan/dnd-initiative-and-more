@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { api } from '../../api/client';
 import { MonsterTemplate, ParsedEncounter } from '../../types';
 import { parseFoundryJournal } from '../../lib/adventureParser';
+import { FOUNDRY_SETTINGS_CHANGED } from '../FoundrySettingsPanel';
 
 const LS_DATA_PATH = 'foundry_data_path';
 const LS_URL = 'foundry_url';
@@ -115,6 +116,31 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    const refreshSettings = () => {
+      const nextPath = localStorage.getItem(LS_DATA_PATH) ?? '';
+      const nextUrl = localStorage.getItem(LS_URL) ?? '';
+      setDataPath(nextPath);
+      setFoundryUrl(nextUrl);
+      setConnectedPath(nextPath || undefined);
+      if (nextPath) {
+        setConnectStatus('connecting');
+        api.foundry.worlds(nextPath)
+          .then(data => {
+            setWorlds(data);
+            if (data.length > 0) setSelectedWorld(data[0].id);
+            setConnectStatus('ok');
+          })
+          .catch(() => {
+            setConnectStatus('error');
+            setConnectError('Could not read Foundry data at saved path');
+          });
+      }
+    };
+    window.addEventListener(FOUNDRY_SETTINGS_CHANGED, refreshSettings);
+    return () => window.removeEventListener(FOUNDRY_SETTINGS_CHANGED, refreshSettings);
+  }, []);
+
+  useEffect(() => {
     if (!selectedWorld) return;
     api.foundry.scenes(selectedWorld, effectiveDataPath)
       .then(setScenes)
@@ -138,7 +164,7 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [effectiveDataPath]);
 
   useEffect(() => {
     if (!selectedWorld) return;
@@ -168,7 +194,7 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
     } finally {
       setSpellsLoading(false);
     }
-  }, []);
+  }, [effectiveDataPath]);
 
   useEffect(() => {
     if (!selectedWorld || tab !== 'spells') return;
@@ -198,7 +224,7 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
     } finally {
       setCharsLoading(false);
     }
-  }, []);
+  }, [effectiveDataPath]);
 
   useEffect(() => {
     if (!selectedWorld || tab !== 'players') return;
@@ -225,7 +251,7 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
     } finally {
       setJournalsLoading(false);
     }
-  }, []);
+  }, [effectiveDataPath]);
 
   useEffect(() => {
     if (!selectedWorld || tab !== 'journals') return;

@@ -44,6 +44,9 @@ function buildPolymorphed(combatant: Combatant, monster: MonsterTemplate): Comba
     originalSubtitle: combatant.subtitle,
     originalAvatar: combatant.avatar,
     originalSpeed: combatant.speed,
+    originalActions: combatant.actions,
+    originalAbilities: combatant.abilities,
+    originalSpells: combatant.spells,
   };
   return {
     ...combatant,
@@ -53,6 +56,9 @@ function buildPolymorphed(combatant: Combatant, monster: MonsterTemplate): Comba
     ac: monster.ac,
     stats: monster.stats,
     speed: monster.speed,
+    actions: monster.actions ?? [],
+    abilities: monster.abilities ?? [],
+    spells: monster.spells ?? [],
     hp: { current: monster.hp, max: monster.hp },
     polymorphForm,
   };
@@ -68,6 +74,9 @@ function buildReverted(combatant: Combatant): Combatant {
     ac: f.originalAc,
     stats: f.originalStats,
     speed: f.originalSpeed ?? combatant.speed,
+    actions: f.originalActions,
+    abilities: f.originalAbilities,
+    spells: f.originalSpells,
     hp: f.originalHp,
     polymorphForm: undefined,
   };
@@ -82,6 +91,15 @@ describe('buildPolymorphed', () => {
     expect(result.ac).toBe(12);
     expect(result.hp).toEqual({ current: 157, max: 157 });
     expect(result.stats.str).toBe(23);
+  });
+
+  it('swaps actions, abilities, and spells with the monster form', () => {
+    const pc = makeCombatant({ actions: [{ name: 'Staff', description: 'Hit' }], abilities: [{ name: 'Wild Shape', description: 'Transform' }], spells: [{ name: 'Entangle', description: 'Roots' }] });
+    const monster = makeMonster({ actions: [{ name: 'Fist', description: 'Smash' }], abilities: [{ name: 'Keen Sight', description: 'See' }], spells: [{ name: 'Roar', description: 'Loud' }] });
+    const result = buildPolymorphed(pc, monster);
+    expect(result.actions).toEqual(monster.actions);
+    expect(result.abilities).toEqual(monster.abilities);
+    expect(result.spells).toEqual(monster.spells);
   });
 
   it('sets subtitle to original name + (Polymorphed)', () => {
@@ -124,6 +142,14 @@ describe('buildReverted', () => {
     expect(reverted.ac).toBe(16);
     expect(reverted.hp).toEqual({ current: 30, max: 40 });
     expect(reverted.stats.str).toBe(10);
+  });
+
+  it('restores original actions, abilities, and spells', () => {
+    const pc = makeCombatant({ actions: [{ name: 'Staff', description: 'Hit' }], abilities: [{ name: 'Wild Shape', description: 'Transform' }], spells: [{ name: 'Entangle', description: 'Roots' }] });
+    const reverted = buildReverted(buildPolymorphed(pc, makeMonster({ actions: [{ name: 'Fist', description: 'Smash' }], abilities: [{ name: 'Keen Sight', description: 'See' }], spells: [{ name: 'Roar', description: 'Loud' }] })));
+    expect(reverted.actions).toEqual(pc.actions);
+    expect(reverted.abilities).toEqual(pc.abilities);
+    expect(reverted.spells).toEqual(pc.spells);
   });
 
   it('clears polymorphForm after revert', () => {

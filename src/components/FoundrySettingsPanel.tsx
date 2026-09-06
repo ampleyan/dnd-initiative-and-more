@@ -5,6 +5,7 @@ import { api } from '../api/client';
 const DATA_PATH_KEY = 'foundry_data_path';
 const URL_KEY = 'foundry_url';
 const TOKEN_KEY = 'foundry_sync_token';
+export const FOUNDRY_SETTINGS_CHANGED = 'foundry-settings-changed';
 
 export const FoundrySettingsPanel: React.FC = () => {
   const [url, setUrl] = React.useState(() => localStorage.getItem(URL_KEY) ?? '');
@@ -24,6 +25,7 @@ export const FoundrySettingsPanel: React.FC = () => {
         await api.foundry.saveSyncToken(token.trim());
         localStorage.setItem(TOKEN_KEY, token.trim());
       }
+      window.dispatchEvent(new Event(FOUNDRY_SETTINGS_CHANGED));
       const worlds = await api.foundry.worlds(dataPath.trim() || undefined);
       setWorld(worlds[0]?.id ?? '');
       setStatus('connected');

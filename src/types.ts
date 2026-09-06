@@ -28,6 +28,9 @@ export interface PolymorphForm {
   originalSubtitle?: string;
   originalAvatar?: string;
   originalSpeed?: string;
+  originalActions?: MonsterAction[];
+  originalAbilities?: MonsterAction[];
+  originalSpells?: MonsterAction[];
 }
 
 export interface Combatant {

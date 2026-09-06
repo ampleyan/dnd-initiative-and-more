@@ -57,6 +57,9 @@ function buildReverted(combatant: Combatant): Combatant {
     ac: f.originalAc,
     stats: f.originalStats,
     speed: f.originalSpeed ?? combatant.speed,
+    actions: f.originalActions,
+    abilities: f.originalAbilities,
+    spells: f.originalSpells,
     hp: f.originalHp,
     polymorphForm: undefined,
   };
@@ -280,6 +283,9 @@ export function useCombatActions(params: CombatActionsParams) {
       originalSubtitle: combatant.subtitle,
       originalAvatar: combatant.avatar,
       originalSpeed: combatant.speed,
+      originalActions: combatant.actions,
+      originalAbilities: combatant.abilities,
+      originalSpells: combatant.spells,
     };
     const transformed: Combatant = {
       ...combatant,
@@ -289,6 +295,9 @@ export function useCombatActions(params: CombatActionsParams) {
       ac: monster.ac,
       stats: monster.stats,
       speed: monster.speed,
+      actions: monster.actions ?? [],
+      abilities: monster.abilities ?? [],
+      spells: monster.spells ?? [],
       hp: { current: monster.hp, max: monster.hp },
       polymorphForm,
     };
