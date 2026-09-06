@@ -128,12 +128,25 @@ export function createMonstersRouter(db: any, dbAvailable: boolean, requireAdmin
     const { name, dndBeyondId, hp_max, ac, speed, subtitle, avatar, stats, passivePerception, level, actions, abilities, spells, spellIds, featureIds, spellSlots, featureUses } = req.body;
     if (!name) return res.status(400).json({ error: 'name is required' });
     const effectiveDndBeyondId = dndBeyondId || `foundry:${crypto.randomUUID()}`;
-    const id = crypto.randomUUID();
+    const isFoundryImport = typeof dndBeyondId === 'string' && dndBeyondId.startsWith('foundry:');
+    let existing = db.prepare('SELECT * FROM players WHERE dndBeyondId = ?').get(effectiveDndBeyondId) as any;
+    if (!existing && isFoundryImport) {
+      existing = db.prepare('SELECT * FROM players WHERE lower(trim(name)) = lower(trim(?)) ORDER BY rowid LIMIT 1').get(name);
+    }
+    const preserved = isFoundryImport && existing ? serializePlayer(existing) : undefined;
+    const importedSlots = preserved && spellSlots
+      ? Object.fromEntries(Object.entries(spellSlots).map(([level, slot]: [string, any]) => [level, {
+          total: slot.total,
+          used: Math.min(slot.total, Math.max(0, preserved.spellSlots?.[level]?.used ?? slot.used ?? 0)),
+        }]))
+      : spellSlots ?? preserved?.spellSlots;
+    const id = existing?.id ?? crypto.randomUUID();
     const lastImported = new Date().toISOString();
     db.prepare(`
       INSERT INTO players (id, name, dndBeyondId, hp_max, ac, speed, subtitle, avatar, stats, lastImported, passive_perception, level, actions, abilities, spells, spell_ids, feature_ids, spell_slots, feature_uses)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(dndBeyondId) DO UPDATE SET
+      ON CONFLICT(id) DO UPDATE SET
+        dndBeyondId=excluded.dndBeyondId,
         name=excluded.name, hp_max=excluded.hp_max, ac=excluded.ac,
         speed=excluded.speed, subtitle=excluded.subtitle, avatar=excluded.avatar,
         stats=excluded.stats, lastImported=excluded.lastImported,
@@ -141,7 +154,7 @@ export function createMonstersRouter(db: any, dbAvailable: boolean, requireAdmin
         actions=excluded.actions, abilities=excluded.abilities, spells=excluded.spells,
         spell_ids=excluded.spell_ids, feature_ids=excluded.feature_ids,
         spell_slots=excluded.spell_slots, feature_uses=excluded.feature_uses
-    `).run(id, name, effectiveDndBeyondId, hp_max ?? 0, ac ?? 10, speed ?? '30 ft.', subtitle ?? '', avatar ?? '', JSON.stringify(stats ?? {}), lastImported, passivePerception ?? 10, level ?? 1, JSON.stringify(actions ?? []), JSON.stringify(abilities ?? []), JSON.stringify(spells ?? []), JSON.stringify(spellIds ?? []), JSON.stringify(featureIds ?? []), JSON.stringify(spellSlots ?? {}), JSON.stringify(featureUses ?? {}));
+    `).run(id, name, effectiveDndBeyondId, preserved?.hp_max ?? hp_max ?? 0, preserved?.ac ?? ac ?? 10, preserved?.speed ?? speed ?? '30 ft.', subtitle ?? '', avatar ?? '', JSON.stringify(preserved?.stats ?? stats ?? {}), lastImported, preserved?.passivePerception ?? passivePerception ?? 10, level ?? 1, JSON.stringify(actions ?? []), JSON.stringify(abilities ?? []), JSON.stringify(spells ?? []), JSON.stringify(spellIds ?? preserved?.spellIds ?? []), JSON.stringify(featureIds ?? preserved?.featureIds ?? []), JSON.stringify(importedSlots ?? {}), JSON.stringify(preserved?.featureUses ?? featureUses ?? {}));
     const player = db.prepare('SELECT * FROM players WHERE dndBeyondId = ?').get(effectiveDndBeyondId) as any;
     res.json(serializePlayer(player));
   });

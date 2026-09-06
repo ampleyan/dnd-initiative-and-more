@@ -423,16 +423,47 @@ function transformFoundrySpell(item: any): any {
 }
 
 const FULL_CASTER_SLOTS: Record<number, number[]> = {
-  1:[2],2:[3,2],3:[4,3,2],4:[4,3,3,1],5:[4,3,3,2,1],6:[4,3,3,3,1,1],7:[4,3,3,3,2,1,1],
-  8:[4,3,3,3,2,2,1,1],9:[4,3,3,3,2,2,1,1,1],10:[4,3,3,3,2,2,2,1,1],
-  11:[4,3,3,3,2,2,2,1,1],12:[4,3,3,3,2,2,2,1,1],13:[4,3,3,3,2,2,2,1,1,1],
-  14:[4,3,3,3,2,2,2,1,1,1],15:[4,3,3,3,2,2,2,1,1,2],16:[4,3,3,3,2,2,2,1,1,2],
-  17:[4,3,3,3,2,2,2,1,1,2],18:[4,3,3,3,3,2,2,1,1,2],19:[4,3,3,3,3,2,2,2,1,2],20:[4,3,3,3,3,2,2,2,2,2],
+  1: [2],
+  2: [3],
+  3: [4, 2],
+  4: [4, 3],
+  5: [4, 3, 2],
+  6: [4, 3, 3],
+  7: [4, 3, 3, 1],
+  8: [4, 3, 3, 2],
+  9: [4, 3, 3, 3, 1],
+  10: [4, 3, 3, 3, 2],
+  11: [4, 3, 3, 3, 2, 1],
+  12: [4, 3, 3, 3, 2, 1],
+  13: [4, 3, 3, 3, 2, 1, 1],
+  14: [4, 3, 3, 3, 2, 1, 1],
+  15: [4, 3, 3, 3, 2, 1, 1, 1],
+  16: [4, 3, 3, 3, 2, 1, 1, 1],
+  17: [4, 3, 3, 3, 2, 1, 1, 1, 1],
+  18: [4, 3, 3, 3, 3, 1, 1, 1, 1],
+  19: [4, 3, 3, 3, 3, 2, 1, 1, 1],
+  20: [4, 3, 3, 3, 3, 2, 2, 1, 1],
 };
 const HALF_CASTER_SLOTS: Record<number, number[]> = {
-  2:[2],3:[3],4:[3],5:[4,2],6:[4,2],7:[4,3,2],8:[4,3,2],9:[4,3,3,1],10:[4,3,3,1],
-  11:[4,3,3,2,1],12:[4,3,3,2,1],13:[4,3,3,2,1,1],14:[4,3,3,2,1,1],15:[4,3,3,2,1,1,1],
-  16:[4,3,3,2,1,1,1],17:[4,3,3,2,1,1,1,1],18:[4,3,3,2,1,1,1,1],19:[4,3,3,2,1,1,1,1,1],20:[4,3,3,2,1,1,1,1,1,1],
+  2: [2],
+  3: [3],
+  4: [3],
+  5: [4, 2],
+  6: [4, 2],
+  7: [4, 3],
+  8: [4, 3],
+  9: [4, 3, 2],
+  10: [4, 3, 2],
+  11: [4, 3, 3],
+  12: [4, 3, 3],
+  13: [4, 3, 3, 1],
+  14: [4, 3, 3, 1],
+  15: [4, 3, 3, 2],
+  16: [4, 3, 3, 2],
+  17: [4, 3, 3, 3, 1],
+  18: [4, 3, 3, 3, 1],
+  19: [4, 3, 3, 3, 2],
+  20: [4, 3, 3, 3, 2],
 };
 const WARLOCK_SLOTS: Record<number, { slots: number; level: number }> = {
   1:{slots:1,level:1},2:{slots:2,level:1},3:{slots:2,level:2},4:{slots:2,level:2},
@@ -1036,13 +1067,12 @@ export function createFoundryConfigRouter(db: any, dbAvailable: boolean) {
 
 export function createFoundryLiveRouter(db: any, dbAvailable: boolean, io: any) {
   const router = Router();
-  router.use((_req, res, next) => {
+  router.use('/foundry/live-sync', (req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-    next();
-  });
-  router.options('/foundry/live-sync', (_req, res) => res.sendStatus(204));
-  router.post('/foundry/live-sync', (req, res) => {
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
     if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
     const token = req.headers.authorization?.replace(/^Bearer\s+/i, '').trim();
     const configured = db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_sync_token') as { value?: string } | undefined;
@@ -1051,20 +1081,45 @@ export function createFoundryLiveRouter(db: any, dbAvailable: boolean, io: any) 
     if (!token || !configured?.value || tokenBuffer.length !== configuredBuffer.length || !crypto.timingSafeEqual(tokenBuffer, configuredBuffer)) {
       return res.status(401).json({ error: 'Invalid sync token' });
     }
-    const { actorId, name, hp, maxHp, ac, spellSlots } = req.body ?? {};
+    next();
+  });
+  router.get('/foundry/live-sync', (_req, res) => {
+    const actors = db.prepare(`SELECT substr(p.dndBeyondId, 9) AS actorId, s.hp, s.tempHp, s.revision, s.pending
+      FROM foundry_hp_sync s JOIN players p ON p.id = s.playerId WHERE p.dndBeyondId LIKE 'foundry:%'`).all();
+    res.json({ actors });
+  });
+  router.post('/foundry/live-sync/ack', (req, res) => {
+    const { actorId, revision } = req.body ?? {};
+    if (typeof actorId !== 'string' || !actorId || !Number.isSafeInteger(revision) || revision < 0) return res.status(400).json({ error: 'Valid actorId and revision required' });
+    const result = db.prepare(`UPDATE foundry_hp_sync SET pending = 0 WHERE revision = ?
+      AND playerId = (SELECT id FROM players WHERE dndBeyondId = ?)`).run(revision, `foundry:${actorId}`);
+    if (!result.changes) return res.status(409).json({ error: 'HP changed; fetch the latest update' });
+    res.json({ updated: true });
+  });
+  router.post('/foundry/live-sync', (req, res) => {
+    const { actorId, name, hp, tempHp, maxHp, ac, spellSlots, revision = 0 } = req.body ?? {};
     if (typeof actorId !== 'string' || !actorId) return res.status(400).json({ error: 'actorId is required' });
-    const player = db.prepare('SELECT id FROM players WHERE dndBeyondId = ?').get(`foundry:${actorId}`) as { id: string } | undefined;
+    if ([hp, tempHp, maxHp, ac, revision].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) return res.status(400).json({ error: 'HP, AC and revision must be non-negative integers' });
+    const player = db.prepare('SELECT id, hp_current, hp_max FROM players WHERE dndBeyondId = ?').get(`foundry:${actorId}`) as { id: string; hp_current: number | null; hp_max: number } | undefined;
     if (!player) return res.status(404).json({ error: 'Foundry actor is not linked to a player' });
+    const current = db.prepare('SELECT * FROM foundry_hp_sync WHERE playerId = ?').get(player.id) as { revision: number; hp: number; tempHp: number } | undefined;
+    const changesHp = hp !== undefined || tempHp !== undefined;
+    if (changesHp && revision !== (current?.revision ?? 0)) return res.status(409).json({ error: 'HP changed; fetch the latest update' });
     const slotJson = spellSlots && typeof spellSlots === 'object' ? JSON.stringify(spellSlots) : null;
     const updatePlayer = db.prepare('UPDATE players SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), ac = COALESCE(?, ac), spell_slots = COALESCE(?, spell_slots), lastImported = ? WHERE id = ?');
-    const updateCombatant = db.prepare('UPDATE combatants SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), ac = COALESCE(?, ac), spellSlots = COALESCE(?, spellSlots) WHERE playerId = ?');
+    const updateCombatant = db.prepare('UPDATE combatants SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), tempHp = COALESCE(?, tempHp), ac = COALESCE(?, ac), spellSlots = COALESCE(?, spellSlots) WHERE playerId = ? AND (polymorph_form IS NULL OR polymorph_form = \'null\')');
     const rows = db.prepare('SELECT DISTINCT encounterId FROM combatants WHERE playerId = ? AND encounterId IS NOT NULL').all(player.id) as { encounterId: string }[];
     db.transaction(() => {
       updatePlayer.run(name || null, maxHp ?? null, hp ?? null, ac ?? null, slotJson, new Date().toISOString(), player.id);
-      updateCombatant.run(name || null, maxHp ?? null, hp ?? null, ac ?? null, slotJson, player.id);
+      updateCombatant.run(name || null, maxHp ?? null, hp ?? null, tempHp ?? null, ac ?? null, slotJson, player.id);
+      if (changesHp) {
+        db.prepare(`INSERT INTO foundry_hp_sync (playerId, hp, tempHp, revision, pending) VALUES (?, ?, ?, ?, 0)
+          ON CONFLICT(playerId) DO UPDATE SET hp = excluded.hp, tempHp = excluded.tempHp, revision = excluded.revision, pending = 0`)
+          .run(player.id, hp ?? current?.hp ?? player.hp_current ?? player.hp_max, tempHp ?? current?.tempHp ?? 0, revision + 1);
+      }
     })();
     for (const row of rows) io.emit('encounter-updated', { encounterId: row.encounterId });
-    res.json({ updated: true, encounters: rows.length });
+    res.json({ updated: true, encounters: rows.length, revision: changesHp ? revision + 1 : current?.revision ?? 0 });
   });
   return router;
 }

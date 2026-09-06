@@ -35,28 +35,28 @@ export function usePlayerActions(params: PlayerActionsParams) {
     navigate,
   } = params;
 
-  const syncCombatantsFromPlayer = (saved: Player) => {
+  const syncCombatantsFromPlayer = (saved: Player, preserveStats = false) => {
     setCombatants(prev => prev.map(c => {
       const isMatch = c.playerId === saved.id ||
-        (c.type === 'player' && c.name.toLowerCase() === saved.name.toLowerCase());
+        (c.type === 'player' && c.name.trim().toLowerCase() === saved.name.trim().toLowerCase());
       if (!isMatch) return c;
       const mergedSlots: SpellSlots | undefined = saved.spellSlots
         ? Object.fromEntries(
             Object.entries(saved.spellSlots).map(([lvl, s]) => [
               lvl,
-              { total: s!.total, used: c.spellSlots?.[Number(lvl)]?.used ?? 0 },
+              { total: s!.total, used: Math.min(s!.total, Math.max(0, c.spellSlots?.[Number(lvl)]?.used ?? s!.used ?? 0)) },
             ])
           )
         : c.spellSlots;
       const updated: Combatant = {
         ...c,
         playerId: saved.id,
-        hp: { ...c.hp, max: saved.hp_max },
-        ac: saved.ac,
-        speed: saved.speed,
+        hp: preserveStats ? c.hp : { ...c.hp, max: saved.hp_max },
+        ac: preserveStats ? c.ac : saved.ac,
+        speed: preserveStats ? c.speed : saved.speed,
         subtitle: saved.subtitle,
         avatar: saved.avatar,
-        stats: { ...saved.stats },
+        stats: preserveStats ? c.stats : { ...saved.stats },
         actions: saved.actions ?? [],
         abilities: saved.abilities ?? [],
         spells: saved.spells ?? [],
@@ -96,7 +96,7 @@ export function usePlayerActions(params: PlayerActionsParams) {
   const handleCreatePlayer = async (data: Partial<Player>): Promise<Player> => {
     const saved = await api.players.create(data);
     setPlayers(prev => {
-      const existing = prev.findIndex(p => p.id === saved.id || p.name === saved.name);
+      const existing = prev.findIndex(p => p.id === saved.id);
       if (existing >= 0) {
         const next = [...prev];
         next[existing] = saved;
@@ -104,7 +104,7 @@ export function usePlayerActions(params: PlayerActionsParams) {
       }
       return [...prev, saved];
     });
-    syncCombatantsFromPlayer(saved);
+    syncCombatantsFromPlayer(saved, data.dndBeyondId?.startsWith('foundry:') ?? false);
     return saved;
   };
 

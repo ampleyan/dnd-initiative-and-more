@@ -249,6 +249,29 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
     try { db.exec("ALTER TABLE sounds ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0"); } catch (e: any) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }
     try { db.exec(`ALTER TABLE combatants ADD COLUMN polymorph_form TEXT`); } catch (e: any) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }
 
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS foundry_hp_sync (
+        playerId TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+        hp INTEGER NOT NULL,
+        tempHp INTEGER NOT NULL DEFAULT 0,
+        revision INTEGER NOT NULL DEFAULT 1,
+        pending INTEGER NOT NULL DEFAULT 1
+      );
+      CREATE TRIGGER IF NOT EXISTS foundry_hp_changed
+      AFTER UPDATE OF hp_current, tempHp ON combatants
+      WHEN NEW.type = 'player'
+        AND (NEW.polymorph_form IS NULL OR NEW.polymorph_form = 'null')
+        AND (NEW.hp_current IS NOT OLD.hp_current OR COALESCE(NEW.tempHp, 0) != COALESCE(OLD.tempHp, 0))
+        AND EXISTS (SELECT 1 FROM players WHERE id = NEW.playerId AND dndBeyondId LIKE 'foundry:%')
+      BEGIN
+        INSERT INTO foundry_hp_sync (playerId, hp, tempHp, revision, pending)
+        VALUES (NEW.playerId, NEW.hp_current, COALESCE(NEW.tempHp, 0), 1, 1)
+        ON CONFLICT(playerId) DO UPDATE SET
+          hp = excluded.hp, tempHp = excluded.tempHp,
+          revision = foundry_hp_sync.revision + 1, pending = 1;
+      END;
+    `);
+
     // Seed one default sound if empty
     const soundCount = (db.prepare('SELECT COUNT(*) as count FROM sounds').get() as any).count;
     if (soundCount === 0) {

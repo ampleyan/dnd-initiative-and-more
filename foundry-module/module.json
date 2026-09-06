@@ -2,7 +2,7 @@
   "id": "initiative-tracker-live-sync",
   "title": "Initiative Tracker Live Sync",
   "description": "Synchronizes Foundry actor combat data with Initiative Tracker.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "compatibility": {
     "minimum": "14",
     "verified": "14"
