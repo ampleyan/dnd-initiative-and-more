@@ -301,6 +301,26 @@ export function createSeedFunctions(db: any, dbAvailable: boolean) {
     return inserted;
   }
 
+  async function repairMonsterTraits(): Promise<number> {
+    if (!dbAvailable) return 0;
+    const rows = db.prepare(`SELECT id, name, source FROM monsters WHERE (vulnerabilities = '[]' OR vulnerabilities IS NULL) AND (resistances = '[]' OR resistances IS NULL) AND (damageImmunities = '[]' OR damageImmunities IS NULL) AND (conditionImmunities = '[]' OR conditionImmunities IS NULL)`).all() as { id: string; name: string; source?: string }[];
+    if (rows.length === 0) return 0;
+    const updated = db.prepare('UPDATE monsters SET vulnerabilities = ?, resistances = ?, damageImmunities = ?, conditionImmunities = ? WHERE id = ?');
+    let count = 0;
+    for (const row of rows) {
+      const file = row.source ? SOURCE_TO_FILE[row.source.toLowerCase()] : undefined;
+      if (!file) continue;
+      const sourceMonsters = await fetchBestiaryFile(file);
+      const source = sourceMonsters.find(monster => monster.name?.toLowerCase() === row.name.toLowerCase());
+      if (!source) continue;
+      const traits = seedTransformMonster(source);
+      if (!traits.vulnerabilities.length && !traits.resistances.length && !traits.damageImmunities.length && !traits.conditionImmunities.length) continue;
+      updated.run(JSON.stringify(traits.vulnerabilities), JSON.stringify(traits.resistances), JSON.stringify(traits.damageImmunities), JSON.stringify(traits.conditionImmunities), row.id);
+      count++;
+    }
+    return count;
+  }
+
   async function autoSeedIfEmpty() {
     if (!dbAvailable) return;
     const monsterCount = (db.prepare('SELECT COUNT(*) as n FROM monsters').get() as any).n;
@@ -372,5 +392,5 @@ export function createSeedFunctions(db: any, dbAvailable: boolean) {
     }
   }
 
-  return { ensureMonstersInDb, autoSeedIfEmpty, seedClassFeatures };
+  return { ensureMonstersInDb, repairMonsterTraits, autoSeedIfEmpty, seedClassFeatures };
 }

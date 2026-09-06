@@ -73,6 +73,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [fetchingUrls, setFetchingUrls] = useState<Set<string>>(new Set());
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const [isRepairingTraits, setIsRepairingTraits] = useState(false);
 
   const addEntities = useCallback((newEntities: MappedEntity[]) => {
     setMappedEntities(prev => [...prev, ...newEntities]);
@@ -125,6 +126,16 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
     setMappedEntities([]);
   }, [onImportMonsters, onImportSpells, onImportEncounters, onImportClassFeatures]);
 
+  const handleRepairTraits = async () => {
+    setIsRepairingTraits(true);
+    try {
+      const result = await api.monsters.repairTraits();
+      if (result.updated > 0) window.location.reload();
+    } finally {
+      setIsRepairingTraits(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col text-white">
       <div className="flex-1 space-y-6 max-w-2xl mx-auto w-full">
@@ -139,6 +150,9 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
             </button>
           )}
           <h1 className="text-2xl font-headline font-bold tracking-tight">Import</h1>
+          <button onClick={handleRepairTraits} disabled={isRepairingTraits} className="ml-auto rounded-lg border border-primary/30 px-3 py-2 text-xs font-bold text-primary disabled:opacity-50">
+            {isRepairingTraits ? 'Repairing traits…' : 'Repair monster traits'}
+          </button>
         </div>
 
         {/* ── Source cards ────────────────────────────────────────────── */}

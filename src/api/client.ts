@@ -108,6 +108,7 @@ export const combatants = {
 
 export const monsters = {
   list:      () => get<MonsterTemplate[]>('/api/monsters'),
+  repairTraits: () => post<{ success: boolean; updated: number }>('/api/monsters/repair-traits', {}),
   create:    (data: Partial<MonsterTemplate>) => post<{ success: boolean }>('/api/monsters', data),
   update:    (id: string, data: Partial<MonsterTemplate>) => put<{ success: boolean }>(`/api/monsters/${id}`, data),
   delete:    (id: string) => del<{ success: boolean }>(`/api/monsters/${id}`),

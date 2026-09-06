@@ -29,7 +29,7 @@ const __dirname = path.dirname(__filename);
 const { db, dbAvailable } = initDatabase();
 
 async function startServer() {
-  const { ensureMonstersInDb, autoSeedIfEmpty, seedClassFeatures } = createSeedFunctions(db, dbAvailable);
+  const { ensureMonstersInDb, repairMonsterTraits, autoSeedIfEmpty, seedClassFeatures } = createSeedFunctions(db, dbAvailable);
   if (process.env.NODE_ENV !== 'test') await seedClassFeatures();
 
   const app = express();
@@ -112,7 +112,7 @@ async function startServer() {
   // Domain routers
   app.use('/api', createEncountersRouter(db, dbAvailable, io));
   app.use('/api', createCampaignsRouter(db, dbAvailable));
-  app.use('/api', createMonstersRouter(db, dbAvailable, requireAdmin));
+  app.use('/api', createMonstersRouter(db, dbAvailable, requireAdmin, repairMonsterTraits));
   const { router: soundsRouter } = createSoundsRouter(db, dbAvailable, localAudioDir, ambiencesDir);
   app.use('/api', soundsRouter);
   app.use('/api', createLightsRouter(getSetting, setSetting, db));

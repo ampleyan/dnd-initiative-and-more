@@ -18,7 +18,7 @@ function serializePlayer(p: any) {
   };
 }
 
-export function createMonstersRouter(db: any, dbAvailable: boolean, requireAdmin: RequestHandler) {
+export function createMonstersRouter(db: any, dbAvailable: boolean, requireAdmin: RequestHandler, repairMonsterTraits?: () => Promise<number>) {
   const router = Router();
   const safeJson = (val: string, fallback: any) => { try { return JSON.parse(val || JSON.stringify(fallback)); } catch { return fallback; } };
 
@@ -34,6 +34,16 @@ export function createMonstersRouter(db: any, dbAvailable: boolean, requireAdmin
       damageImmunities: safeJson(m.damageImmunities, []),
       conditionImmunities: safeJson(m.conditionImmunities, []),
     })));
+  });
+
+  router.post('/monsters/repair-traits', async (req, res) => {
+    if (!dbAvailable || !repairMonsterTraits) return res.status(503).json({ success: false, message: 'Monster repair unavailable' });
+    try {
+      res.json({ success: true, updated: await repairMonsterTraits() });
+    } catch (error) {
+      console.error('Failed to repair monster traits', error);
+      res.status(500).json({ success: false, message: 'Failed to repair monster traits' });
+    }
   });
 
   router.post('/monsters', (req, res) => {

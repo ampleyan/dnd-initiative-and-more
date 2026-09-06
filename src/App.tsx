@@ -757,7 +757,7 @@ export default function App() {
           )}>
             <ErrorBoundary label="Main Content">
               <Routes>
-                <Route path="/" element={<Navigate to="/encounters" replace />} />
+                <Route path="/" element={<Navigate to={localStorage.getItem('lastEncounterId') ? `/encounters/${localStorage.getItem('lastEncounterId')}` : '/encounters'} replace />} />
                 <Route path="/dashboard" element={<MainContent {...mainContentProps} activeTab="dashboard" />} />
                 <Route path="/encounters" element={<MainContent {...mainContentProps} activeTab="encounters" />} />
                 <Route path="/encounters/:id" element={<MainContent {...mainContentProps} activeTab="encounters" />} />

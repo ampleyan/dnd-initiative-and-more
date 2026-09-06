@@ -166,6 +166,7 @@ export function useEncounterManagement(params: EncounterManagementParams) {
 
   const handleLoadEncounter = async (encounter: Encounter) => {
     if (loadingEncounterId === encounter.id) return;
+    localStorage.setItem('lastEncounterId', encounter.id);
     setLoadingEncounterId(encounter.id);
     try {
       if (socketRef.current) {

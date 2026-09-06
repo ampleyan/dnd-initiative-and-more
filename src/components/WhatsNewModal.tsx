@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.10.0';
 
 interface Release {
   version: string;
@@ -10,6 +10,52 @@ interface Release {
 }
 
 const RELEASES: Release[] = [
+  {
+    version: '1.10.0',
+    date: 'September 2026',
+    features: [
+      {
+        icon: '🔄',
+        title: 'Foundry Reimport Updates Existing PCs',
+        description: 'Foundry imports now match existing characters by ID or shared name, preserve current HP and combat resources, and sync HP changes in both directions.',
+      },
+      {
+        icon: '🧬',
+        title: 'Polymorph State Restoration',
+        description: 'Polymorph now swaps actions, abilities, spells, stats, and HP, then restores the original character state when reverted.',
+      },
+      {
+        icon: '🛡️',
+        title: 'Monster Traits',
+        description: 'Vulnerabilities, resistances, damage immunities, and condition immunities are preserved through imports and shown in monster details and combat views.',
+      },
+      {
+        icon: '🧰',
+        title: 'Repair Missing Monster Traits',
+        description: 'Use Import → Repair monster traits to backfill missing trait data for existing monsters without overwriting local stat changes.',
+      },
+      {
+        icon: '📝',
+        title: 'DM Sticky Notes',
+        description: 'Add free-form notes to an encounter with draggable, resizable, collapsible, and closable sticky notes. Notes persist with the encounter.',
+      },
+      {
+        icon: '💾',
+        title: 'Encounter Recovery',
+        description: 'The last active encounter can be restored after a browser refresh or application restart.',
+      },
+      {
+        icon: '🖼️',
+        title: 'Persistent Portrait Files',
+        description: 'Docker deployments now persist uploaded player and Foundry portrait files across container restarts.',
+      },
+      {
+        icon: '📥',
+        title: 'Safer Monster Imports',
+        description: 'Reimporting a monster refreshes imported content while preserving locally changed HP, AC, speed, and ability scores.',
+      },
+    ],
+  },
   {
     version: '1.9.0',
     date: 'September 2026',
