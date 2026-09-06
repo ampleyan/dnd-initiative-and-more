@@ -3,6 +3,7 @@ import { Lightbulb, Wifi, RefreshCw, CheckCircle2, XCircle, Sliders, Zap, AlertC
 import { cn } from '../lib/utils';
 import { EFFECT_CONFIGS, HueEffectName, HueEffectTargets } from '../lib/hueEffects';
 import { api } from '../api/client';
+import { DEFAULT_HUE_SCENES, HueScene, normalizeHueScenes } from '../lib/hueScenes';
 
 interface HueLight {
   id: string;
@@ -18,6 +19,7 @@ interface HueConfig {
   enabledEffects: Partial<Record<HueEffectName, boolean>>;
   brightness: number;
   syncSceneColor?: boolean;
+  scenes: HueScene[];
 }
 
 interface HueSettingsPanelProps {
@@ -53,11 +55,15 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
   const [savingConfig, setSavingConfig] = useState(false);
   const [updatingIp, setUpdatingIp] = useState(false);
   const [ipSuccess, setIpSuccess] = useState(false);
+  const [scenes, setScenes] = useState<HueScene[]>(DEFAULT_HUE_SCENES);
 
   const loadConfig = useCallback(async () => {
     try {
       const data = await api.hue.getConfig();
-      setConfig(data as unknown as HueConfig);
+      const nextConfig = data as unknown as HueConfig;
+      nextConfig.scenes = normalizeHueScenes(nextConfig.scenes);
+      setConfig(nextConfig);
+      setScenes(nextConfig.scenes);
       setBridgeIpInput((data as unknown as HueConfig).bridgeIp || '');
     } catch {}
   }, []);
@@ -133,6 +139,22 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
     }
   };
 
+  const setLightSelection = async (lightIds: string[]) => {
+    if (!config) return;
+    const updated = { ...config, lightIds };
+    setConfig(updated);
+    setSavingConfig(true);
+    try {
+      await api.hue.saveConfig(updated as unknown as Record<string, unknown>);
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const setAllEffects = (enabled: boolean) => {
+    EFFECT_CONFIGS.forEach(effect => onToggleEffect(effect.name, enabled));
+  };
+
   const handleBrightnessChange = async (brightness: number) => {
     if (!config) return;
     const updated = { ...config, brightness };
@@ -155,6 +177,26 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
     } finally {
       setTimeout(() => setTestingEffect(null), 1500);
     }
+  };
+
+  const updateScenes = async (nextScenes: HueScene[]) => {
+    setScenes(nextScenes);
+    setConfig(prev => prev ? { ...prev, scenes: nextScenes } : prev);
+    await api.hue.saveConfig({ scenes: nextScenes });
+  };
+
+  const updateScene = (id: string, patch: Partial<HueScene>) => {
+    void updateScenes(scenes.map(scene => scene.id === id ? { ...scene, ...patch } : scene));
+  };
+
+  const addScene = () => {
+    const id = `scene-${Date.now()}`;
+    void updateScenes([...scenes, { id, label: 'New scene', colors: ['#1d4ed8', '#7c3aed', '#db2777'] }]);
+  };
+
+  const removeScene = (id: string) => {
+    if (scenes.length <= 1) return;
+    void updateScenes(scenes.filter(scene => scene.id !== id));
   };
 
   const handleUpdateIp = async () => {
@@ -289,13 +331,19 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
               <Lightbulb className="w-4 h-4 text-amber-400" />
               Select Lights
             </h3>
-            <button
-              onClick={loadLights}
-              disabled={loadingLights}
-              className="p-1.5 rounded-lg text-outline hover:text-on-surface transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingLights ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-outline">{config?.lightIds.length ?? 0}/{lights.length} selected</span>
+              <button onClick={() => setLightSelection(lights.map(light => light.id))} disabled={lights.length === 0 || savingConfig} className="text-[10px] font-bold text-amber-300 hover:text-amber-200 disabled:opacity-40">Select all</button>
+              <button onClick={() => setLightSelection([])} disabled={savingConfig} className="text-[10px] font-bold text-outline hover:text-on-surface disabled:opacity-40">Deselect all</button>
+              <button
+                onClick={loadLights}
+                disabled={loadingLights}
+                className="p-1.5 rounded-lg text-outline hover:text-on-surface transition-colors"
+                title="Refresh lights"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingLights ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {lights.length === 0 ? (
@@ -385,10 +433,16 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
       {/* Effect toggles */}
       {isPaired && (
         <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-3">
-          <h3 className="font-headline font-bold text-sm flex items-center gap-2">
-            <Zap className="w-4 h-4 text-primary" />
-            Combat Effects
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-headline font-bold text-sm flex items-center gap-2">
+              <Zap className="w-4 h-4 text-primary" />
+              Combat Effects
+            </h3>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setAllEffects(true)} className="text-[10px] font-bold text-primary hover:text-primary/80">Select all</button>
+              <button onClick={() => setAllEffects(false)} className="text-[10px] font-bold text-outline hover:text-on-surface">Deselect all</button>
+            </div>
+          </div>
           {!enabled && (
             <div className="flex items-center gap-2 p-3 bg-outline/5 border border-outline/10 rounded-lg">
               <AlertCircle className="w-4 h-4 text-outline shrink-0" />
@@ -455,6 +509,21 @@ export const HueSettingsPanel: React.FC<HueSettingsPanelProps> = ({
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {isPaired && (
+        <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div><h3 className="font-headline font-bold text-sm">Hue Scenes</h3><p className="text-[10px] text-outline">Scenes available from encounter controls.</p></div>
+            <button onClick={addScene} className="rounded-lg border border-primary/30 px-2.5 py-1.5 text-[10px] font-bold text-primary hover:bg-primary/10">Add scene</button>
+          </div>
+          <div className="space-y-2">
+            {scenes.map(scene => <div key={scene.id} className="rounded-xl border border-white/10 bg-surface-container-high p-3 space-y-2">
+              <div className="flex gap-2"><input value={scene.label} onChange={event => updateScene(scene.id, { label: event.target.value })} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-on-surface" /><button onClick={() => removeScene(scene.id)} disabled={scenes.length <= 1} className="px-2 text-[10px] text-error disabled:opacity-30">Delete</button></div>
+              <div className="grid grid-cols-3 gap-2">{scene.colors.slice(0, 3).map((color, index) => <input key={`${scene.id}-${index}`} type="color" value={color} onChange={event => updateScene(scene.id, { colors: scene.colors.map((item, colorIndex) => colorIndex === index ? event.target.value : item) })} className="h-9 w-full cursor-pointer rounded border border-white/10 bg-transparent" />)}</div>
+            </div>)}
           </div>
         </section>
       )}

@@ -193,6 +193,20 @@ export function createLightsRouter(getSetting: GetSetting, setSetting: SetSettin
     catch (e: any) { res.status(502).json({ error: e.message }); }
   });
 
+  const defaultHueScenes = [
+    { id: 'battle', label: 'Battle', colors: ['#7f1d1d', '#ea580c', '#facc15'] },
+    { id: 'calm', label: 'Calm', colors: ['#172554', '#2563eb', '#14b8a6'] },
+    { id: 'danger', label: 'Danger', colors: ['#450a0a', '#dc2626', '#fb7185'] },
+    { id: 'victory', label: 'Victory', colors: ['#713f12', '#eab308', '#4ade80'] },
+  ];
+  function readHueScenes() {
+    try {
+      const value = JSON.parse(getSetting('hue_scenes') ?? 'null');
+      if (Array.isArray(value) && value.length) return value;
+    } catch {}
+    return defaultHueScenes;
+  }
+
   router.get('/hue/config', (req, res) => {
     res.json({
       bridgeIp:       getSetting('hue_bridge_ip') ?? '',
@@ -202,17 +216,23 @@ export function createLightsRouter(getSetting: GetSetting, setSetting: SetSettin
       enabledEffects: (() => { try { return JSON.parse(getSetting('hue_enabled_effects') ?? '{}'); } catch { return {}; } })(),
       brightness:     parseInt(getSetting('hue_brightness') ?? '100'),
       syncSceneColor: getSetting('hue_sync_scene') === 'true',
+      scenes:         readHueScenes(),
     });
   });
 
   router.post('/hue/config', (req, res) => {
-    const { lightIds, enabled, enabledEffects, brightness, bridgeIp, syncSceneColor } = req.body;
+    const { lightIds, enabled, enabledEffects, brightness, bridgeIp, syncSceneColor, scenes } = req.body;
     if (bridgeIp !== undefined) setSetting('hue_bridge_ip', bridgeIp);
     if (enabled !== undefined) setSetting('hue_enabled', enabled ? 'true' : 'false');
     if (lightIds !== undefined) setSetting('hue_light_ids', JSON.stringify(lightIds));
     if (enabledEffects !== undefined) setSetting('hue_enabled_effects', JSON.stringify(enabledEffects));
     if (brightness !== undefined) setSetting('hue_brightness', String(brightness));
     if (syncSceneColor !== undefined) setSetting('hue_sync_scene', syncSceneColor ? 'true' : 'false');
+    if (scenes !== undefined) {
+      const valid = Array.isArray(scenes) && scenes.length > 0 && scenes.every((scene: any) => scene && typeof scene.id === 'string' && /^[a-z0-9_-]+$/.test(scene.id) && typeof scene.label === 'string' && scene.label.trim() && Array.isArray(scene.colors) && scene.colors.length > 0 && scene.colors.every((color: any) => typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color)));
+      if (!valid) return res.status(400).json({ error: 'Invalid Hue scenes' });
+      setSetting('hue_scenes', JSON.stringify(scenes));
+    }
     res.json({ ok: true });
   });
 

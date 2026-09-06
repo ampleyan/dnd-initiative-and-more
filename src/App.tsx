@@ -690,13 +690,13 @@ export default function App() {
                 <Redo2 className="w-4 h-4" />
               </button>
               {/* Session Board quick-open */}
-              <button
+              {/* <button
                 onClick={() => sessionBoardRef.current?.open()}
                 className="p-2 rounded-lg text-outline hover:text-on-surface hover:bg-white/5 transition-colors"
                 title="Session Board (Ctrl+Shift+B)"
               >
                 <Settings className="w-4 h-4" />
-              </button>
+              </button> */}
 
               {/* Keyboard shortcuts — hover to reveal */}
               <div className="relative group">
