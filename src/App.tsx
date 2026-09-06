@@ -111,6 +111,7 @@ export default function App() {
     handleImportEncounters,
     handleImportMonsters,
     handleUpdateFeatureUse,
+    handleRest,
     handleImportSpells,
     handleLoadEncounter,
     handleNewEncounter,
@@ -481,6 +482,9 @@ export default function App() {
     handleAddPlayerToEncounter,
     handleAddAllPlayersToEncounter,
     handleHealAll,
+    onRest: async (type: 'short' | 'long') => {
+      await Promise.all(players.map(player => handleRest(player.id, type)));
+    },
     handleClearAllConditions,
     setEditingMonsterId,
     setIsMonsterEditModalOpen,

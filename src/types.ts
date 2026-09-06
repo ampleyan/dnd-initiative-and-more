@@ -281,6 +281,7 @@ export interface Encounter {
   panelOpacity?: number;
   animationLevel?: AnimationLevel;
   soundIds?: string[];
+  huePreset?: string;
   notes?: EncounterNotes;
   favorite?: boolean;
   waves?: EncounterWave[];

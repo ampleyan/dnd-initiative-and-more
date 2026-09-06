@@ -73,6 +73,7 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
       ['encounters', 'panelOpacity REAL DEFAULT 0.92'],
       ['encounters', "animationLevel TEXT DEFAULT 'minimal'"],
       ['encounters', 'soundIds TEXT DEFAULT NULL'],
+      ['encounters', "huePreset TEXT DEFAULT ''"],
       ['encounters', 'sessionId TEXT DEFAULT NULL'],
       ['encounters', 'trackingData TEXT DEFAULT NULL'],
       ['combatants', 'tempHp INTEGER DEFAULT 0'],
@@ -269,6 +270,34 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
         ON CONFLICT(playerId) DO UPDATE SET
           hp = excluded.hp, tempHp = excluded.tempHp,
           revision = foundry_hp_sync.revision + 1, pending = 1;
+      END;
+    `);
+
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS foundry_actor_sync (
+        actorId TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        hp INTEGER NOT NULL DEFAULT 0,
+        tempHp INTEGER NOT NULL DEFAULT 0,
+        maxHp INTEGER NOT NULL DEFAULT 0,
+        ac INTEGER NOT NULL DEFAULT 0,
+        initiative INTEGER NOT NULL DEFAULT 0,
+        conditions TEXT NOT NULL DEFAULT '[]',
+        spellSlots TEXT NOT NULL DEFAULT '{}',
+        revision INTEGER NOT NULL DEFAULT 1,
+        pending INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TRIGGER IF NOT EXISTS foundry_actor_changed
+      AFTER UPDATE OF name, hp_current, hp_max, tempHp, ac, initiative, conditions, spellSlots ON combatants
+      BEGIN
+        INSERT INTO foundry_actor_sync (actorId, name, hp, tempHp, maxHp, ac, initiative, conditions, spellSlots, revision, pending)
+        SELECT s.actorId, NEW.name, NEW.hp_current, COALESCE(NEW.tempHp, 0), NEW.hp_max, NEW.ac, NEW.initiative, COALESCE(NEW.conditions, '[]'), COALESCE(NEW.spellSlots, '{}'), s.revision + 1, 1
+        FROM foundry_actor_sync s
+        WHERE lower(s.name) = lower(NEW.name)
+        ON CONFLICT(actorId) DO UPDATE SET
+          name = excluded.name, hp = excluded.hp, tempHp = excluded.tempHp, maxHp = excluded.maxHp,
+          ac = excluded.ac, initiative = excluded.initiative, conditions = excluded.conditions,
+          spellSlots = excluded.spellSlots, revision = excluded.revision, pending = 1;
       END;
     `);
 

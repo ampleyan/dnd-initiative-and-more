@@ -157,11 +157,19 @@ export function usePlayerActions(params: PlayerActionsParams) {
         ) as typeof player.featureUses
       : player.featureUses;
 
-    api.players.patch(playerId, { spellSlots: resetSlots, featureUses: resetFeatureUses }).catch(console.error);
+    api.players.patch(playerId, { spellSlots: resetSlots, featureUses: resetFeatureUses, ...(type === 'long' ? { hp_current: null } : {}) }).catch(console.error);
     setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, spellSlots: resetSlots, featureUses: resetFeatureUses } : p));
     setCombatants(prev => prev.map(c =>
       c.playerId === playerId
-        ? { ...c, spellSlots: resetSlots, featureUses: resetFeatureUses }
+        ? {
+            ...c,
+            hp: type === 'long' ? { ...c.hp, current: c.hp.max } : c.hp,
+            tempHp: type === 'long' ? 0 : c.tempHp,
+            deathSaves: type === 'long' ? undefined : c.deathSaves,
+            tags: type === 'long' ? c.tags.filter(tag => tag !== 'dead') : c.tags,
+            spellSlots: resetSlots,
+            featureUses: resetFeatureUses,
+          }
         : c
     ));
   };

@@ -168,9 +168,9 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
 
   router.post('/encounters', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ success: false, message: 'DB not available' });
-    const { id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, animationLevel, waves } = req.body;
-    db.prepare('INSERT INTO encounters (id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, animationLevel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, name, currentRound || 1, isEncounterActive ? 1 : 0, showSummary ? 1 : 0, backgroundImage || '', youtubeUrl || '', musicUrl || '', folder || '', difficulty || '', backgroundOpacity ?? 0.22, panelOpacity ?? 0.92, sessionId || null, soundIds ? JSON.stringify(soundIds) : null, animationLevel ?? 'minimal');
+    const { id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, huePreset, animationLevel, waves } = req.body;
+    db.prepare('INSERT INTO encounters (id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, huePreset, animationLevel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, name, currentRound || 1, isEncounterActive ? 1 : 0, showSummary ? 1 : 0, backgroundImage || '', youtubeUrl || '', musicUrl || '', folder || '', difficulty || '', backgroundOpacity ?? 0.22, panelOpacity ?? 0.92, sessionId || null, soundIds ? JSON.stringify(soundIds) : null, huePreset || '', animationLevel ?? 'minimal');
     io.emit('encounter-updated', { encounterId: id });
     if (waves) db.prepare('UPDATE encounters SET waves = ? WHERE id = ?').run(JSON.stringify(waves), id);
     res.status(201).json({ id, name });
@@ -189,6 +189,7 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       completedAt = existing.completedAt, difficulty = existing.difficulty,
       backgroundOpacity = existing.backgroundOpacity, panelOpacity = existing.panelOpacity,
       soundIds = undefined, animationLevel = existing.animationLevel ?? 'minimal',
+      huePreset = existing.huePreset ?? '',
       trackingData = undefined, favorite = existing.favorite ?? 0,
       lairActionsEnabled = existing.lairActionsEnabled ?? 0,
       notes = undefined,
@@ -204,14 +205,14 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       SET name = ?, currentRound = ?, currentTurnIndex = ?, isEncounterActive = ?,
           showSummary = ?, backgroundImage = ?, youtubeUrl = ?, musicUrl = ?,
           encounterStats = ?, folder = ?, completedAt = ?, difficulty = ?,
-          backgroundOpacity = ?, panelOpacity = ?, soundIds = ?, animationLevel = ?,
+          backgroundOpacity = ?, panelOpacity = ?, soundIds = ?, huePreset = ?, animationLevel = ?,
           trackingData = ?, favorite = ?, lairActionsEnabled = ?, notes = ?, waves = ?
       WHERE id = ?
     `).run(
       name, currentRound, currentTurnIndex, isEncounterActive ? 1 : 0,
       showSummary ? 1 : 0, backgroundImage, youtubeUrl, musicUrl,
       statsJson, folder, completedAt, difficulty,
-      backgroundOpacity, panelOpacity, soundIdsJson, animationLevel,
+      backgroundOpacity, panelOpacity, soundIdsJson, huePreset, animationLevel,
       trackingJson, favorite ? 1 : 0, lairActionsEnabled ? 1 : 0, notesJson, wavesJson, req.params.id
     );
     io.to(`encounter:${req.params.id}`).emit('encounter-updated', { encounterId: req.params.id });

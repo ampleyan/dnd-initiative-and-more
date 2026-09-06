@@ -54,7 +54,35 @@ function spellSlotData(spells = {}) {
   return result;
 }
 
-function actorPayload(actor) {
+function conditionData(actor) {
+  const aliases = {
+    blinded: "blinded", charmed: "charmed", deafened: "deafened", frightened: "frightened",
+    grappled: "grappled", incapacitated: "incapacitated", invisible: "invisible", paralyzed: "paralyzed",
+    petrified: "petrified", poisoned: "poisoned", prone: "prone", restrained: "restrained",
+    stunned: "stunned", unconscious: "unconscious", exhaustion: "exhaustion"
+  };
+  const result = new Set();
+  for (const effect of actor.effects ?? []) {
+    if (effect.disabled) continue;
+    const statuses = effect.statuses instanceof Set ? [...effect.statuses] : Array.isArray(effect.statuses) ? effect.statuses : [];
+    for (const status of statuses) {
+      const id = aliases[String(status).toLowerCase()] ?? String(status).toLowerCase().split(".").pop();
+      if (id) result.add(id);
+    }
+    const name = String(effect.name ?? "").toLowerCase();
+    for (const key of Object.keys(aliases)) if (name.includes(key)) result.add(key);
+  }
+  return [...result];
+}
+
+function tokenConditionData(token) {
+  const statuses = token?.document?.statuses instanceof Set
+    ? [...token.document.statuses]
+    : token?.statuses instanceof Set ? [...token.statuses] : [];
+  return statuses.map(status => String(status).toLowerCase().split('.').pop()).filter(Boolean);
+}
+
+function actorPayload(actor, extra = {}) {
   const attributes = actor.system?.attributes ?? {};
   const hp = attributes.hp ?? {};
   const ac = attributes.ac;
@@ -66,7 +94,9 @@ function actorPayload(actor) {
     tempHp: numberValue(hp.temp),
     maxHp: numberValue(hp.max),
     ac: numberValue(ac?.value ?? ac),
-    spellSlots: spellSlotData(actor.system?.spells)
+    spellSlots: spellSlotData(actor.system?.spells),
+    conditions: conditionData(actor),
+    ...extra
   };
 }
 
@@ -138,11 +168,36 @@ async function pollUpdates() {
     if (![update.hp, update.tempHp, update.revision].every(value => Number.isSafeInteger(value) && value >= 0)) continue;
     if (update.pending) {
       const hp = actor.system?.attributes?.hp ?? {};
+      const changes = {};
       if (hp.value !== update.hp || numberValue(hp.temp) !== update.tempHp) {
-        await actor.update({
-          "system.attributes.hp.value": update.hp,
-          "system.attributes.hp.temp": update.tempHp
-        }, { [MODULE_ID]: true });
+        changes["system.attributes.hp.value"] = update.hp;
+        changes["system.attributes.hp.temp"] = update.tempHp;
+      }
+      for (let level = 1; level <= 9; level += 1) {
+        const slot = update.spellSlots?.[level];
+        if (slot && Number.isSafeInteger(slot.total) && Number.isSafeInteger(slot.used)) {
+          changes[`system.spells.spell${level}.value`] = Math.max(0, slot.total - slot.used);
+        }
+      }
+      if (Object.keys(changes).length > 0) {
+        await actor.update(changes, { [MODULE_ID]: true });
+      }
+      const combatant = game.combat?.combatants?.find(entry => entry.actorId === update.actorId);
+      if (combatant && Number.isSafeInteger(update.initiative) && combatant.initiative !== update.initiative) {
+        await combatant.update({ initiative: update.initiative }, { [MODULE_ID]: true });
+      }
+      if (combatant && Array.isArray(update.conditions)) {
+        const token = combatant.token?.object ?? actor.getActiveTokens?.()[0];
+        if (token?.toggleStatusEffect || token?.toggleEffect) {
+          const current = new Set(conditionData(actor));
+          const toggle = async (condition, active) => {
+            if (token.toggleStatusEffect) return token.toggleStatusEffect(condition, { active });
+            const effect = CONFIG.statusEffects?.find(entry => entry.id === condition || entry.id.endsWith(`.${condition}`));
+            if (effect) return token.toggleEffect(effect, { active });
+          };
+          for (const condition of current) if (!update.conditions.includes(condition)) await toggle(condition, false);
+          for (const condition of update.conditions) if (!current.has(condition)) await toggle(condition, true);
+        }
       }
       const acknowledged = await requestSync("/ack", { actorId: update.actorId, revision: update.revision });
       if (acknowledged.status === 409) continue;
@@ -157,10 +212,31 @@ async function pollLoop() {
   setTimeout(pollLoop, 1000);
 }
 
-Hooks.once("ready", pollLoop);
+Hooks.once("ready", () => {
+  for (const actor of game.actors?.contents ?? []) {
+    pendingActors.set(actor.id, actorPayload(actor));
+  }
+  for (const combatant of game.combat?.combatants ?? []) {
+    if (combatant.actor) pendingActors.set(combatant.actor.id, actorPayload(combatant.actor, { initiative: numberValue(combatant.initiative) }));
+  }
+  return pollLoop();
+});
 
 Hooks.on("updateActor", (actor, _changes, options = {}) => {
   if (!isSyncGM() || options[MODULE_ID]) return;
   pendingActors.set(actor.id, actorPayload(actor));
+  return enqueueSync(flushActors);
+});
+
+Hooks.on("updateCombatant", (combatant, _changes, options = {}) => {
+  if (!isSyncGM() || options[MODULE_ID] || !combatant.actor) return;
+  pendingActors.set(combatant.actor.id, actorPayload(combatant.actor, { initiative: numberValue(combatant.initiative) }));
+  return enqueueSync(flushActors);
+});
+
+Hooks.on("updateToken", (token, _changes, options = {}) => {
+  if (!isSyncGM() || options[MODULE_ID] || !token.actor) return;
+  const conditions = tokenConditionData(token);
+  pendingActors.set(token.actor.id, actorPayload(token.actor, conditions.length > 0 ? { conditions } : {}));
   return enqueueSync(flushActors);
 });

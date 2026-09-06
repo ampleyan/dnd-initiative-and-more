@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import type { DragControls } from 'motion/react';
-import { Users, Save, Square, Monitor, ChevronLeft, ChevronRight, ExternalLink, ArrowLeft, Play, Edit2, Heart, UserPlus, Swords, Sparkles, AlertTriangle, Plus, Trash2, Music, Undo2, Redo2, MoreHorizontal } from 'lucide-react';
+import { Users, Save, Square, Monitor, ChevronLeft, ChevronRight, ExternalLink, ArrowLeft, Play, Edit2, Heart, UserPlus, Swords, Sparkles, AlertTriangle, Plus, Trash2, Music, Undo2, Redo2, MoreHorizontal, Coffee } from 'lucide-react';
 import { TacticalSummary } from './TacticalSummary';
 import { AvatarImg } from './AvatarImg';
 import { CombatantRow } from './CombatantRow';
@@ -14,6 +14,7 @@ import { PlayerView } from './PlayerView';
 import { DmStickyNote } from './DmStickyNote';
 import { MonsterLibrary } from './MonsterLibrary';
 import { HueSettingsPanel } from './HueSettingsPanel';
+import { HueEncounterControl } from './HueEncounterControl';
 import { HomeAssistantSettingsPanel } from './HomeAssistantSettingsPanel';
 import { FoundrySettingsPanel } from './FoundrySettingsPanel';
 import { SpatialSettingsPanel } from './SpatialSettingsPanel';
@@ -191,6 +192,7 @@ interface MainContentProps {
   handleAddPlayerToEncounter: (player: Player) => void;
   handleAddAllPlayersToEncounter: () => void;
   handleHealAll: () => void;
+  onRest?: (type: 'short' | 'long') => Promise<void>;
   handleClearAllConditions: () => void;
   setEditingMonsterId: (id: string) => void;
   setIsMonsterEditModalOpen: (open: boolean) => void;
@@ -321,6 +323,7 @@ export const MainContent: React.FC<MainContentProps> = ({
   handleAddPlayerToEncounter,
   handleAddAllPlayersToEncounter,
   handleHealAll,
+  onRest,
   handleClearAllConditions,
   setEditingMonsterId,
   setIsMonsterEditModalOpen,
@@ -661,6 +664,24 @@ export const MainContent: React.FC<MainContentProps> = ({
                           <Heart className="w-4 h-4 shrink-0" />
                           Heal All to Full
                         </button>
+                        {onRest && (
+                          <>
+                            <button
+                              onClick={async () => { await onRest('short'); setShowToolbarOverflow(false); }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-sky-400 hover:bg-surface-container transition-colors text-left"
+                            >
+                              <Coffee className="w-4 h-4 shrink-0" />
+                              Short Rest
+                            </button>
+                            <button
+                              onClick={async () => { await onRest('long'); setShowToolbarOverflow(false); }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-emerald-400 hover:bg-surface-container transition-colors text-left"
+                            >
+                              <Coffee className="w-4 h-4 shrink-0" />
+                              Long Rest
+                            </button>
+                          </>
+                        )}
                         <button
                           onClick={() => { handleClearAllConditions(); setShowToolbarOverflow(false); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-amber-400 hover:bg-surface-container transition-colors text-left"
@@ -836,6 +857,14 @@ export const MainContent: React.FC<MainContentProps> = ({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-end gap-2 sm:gap-4 flex-wrap overflow-x-hidden">
+                  {currentEncounterId && <HueEncounterControl
+                    key={currentEncounterId}
+                    enabled={hueEnabled ?? false}
+                    preset={currentEncounter?.huePreset}
+                    onPresetChange={currentEncounterId && onUpdateEncounter
+                      ? preset => onUpdateEncounter(currentEncounterId, { huePreset: preset })
+                      : undefined}
+                  />}
                   {isEncounterActive && (handleUndo || handleRedo) && (
                     <div className="flex items-center gap-1">
                       <button

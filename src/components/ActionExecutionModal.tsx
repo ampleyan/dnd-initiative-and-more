@@ -88,6 +88,14 @@ function detectMultiTarget(desc: string, range?: string, category?: string): boo
   return true;
 }
 
+function extractMultiattackCount(desc: string): number | null {
+  const numberWords: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+  const match = desc.match(/\bmultiattack\b[\s\S]{0,220}?\bmakes?\s+(one|two|three|four|five|six|\d+)\s+[\s\S]{0,100}?\battacks?\b/i)
+    ?? desc.match(/\bmakes?\s+(one|two|three|four|five|six|\d+)\s+[\s\S]{0,100}?\battacks?\b/i);
+  if (!match) return null;
+  return numberWords[match[1].toLowerCase()] ?? Number(match[1]);
+}
+
 function extractFixedAmount(desc: string): number | null {
   // Try hit prefix first (monsters)
   const mH = desc.match(/\bhit:\s*(\d+)/i);
@@ -227,7 +235,9 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
   const hasHeal       = !isPolymorph && (isTempHp || isSelfHeal || (!hasDamage && /\b(heals?|restores?|regains?|recovers?)\b.{0,40}\bhit points?\b/i.test(desc)));
   const hasEffect     = !isPolymorph && (hasDamage || hasHeal || !desc);
   const isSelf        = detectSelf(name, desc);
-  const isMultiTarget = !isPolymorph && detectMultiTarget(desc, spellData?.range, action?.category);
+  const multiattackCount = extractMultiattackCount(desc);
+  const isMultiTarget = !isPolymorph && (multiattackCount !== null && multiattackCount > 1 || detectMultiTarget(desc, spellData?.range, action?.category));
+  const maxTargetCount = multiattackCount && multiattackCount > 1 ? multiattackCount : null;
   const isConcentration = /\bconcentration\b/i.test(desc) || /\bconcentration\b/i.test(spellData?.duration ?? '') || NAME_CONDITION_MAP[name.toLowerCase().trim()] === 'concentrating';
   // Conditions for targets: exclude 'concentrating' — that goes to the caster
   const autoConditions = detectConditions(name, desc).filter(c => c !== 'concentrating');
@@ -260,7 +270,7 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
     } else if (hasDamage) {
       // Single-target: pre-select first enemy only
       setSelectedTargetIds(isMultiTarget
-        ? new Set(enemies.map(c => c.id))
+        ? new Set(enemies.slice(0, maxTargetCount ?? enemies.length).map(c => c.id))
         : enemies.length > 0 ? new Set([enemies[0].id]) : new Set());
     } else if (hasHeal) {
       setSelectedTargetIds(new Set([actor.id]));
@@ -279,6 +289,7 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
     }
     setSelectedTargetIds(prev => {
       const next = new Set(prev);
+      if (!next.has(id) && maxTargetCount !== null && next.size >= maxTargetCount) return next;
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
@@ -288,9 +299,9 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
   const quickSelect = (group: 'self' | 'enemies' | 'allies' | 'all') => {
     if (!actor) return;
     if (group === 'self')    setSelectedTargetIds(new Set([actor.id]));
-    if (group === 'enemies') setSelectedTargetIds(new Set(enemies.map(c => c.id)));
-    if (group === 'allies')  setSelectedTargetIds(new Set(allies.map(c => c.id)));
-    if (group === 'all')     setSelectedTargetIds(new Set(targets.map(c => c.id)));
+    if (group === 'enemies') setSelectedTargetIds(new Set(enemies.slice(0, maxTargetCount ?? enemies.length).map(c => c.id)));
+    if (group === 'allies')  setSelectedTargetIds(new Set(allies.slice(0, maxTargetCount ?? allies.length).map(c => c.id)));
+    if (group === 'all')     setSelectedTargetIds(new Set(targets.slice(0, maxTargetCount ?? targets.length).map(c => c.id)));
   };
 
   // Which quick-select preset matches the current selection (for highlight)
@@ -529,7 +540,7 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
                           ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
                           : 'text-outline/70 bg-white/5 border-white/10'
                       }`}>
-                        {isMultiTarget ? 'Area' : 'Single'}
+                        {multiattackCount ? `Up to ${multiattackCount} attacks` : isMultiTarget ? 'Area' : 'Single'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
