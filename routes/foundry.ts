@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'node:crypto';
 
 const DB_CACHE_DIR = '/tmp/foundry-db-cache';
 const DB_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -244,7 +245,22 @@ function getFoundrySpellSlots(sysSpells: any): Record<number, { total: number; u
     })
     .filter((entry): entry is [number, { total: number; used: number }] => entry !== null);
 
-  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+  const pact = sysSpells?.pact;
+  if (pact?.max > 0 && pact?.level > 0) {
+    entries.push([pact.level, {
+      total: pact.max,
+      used: Math.max(0, pact.max - (pact.value ?? pact.max)),
+    }]);
+  }
+
+  if (entries.length === 0) return undefined;
+  return Object.fromEntries(entries.reduce((merged, [level, slot]) => {
+    const current = merged.get(level);
+    merged.set(level, current
+      ? { total: current.total + slot.total, used: current.used + slot.used }
+      : slot);
+    return merged;
+  }, new Map<number, { total: number; used: number }>()));
 }
 
 function transformFoundryActor(actor: any, items: any[], dataPathOverride?: string): any {
@@ -991,5 +1007,64 @@ export function createFoundryRouter(portraitsDir: string = '') {
     }
   });
 
+  return router;
+}
+
+export function createFoundryConfigRouter(db: any, dbAvailable: boolean) {
+  const router = Router();
+  router.get('/foundry/sync-config', (_req, res) => {
+    const configured = dbAvailable && !!db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_sync_token');
+    res.json({ configured });
+  });
+  router.post('/foundry/sync-config', (req, res) => {
+    if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    if (token.length < 16) return res.status(400).json({ error: 'Token must be at least 16 characters' });
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .run('foundry_sync_token', token);
+    res.json({ configured: true });
+  });
+  router.post('/foundry/sync-config/generate', (req, res) => {
+    if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+    const token = crypto.randomBytes(32).toString('hex');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .run('foundry_sync_token', token);
+    res.json({ token, configured: true });
+  });
+  return router;
+}
+
+export function createFoundryLiveRouter(db: any, dbAvailable: boolean, io: any) {
+  const router = Router();
+  router.use((_req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    next();
+  });
+  router.options('/foundry/live-sync', (_req, res) => res.sendStatus(204));
+  router.post('/foundry/live-sync', (req, res) => {
+    if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, '').trim();
+    const configured = db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_sync_token') as { value?: string } | undefined;
+    const tokenBuffer = Buffer.from(token ?? '');
+    const configuredBuffer = Buffer.from(configured?.value ?? '');
+    if (!token || !configured?.value || tokenBuffer.length !== configuredBuffer.length || !crypto.timingSafeEqual(tokenBuffer, configuredBuffer)) {
+      return res.status(401).json({ error: 'Invalid sync token' });
+    }
+    const { actorId, name, hp, maxHp, ac, spellSlots } = req.body ?? {};
+    if (typeof actorId !== 'string' || !actorId) return res.status(400).json({ error: 'actorId is required' });
+    const player = db.prepare('SELECT id FROM players WHERE dndBeyondId = ?').get(`foundry:${actorId}`) as { id: string } | undefined;
+    if (!player) return res.status(404).json({ error: 'Foundry actor is not linked to a player' });
+    const slotJson = spellSlots && typeof spellSlots === 'object' ? JSON.stringify(spellSlots) : null;
+    const updatePlayer = db.prepare('UPDATE players SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), ac = COALESCE(?, ac), spell_slots = COALESCE(?, spell_slots), lastImported = ? WHERE id = ?');
+    const updateCombatant = db.prepare('UPDATE combatants SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), ac = COALESCE(?, ac), spellSlots = COALESCE(?, spellSlots) WHERE playerId = ?');
+    const rows = db.prepare('SELECT DISTINCT encounterId FROM combatants WHERE playerId = ? AND encounterId IS NOT NULL').all(player.id) as { encounterId: string }[];
+    db.transaction(() => {
+      updatePlayer.run(name || null, maxHp ?? null, hp ?? null, ac ?? null, slotJson, new Date().toISOString(), player.id);
+      updateCombatant.run(name || null, maxHp ?? null, hp ?? null, ac ?? null, slotJson, player.id);
+    })();
+    for (const row of rows) io.emit('encounter-updated', { encounterId: row.encounterId });
+    res.json({ updated: true, encounters: rows.length });
+  });
   return router;
 }

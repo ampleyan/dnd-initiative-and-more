@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Speaker, Settings2, Play, Info, Sliders, ShieldAlert } from 'lucide-react';
+import { Speaker, Settings2, Info, ShieldAlert, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { SpatialMode } from '../hooks/useSoundboard';
 
@@ -29,6 +29,7 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
   const [channelCount, setChannelCount] = useState(() => parseInt(localStorage.getItem('spatial_channels') || '2'));
   const [testingId, setTestingId] = useState<string | null>(null);
   const [osWarning, setOsWarning] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (audioCtx && audioCtx.destination.maxChannelCount < 6 && channelCount > 2) {
@@ -78,7 +79,7 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center justify-between">
+      <button type="button" onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-between text-left">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
             <Speaker className="w-5 h-5 text-primary" />
@@ -88,9 +89,10 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
             <p className="text-[11px] text-outline">Configure multi-channel output for 5.1/7.1 systems</p>
           </div>
         </div>
-      </div>
+        {expanded ? <ChevronDown className="w-5 h-5 text-outline" /> : <ChevronRight className="w-5 h-5 text-outline" />}
+      </button>
 
-      <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-4">
+      {expanded && <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-headline font-bold text-sm flex items-center gap-2">
             <Settings2 className="w-4 h-4 text-primary" />
@@ -185,7 +187,7 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
             <span className="text-[9px] font-bold uppercase tracking-widest text-outline/40">Click speakers to test output</span>
           </div>
         </div>
-      </section>
+      </section>}
 
     </div>
   );

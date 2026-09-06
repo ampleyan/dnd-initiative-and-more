@@ -619,6 +619,34 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   </div>
                 </div>
 
+                {displayedCombatant.type === 'player' && Object.entries(displayedCombatant.spellSlots ?? {})
+                  .sort(([a], [b]) => Number(a) - Number(b))
+                  .filter(([, slot]) => !!slot && slot.total > 0)
+                  .map(([level, slot]) => slot ? (
+                    <div key={level} className="mb-1.5 flex items-center gap-1.5 rounded-lg border border-violet-400/25 bg-violet-400/10 px-2 py-1" role="group" aria-label={`Level ${level} spell slots`}>
+                      <span className="text-[9px] font-black text-violet-300 shrink-0">Lvl {level}</span>
+                      <div className="flex flex-wrap gap-0.5">
+                        {Array.from({ length: slot.total }, (_, i) => {
+                          const available = i < slot.total - slot.used;
+                          const label = `${available ? 'Spend' : 'Restore'} level ${level} spell slot ${i + 1}`;
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              aria-label={label}
+                              title={label}
+                              onClick={() => onUpdate?.({ ...displayedCombatant, spellSlots: { ...displayedCombatant.spellSlots, [level]: { ...slot, used: Math.max(0, Math.min(slot.total, slot.used + (available ? 1 : -1))) } } })}
+                              className="flex h-5 w-5 items-center justify-center rounded hover:bg-violet-400/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"
+                            >
+                              <span className={cn('h-2.5 w-2.5 rounded-full border border-violet-400', available && 'bg-violet-400')} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="ml-auto text-[9px] font-bold text-violet-200/70">{slot.total - slot.used}/{slot.total}</span>
+                    </div>
+                  ) : null)}
+
                 {/* Vulnerabilities / Resistances / Immunities — admin only, prominent panel */}
                 {isAdmin && displayedCombatant.type !== 'player' && (() => {
                   const vuln = displayedCombatant.vulnerabilities ?? [];

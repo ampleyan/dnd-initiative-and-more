@@ -1,7 +1,8 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CombatantRow } from '../components/CombatantRow';
 import type { Combatant } from '../types';
+import { FloatingMusicPlayer } from '../components/FloatingMusicPlayer';
 
 const combatant: Combatant = {
   id: 'combatant-1',
@@ -19,6 +20,16 @@ const combatant: Combatant = {
 };
 
 describe('CombatantRow', () => {
+  it('allows closing ambient music when expanded or minimized', () => {
+    const onClose = vi.fn();
+    render(<FloatingMusicPlayer youtubeId="abcdefghijk" isPaused={false} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close ambient music' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTitle('Minimize'));
+    fireEvent.click(screen.getByRole('button', { name: 'Close ambient music' }));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
   it('allows condition tooltips to extend beyond the row', () => {
     const { container } = render(
       <CombatantRow

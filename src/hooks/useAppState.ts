@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { Combatant, MonsterTemplate, Spell, Encounter, EncounterStats, Player, LogEntry, FolderSettings, Campaign, Session, ClassFeature, AnimationLevel } from '../types';
+import { Combatant, MonsterTemplate, Spell, Encounter, EncounterStats, Player, LogEntry, FolderSettings, Campaign, Session, ClassFeature, AnimationLevel, SpellSlots } from '../types';
 import { MONSTER_LIBRARY, CONDITIONS } from '../constants';
 import { api, ApiError } from '../api/client';
 import { useToast } from './useToast';
@@ -13,6 +13,17 @@ import { useCampaignActions } from './useCampaignActions';
 import { useEncounterManagement } from './useEncounterManagement';
 import { sortWithCompanions } from '../lib/combatantUtils';
 import { computeEncounterStats, enrichStatsFromLog, CombatantTracking } from '../lib/encounterStats';
+
+function mergePlayerSpellSlots(rosterSlots: SpellSlots | undefined, combatantSlots: SpellSlots | undefined): SpellSlots | undefined {
+  if (!rosterSlots) return combatantSlots;
+  return Object.fromEntries(Object.entries(rosterSlots).map(([level, slot]) => [
+    level,
+    {
+      total: slot!.total,
+      used: Math.min(slot!.total, Math.max(0, combatantSlots?.[Number(level)]?.used ?? slot!.used ?? 0)),
+    },
+  ]));
+}
 
 export function useAppState() {
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | null>(null);
@@ -226,7 +237,7 @@ export function useAppState() {
                 actions: player.actions?.length ? player.actions : c.actions,
                 abilities: player.abilities?.length ? player.abilities : c.abilities,
                 spells: player.spells?.length ? player.spells : c.spells,
-                spellSlots: inMemory?.spellSlots ?? player.spellSlots ?? c.spellSlots,
+                spellSlots: mergePlayerSpellSlots(player.spellSlots, inMemory?.spellSlots ?? c.spellSlots),
                 featureUses: inMemory?.featureUses ?? player.featureUses ?? c.featureUses,
               };
             }
@@ -252,7 +263,7 @@ export function useAppState() {
               actions: player.actions?.length ? player.actions : c.actions,
               abilities: player.abilities?.length ? player.abilities : c.abilities,
               spells: player.spells?.length ? player.spells : c.spells,
-              spellSlots: c.spellSlots ?? player.spellSlots,
+              spellSlots: mergePlayerSpellSlots(player.spellSlots, c.spellSlots),
               featureUses: c.featureUses ?? player.featureUses,
             };
           }));

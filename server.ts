@@ -19,7 +19,7 @@ import { createMonstersRouter } from './routes/monsters.ts';
 import { createSoundsRouter } from './routes/sounds.ts';
 import { createLightsRouter } from './routes/lights.ts';
 import { createDndBeyondRouter } from './routes/dnd-beyond.ts';
-import { createFoundryRouter } from './routes/foundry.ts';
+import { createFoundryRouter, createFoundryConfigRouter, createFoundryLiveRouter } from './routes/foundry.ts';
 import { createImagesRouter } from './routes/images.ts';
 import { createBackupsRouter } from './routes/backups.ts';
 
@@ -86,12 +86,15 @@ async function startServer() {
   // Auth middleware
   const { requireAuth, requireAdmin } = createMiddleware(db, dbAvailable);
 
+  app.use('/api', createFoundryLiveRouter(db, dbAvailable, io));
+
   // Auth + user routes (must be mounted BEFORE the global requireAuth middleware)
   app.use('/api', createAuthRouter(db, dbAvailable, requireAdmin));
 
   // Global API auth guard
   app.use('/api', requireAuth);
   app.use('/api', createBackupsRouter(db, dbAvailable, requireAdmin));
+  app.use('/api', createFoundryConfigRouter(db, dbAvailable));
 
   // Socket.IO — join rooms for per-encounter real-time updates
   io.on('connection', (socket) => {

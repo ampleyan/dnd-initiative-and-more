@@ -311,6 +311,8 @@ export const proxy = {
 // ── Foundry VTT ───────────────────────────────────────────────────────────────
 
 export const foundry = {
+  saveSyncToken: (token: string) => post<{ configured: boolean }>('/api/foundry/sync-config', { token }),
+  generateSyncToken: () => post<{ token: string; configured: boolean }>('/api/foundry/sync-config/generate', {}),
   worlds: (dataPath?: string) => get<{ id: string; title: string; system: string; lastPlayed: string }[]>(`/api/foundry/worlds${dataPath ? `?dataPath=${encodeURIComponent(dataPath)}` : ''}`),
   packs:  (world: string, dataPath?: string) => {
     const q = new URLSearchParams({ world });

@@ -14,6 +14,7 @@ import { PlayerView } from './PlayerView';
 import { MonsterLibrary } from './MonsterLibrary';
 import { HueSettingsPanel } from './HueSettingsPanel';
 import { HomeAssistantSettingsPanel } from './HomeAssistantSettingsPanel';
+import { FoundrySettingsPanel } from './FoundrySettingsPanel';
 import { SpatialSettingsPanel } from './SpatialSettingsPanel';
 import { UsersSettings } from './UsersSettings';
 import { AuthUser } from '../hooks/useAuth';
@@ -1240,6 +1241,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   onToggleTarget={onToggleHueTarget ?? (() => {})}
                 />
                 <HomeAssistantSettingsPanel enabled={haEnabled ?? false} onToggleEnabled={onToggleHa ?? (() => {})} />
+                <FoundrySettingsPanel />
               </div>
               <SpatialSettingsPanel
                 audioCtx={getAudioCtx ? getAudioCtx() : null}

@@ -377,7 +377,8 @@ export default function App() {
 
   const youtubeId = activeYoutubeUrl ? extractYoutubeId(activeYoutubeUrl) : null;
   const [isMusicPaused, setIsMusicPaused] = React.useState(false);
-  React.useEffect(() => { setIsMusicPaused(false); }, [youtubeId]);
+  const [isMusicClosed, setIsMusicClosed] = React.useState(false);
+  React.useEffect(() => { setIsMusicPaused(false); setIsMusicClosed(false); }, [youtubeId]);
 
   const currentEncounter = savedEncounters.find(e => e.id === currentEncounterId);
   const encounterNotes = (currentEncounterId ? noteDrafts.get(currentEncounterId) : undefined)
@@ -618,7 +619,7 @@ export default function App() {
         youtubeId={youtubeId}
         youtubeUrl={activeYoutubeUrl}
         isMusicPaused={isMusicPaused}
-        onToggleMusic={() => setIsMusicPaused(v => !v)}
+        onToggleMusic={() => { setIsMusicClosed(false); setIsMusicPaused(v => !v); }}
       />
       </>}
       main={<>
@@ -849,7 +850,7 @@ export default function App() {
         />
 
         {/* Floating YouTube Player — draggable, position persisted */}
-        {youtubeId && !isPlayerView && <FloatingMusicPlayer youtubeId={youtubeId} isPaused={isMusicPaused} />}
+        {youtubeId && !isPlayerView && !isMusicClosed && <FloatingMusicPlayer youtubeId={youtubeId} isPaused={isMusicPaused} onClose={() => { setIsMusicClosed(true); setIsMusicPaused(true); }} />}
       </main>
       </>}
       afterMain={<>

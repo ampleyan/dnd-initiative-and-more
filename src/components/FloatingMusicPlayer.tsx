@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
-import { GripHorizontal } from 'lucide-react';
+import { GripHorizontal, X } from 'lucide-react';
 import { useLocalState } from '../hooks/useLocalState';
 
 const STORAGE_KEY = 'floatingMusicPlayer.position';
@@ -21,9 +21,10 @@ function defaultPosition(): { x: number; y: number } {
 interface FloatingMusicPlayerProps {
   youtubeId: string;
   isPaused: boolean;
+  onClose: () => void;
 }
 
-export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({ youtubeId, isPaused }) => {
+export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({ youtubeId, isPaused, onClose }) => {
   const isMobile = window.innerWidth < 768;
   const [collapsed, setCollapsed] = useState(() => isMobile);
   // Use separate storage key on mobile so desktop positions don't pollute; pin below sticky header
@@ -135,6 +136,15 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({ youtub
             title={collapsed ? 'Expand' : 'Minimize'}
           >
             {collapsed ? '▢' : '—'}
+          </button>
+          <button
+            onClick={onClose}
+            onPointerDown={e => e.stopPropagation()}
+            className="text-outline hover:text-on-surface p-1"
+            aria-label="Close ambient music"
+            title="Close and stop music"
+          >
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
