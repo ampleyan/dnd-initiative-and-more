@@ -116,6 +116,20 @@ export const MonsterDetailPanel: React.FC<MonsterDetailPanelProps> = ({
           </div>
         )}
 
+        {[
+          { key: 'vulnerabilities', label: 'V', values: monster.vulnerabilities, color: 'text-rose-300 bg-rose-500/15' },
+          { key: 'resistances', label: 'R', values: monster.resistances, color: 'text-sky-300 bg-sky-500/15' },
+          { key: 'damageImmunities', label: 'I', values: monster.damageImmunities, color: 'text-purple-300 bg-purple-500/15' },
+          { key: 'conditionImmunities', label: 'C', values: monster.conditionImmunities, color: 'text-amber-300 bg-amber-500/15' },
+        ].filter(group => group.values?.length).map(group => (
+          <div key={group.key} className={`flex items-start gap-2 rounded-lg px-2.5 py-2 ${group.color}`}>
+            <span className="w-4 shrink-0 text-[10px] font-black">{group.label}</span>
+            <div className="flex flex-wrap gap-1">
+              {group.values!.map(value => <span key={value} className="text-xs font-bold capitalize">{value}</span>)}
+            </div>
+          </div>
+        ))}
+
         {/* Tags */}
         {monster.tags && monster.tags.length > 0 && (
           <div>

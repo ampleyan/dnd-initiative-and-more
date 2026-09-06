@@ -620,25 +620,25 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     <div className="border-t border-white/8 px-3 py-2 flex flex-col gap-1">
                       {vuln.length > 0 && (
                         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-rose-500/10">
-                          <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wide w-20 shrink-0 flex items-center gap-1"><Zap className="w-3 h-3" />Vuln</span>
+                          <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wide w-20 shrink-0">V</span>
                           <div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-rose-200 bg-rose-500/20 capitalize">{v}</span>)}</div>
                         </div>
                       )}
                       {res.length > 0 && (
                         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-sky-500/10">
-                          <span className="text-[10px] font-bold text-sky-300 uppercase tracking-wide w-20 shrink-0 flex items-center gap-1"><Shield className="w-3 h-3" />Resist</span>
+                          <span className="text-[10px] font-bold text-sky-300 uppercase tracking-wide w-20 shrink-0">R</span>
                           <div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-sky-200 bg-sky-500/20 capitalize">{r}</span>)}</div>
                         </div>
                       )}
                       {dimm.length > 0 && (
                         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-purple-500/10">
-                          <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide w-20 shrink-0 flex items-center gap-1"><Swords className="w-3 h-3" />Immune</span>
+                          <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide w-20 shrink-0">I</span>
                           <div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-purple-200 bg-purple-500/20 capitalize">{i}</span>)}</div>
                         </div>
                       )}
                       {cimm.length > 0 && (
                         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-amber-500/10">
-                          <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wide w-20 shrink-0 flex items-center gap-1"><Activity className="w-3 h-3" />Cond Imm</span>
+                          <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wide w-20 shrink-0">C</span>
                           <div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-amber-200 bg-amber-500/20 capitalize">{i}</span>)}</div>
                         </div>
                       )}
@@ -955,10 +955,10 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       if (!vuln.length && !res.length && !dimm.length && !cimm.length) return null;
                       return (
                         <div className="border-t border-white/8 px-4 py-2 flex flex-col gap-1">
-                          {vuln.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-rose-500/10"><span className="text-[9px] font-bold text-rose-300 uppercase tracking-wide w-20 shrink-0 flex items-center gap-1"><Zap className="w-2.5 h-2.5" />Vuln</span><div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-rose-200 bg-rose-500/20 capitalize">{v}</span>)}</div></div>}
-                          {res.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-sky-500/10"><span className="text-[9px] font-bold text-sky-300 uppercase tracking-wide w-20 shrink-0 flex items-center gap-1"><Shield className="w-2.5 h-2.5" />Resist</span><div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-sky-200 bg-sky-500/20 capitalize">{r}</span>)}</div></div>}
-                          {dimm.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-purple-500/10"><span className="text-[9px] font-bold text-purple-300 uppercase tracking-wide w-20 shrink-0 flex items-center gap-1"><Swords className="w-2.5 h-2.5" />Immune</span><div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-purple-200 bg-purple-500/20 capitalize">{i}</span>)}</div></div>}
-                          {cimm.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-amber-500/10"><span className="text-[9px] font-bold text-amber-300 uppercase tracking-wide w-20 shrink-0 flex items-center gap-1"><Activity className="w-2.5 h-2.5" />Cond Imm</span><div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-200 bg-amber-500/20 capitalize">{i}</span>)}</div></div>}
+                          {vuln.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-rose-500/10"><span className="text-[9px] font-bold text-rose-300 uppercase tracking-wide w-20 shrink-0">V</span><div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-rose-200 bg-rose-500/20 capitalize">{v}</span>)}</div></div>}
+                          {res.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-sky-500/10"><span className="text-[9px] font-bold text-sky-300 uppercase tracking-wide w-20 shrink-0">R</span><div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-sky-200 bg-sky-500/20 capitalize">{r}</span>)}</div></div>}
+                          {dimm.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-purple-500/10"><span className="text-[9px] font-bold text-purple-300 uppercase tracking-wide w-20 shrink-0">I</span><div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-purple-200 bg-purple-500/20 capitalize">{i}</span>)}</div></div>}
+                          {cimm.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-amber-500/10"><span className="text-[9px] font-bold text-amber-300 uppercase tracking-wide w-20 shrink-0">C</span><div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-200 bg-amber-500/20 capitalize">{i}</span>)}</div></div>}
                         </div>
                       );
                     })()}
@@ -1075,10 +1075,10 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       if (!vuln.length && !res.length && !dimm.length && !cimm.length) return null;
                       return (
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {vuln.map(v => <span key={v} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-bold text-rose-300 bg-rose-500/20 capitalize"><Zap className="w-2.5 h-2.5 shrink-0" />{v}</span>)}
-                          {res.map(r => <span key={r} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-bold text-sky-300 bg-sky-500/20 capitalize"><Shield className="w-2.5 h-2.5 shrink-0" />{r}</span>)}
-                          {dimm.map(i => <span key={i} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-bold text-purple-300 bg-purple-500/20 capitalize"><Swords className="w-2.5 h-2.5 shrink-0" />{i}</span>)}
-                          {cimm.map(i => <span key={i} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-bold text-amber-300 bg-amber-500/20 capitalize"><Activity className="w-2.5 h-2.5 shrink-0" />{i}</span>)}
+                          {vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-rose-300 bg-rose-500/20 capitalize">V {v}</span>)}
+                          {res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-sky-300 bg-sky-500/20 capitalize">R {r}</span>)}
+                          {dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-purple-300 bg-purple-500/20 capitalize">I {i}</span>)}
+                          {cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-amber-300 bg-amber-500/20 capitalize">C {i}</span>)}
                         </div>
                       );
                     })()}
