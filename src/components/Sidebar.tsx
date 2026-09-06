@@ -1,6 +1,6 @@
 import React from 'react';
 import { version } from '../../package.json';
-import { LayoutDashboard, Swords, BookOpen, UploadCloud, Plus, ChevronRight, ChevronLeft, ChevronDown, Square, Settings, ScrollText, BarChart2, Sparkles, Map, Shield, HelpCircle, Music, Sun, Moon, MoreHorizontal, Play, Pause, ExternalLink, Layers } from 'lucide-react';
+import { LayoutDashboard, Swords, BookOpen, UploadCloud, Plus, ChevronRight, ChevronLeft, ChevronDown, Square, Settings, ScrollText, BarChart2, Sparkles, Map, HelpCircle, Music, Sun, Moon, MoreHorizontal, Play, Pause, ExternalLink, Layers } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { APP_NAME, APP_SHORT_NAME } from '../lib/appConfig';
 import { SidebarItem } from './SidebarItem';
@@ -190,79 +190,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <div className={cn("border-t border-white/10 my-2", collapsed ? "mx-2" : "mx-0")} />
 
-          {/* Library, Spells, Abilities — collapsed into popover */}
-          {(() => {
-            const [open, setOpen] = React.useState(false);
-            const ref = React.useRef<HTMLDivElement>(null);
-            React.useEffect(() => {
-              const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-              document.addEventListener('mousedown', h);
-              return () => document.removeEventListener('mousedown', h);
-            }, []);
-            if (isBasicMode) {
-              return (
-                <SidebarItem
-                  icon={BookOpen}
-                  label="Library"
-                  collapsed={collapsed}
-                  iconColor="text-red-400"
-                  to="/monsters"
-                />
-              );
-            }
-            const links = [
-              { icon: BookOpen,  label: 'Library',   color: 'text-red-400',   to: '/monsters'   },
-              { icon: Sparkles,  label: 'Spells',    color: 'text-sky-400',   to: '/spells'     },
-              { icon: Shield,    label: 'Abilities', color: 'text-amber-400', to: '/abilities'  },
-            ];
-            const isAnyActive = links.some(l => location.pathname.startsWith(l.to));
-            return (
-              <div ref={ref} className="relative">
-                <button
-                  onClick={() => setOpen(v => !v)}
-                  title={collapsed ? "Library & More" : undefined}
-                  className={cn(
-                    "w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all",
-                    collapsed && "justify-center px-0",
-                    open || isAnyActive ? "bg-white/5 text-on-surface" : "text-outline hover:bg-white/5 hover:text-on-surface"
-                  )}
-                >
-                  <BookOpen className={cn("w-5 h-5 shrink-0", isAnyActive ? "text-red-400" : "text-outline")} />
-                  {!collapsed && <span className="font-medium text-sm flex-1 text-left">Library</span>}
-                  {!collapsed && <ChevronDown className={cn("w-4 h-4 transition-transform", open ? "rotate-0" : "-rotate-90")} />}
-                </button>
-                <AnimatePresence>
-                  {open && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 4 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 4 }}
-                      transition={{ duration: 0.12 }}
-                      className={cn(
-                        "absolute z-[200] bg-surface-container-high rounded-xl shadow-2xl shadow-black/40 border border-white/8 py-1 min-w-[160px]",
-                        collapsed ? "left-14 top-0" : "left-2 top-full mt-1"
-                      )}
-                    >
-                      {links.map(({ icon: Icon, label, color, to }) => (
-                        <NavLink
-                          key={to}
-                          to={to}
-                          onClick={() => setOpen(false)}
-                          className={({ isActive }) => cn(
-                            "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-white/5",
-                            isActive ? "text-on-surface" : "text-outline hover:text-on-surface"
-                          )}
-                        >
-                          <Icon className={cn("w-4 h-4 shrink-0", color)} />
-                          <span className="font-medium">{label}</span>
-                        </NavLink>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })()}
+          <SidebarItem
+            icon={BookOpen}
+            label="Library"
+            collapsed={collapsed}
+            iconColor="text-red-400"
+            to="/monsters"
+          />
 
           {!isBasicMode && (
             <SidebarItem

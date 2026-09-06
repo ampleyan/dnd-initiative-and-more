@@ -1,33 +1,8 @@
 import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Combatant, Encounter, Player, AnimationLevel } from '../types';
+import { Combatant, Encounter, AnimationLevel } from '../types';
 import { uuid } from '../lib/utils';
 import { api, ApiError } from '../api/client';
-
-export function playerToCombatant(p: Player): Combatant {
-  return {
-    id: uuid(),
-    name: p.name,
-    type: 'player',
-    initiative: 0,
-    hp: { current: Math.min(p.hp_current ?? p.hp_max, p.hp_max), max: p.hp_max },
-    ac: p.ac,
-    speed: p.speed,
-    subtitle: p.subtitle,
-    avatar: p.avatar,
-    conditions: [],
-    tags: [],
-    stats: { ...p.stats },
-    actions: p.actions ?? [],
-    abilities: p.abilities ?? [],
-    spells: p.spells ?? [],
-    spellIds: p.spellIds ?? [],
-    featureIds: p.featureIds ?? [],
-    playerId: p.id,
-    spellSlots: p.spellSlots ? { ...p.spellSlots } : undefined,
-    featureUses: p.featureUses ? { ...p.featureUses } : undefined,
-  };
-}
 
 export interface EncounterManagementParams {
   savedEncounters: Encounter[];
@@ -60,7 +35,6 @@ export interface EncounterManagementParams {
   navigate: ReturnType<typeof useNavigate>;
   showError: (msg: string) => void;
   showSuccess: (msg: string) => void;
-  players: Player[];
 }
 
 export function useEncounterManagement(params: EncounterManagementParams) {
@@ -89,7 +63,6 @@ export function useEncounterManagement(params: EncounterManagementParams) {
     navigate,
     showError,
     showSuccess,
-    players,
   } = params;
 
   const handleNewEncounter = () => {
@@ -142,19 +115,10 @@ export function useEncounterManagement(params: EncounterManagementParams) {
             api.combatants.create({ ...c, encounterId: id })
           ));
         } else {
-          // New encounter — auto-add all players from the roster unless already present
-          const existingNames = new Set(combatantsToSave.map(c => c.name.toLowerCase()));
-          const playerCombatants = players
-            .filter(p => !existingNames.has(p.name.toLowerCase()))
-            .map(playerToCombatant);
-          const allCombatants = [...combatantsToSave, ...playerCombatants];
           await api.encounters.create(newEncounter);
-          await Promise.all(allCombatants.map(c =>
+          await Promise.all(combatantsToSave.map(c =>
             api.combatants.create({ ...c, encounterId: id })
           ));
-          if (playerCombatants.length > 0) {
-            setCombatants(allCombatants);
-          }
         }
 
         setCurrentEncounterId(id);
@@ -187,13 +151,8 @@ export function useEncounterManagement(params: EncounterManagementParams) {
       for (const encounter of encounters) {
         const id = encounter.id || uuid();
         await api.encounters.create({ id, name: encounter.name, currentRound: 1, isEncounterActive: false, backgroundImage: '', youtubeUrl: '', folder: encounter.folder || '' });
-        const existingNames = new Set((encounter.combatants ?? []).map((c: Combatant) => c.name.toLowerCase()));
-        const playerCombatants = players
-          .filter(p => !existingNames.has(p.name.toLowerCase()))
-          .map(playerToCombatant);
-        const allCombatants = [...(encounter.combatants ?? []), ...playerCombatants];
-        if (allCombatants.length) {
-          await Promise.all(allCombatants.map(c =>
+        if (encounter.combatants?.length) {
+          await Promise.all(encounter.combatants.map(c =>
             api.combatants.create({ ...c, encounterId: id })
           ));
         }

@@ -234,6 +234,7 @@ export function useAppState() {
               return {
                 ...c,
                 playerId: c.playerId ?? player.id,
+                avatar: player.avatar || c.avatar,
                 actions: player.actions?.length ? player.actions : c.actions,
                 abilities: player.abilities?.length ? player.abilities : c.abilities,
                 spells: player.spells?.length ? player.spells : c.spells,
@@ -260,6 +261,7 @@ export function useAppState() {
             return {
               ...c,
               playerId: c.playerId ?? player.id,
+              avatar: player.avatar || c.avatar,
               actions: player.actions?.length ? player.actions : c.actions,
               abilities: player.abilities?.length ? player.abilities : c.abilities,
               spells: player.spells?.length ? player.spells : c.spells,
@@ -316,6 +318,7 @@ export function useAppState() {
       return {
         ...c,
         playerId: c.playerId ?? player.id,
+        avatar: player.avatar || c.avatar,
         actions: (player.actions?.length ?? 0) > 0 ? player.actions! : c.actions,
         abilities: (player.abilities?.length ?? 0) > 0 ? player.abilities! : c.abilities,
         spells: (player.spells?.length ?? 0) > 0 ? player.spells! : c.spells,
@@ -488,7 +491,6 @@ export function useAppState() {
     navigate,
     showError,
     showSuccess,
-    players,
   });
 
   const syncPlayerLog = useCallback((show: boolean, entries: LogEntry[]) => {

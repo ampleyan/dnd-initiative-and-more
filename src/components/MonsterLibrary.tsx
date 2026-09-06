@@ -245,7 +245,7 @@ export const MonsterLibrary: React.FC<MonsterLibraryProps> = ({
   const monsterFilter = useMonsterFilter(monsters);
   const [selectedMonster, setSelectedMonster] = useState<MonsterTemplate | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => loadFavorites());
-  const [collectionFilter, setCollectionFilter] = useState<CollectionFilter>('all');
+  const [collectionFilter, setCollectionFilter] = useState<CollectionFilter>('players');
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [editForm, setEditForm] = useState<any>({});

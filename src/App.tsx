@@ -31,7 +31,6 @@ import { useHueEffects } from './hooks/useHueEffects';
 import { HueEffectName, HueEffectTargets } from './lib/hueEffects';
 import { Combatant, Encounter, Player, EncounterNotes } from './types';
 import { api } from './api/client';
-import { playerToCombatant } from './hooks/useEncounterManagement';
 import { SessionBoard } from './components/SessionBoard';
 import { FloatingMusicPlayer } from './components/FloatingMusicPlayer';
 import { useLocalState } from './hooks/useLocalState';
@@ -321,13 +320,8 @@ export default function App() {
       for (const encounter of chapter.encounters) {
         const id = encounter.id || uuid();
         await api.encounters.create({ id, name: encounter.name, currentRound: 1, isEncounterActive: false, backgroundImage: '', youtubeUrl: '', folder: '', sessionId: session.id });
-        const existingNames = new Set((encounter.combatants ?? []).map((c: Combatant) => c.name.toLowerCase()));
-        const playerCombatants = players
-          .filter(p => !existingNames.has(p.name.toLowerCase()))
-          .map(playerToCombatant);
-        const allCombatants = [...(encounter.combatants ?? []), ...playerCombatants];
-        if (allCombatants.length) {
-          await Promise.all(allCombatants.map(c =>
+        if (encounter.combatants?.length) {
+          await Promise.all(encounter.combatants.map(c =>
             api.combatants.create({ ...c, encounterId: id })
           ));
         }
