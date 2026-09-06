@@ -7,6 +7,7 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+      - ./uploads:/app/uploads
       - type: bind
         source: E:\DnD\tabletopaudio
         target: /app/data/tabletopaudio

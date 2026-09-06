@@ -123,7 +123,16 @@ export function useMonsterActions(params: MonsterActionsParams) {
       for (const incoming of newMonsters) {
         const existingIdx = result.findIndex(m => m.name.toLowerCase() === incoming.name.toLowerCase());
         if (existingIdx >= 0) {
-          result[existingIdx] = { ...incoming, id: result[existingIdx].id };
+          const existing = result[existingIdx];
+          result[existingIdx] = {
+            ...incoming,
+            id: existing.id,
+            hp: existing.hp,
+            maxHp: existing.maxHp,
+            ac: existing.ac,
+            speed: existing.speed,
+            stats: existing.stats,
+          };
         } else {
           result.push(incoming);
         }

@@ -206,8 +206,7 @@ async function main() {
     INSERT INTO monsters (id, name, hp, maxHp, ac, speed, avatar, xp, description, cr, type, source, stats, actions, abilities, spells, tags)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]')
     ON CONFLICT(id) DO UPDATE SET
-      name=excluded.name, hp=excluded.hp, maxHp=excluded.maxHp, ac=excluded.ac,
-      speed=excluded.speed, avatar=excluded.avatar, xp=excluded.xp,
+      name=excluded.name, avatar=excluded.avatar, xp=excluded.xp,
       description=excluded.description, cr=excluded.cr, type=excluded.type,
       source=excluded.source, stats=excluded.stats,
       actions=excluded.actions, abilities=excluded.abilities, spells=excluded.spells

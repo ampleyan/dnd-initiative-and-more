@@ -647,8 +647,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     </div>
                   ) : null)}
 
-                {/* Vulnerabilities / Resistances / Immunities — admin only, prominent panel */}
-                {isAdmin && displayedCombatant.type !== 'player' && (() => {
+                {/* Vulnerabilities / Resistances / Immunities */}
+                {displayedCombatant.type !== 'player' && (() => {
                   const vuln = displayedCombatant.vulnerabilities ?? [];
                   const res  = displayedCombatant.resistances ?? [];
                   const dimm = displayedCombatant.damageImmunities ?? [];

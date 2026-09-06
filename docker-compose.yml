@@ -5,6 +5,7 @@ services:
       - "3001:3000"
     volumes:
       - ./data:/app/data
+      - ./uploads:/app/uploads
     environment:
       DB_PATH: /app/data/dnd_tracker.db
       NODE_ENV: production

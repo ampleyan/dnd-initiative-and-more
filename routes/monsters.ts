@@ -39,10 +39,10 @@ export function createMonstersRouter(db: any, dbAvailable: boolean, requireAdmin
   router.post('/monsters', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ success: false, message: 'DB not available' });
     const { id, name, hp, maxHp, ac, speed, avatar, xp, description, cr, type, stats, actions, abilities, source, tags, spells, vulnerabilities, resistances, damageImmunities, conditionImmunities } = req.body;
-    const existing = db.prepare('SELECT id FROM monsters WHERE LOWER(name) = LOWER(?)').get(name) as { id: string } | undefined;
+    const existing = db.prepare('SELECT * FROM monsters WHERE LOWER(name) = LOWER(?)').get(name) as any | undefined;
     if (existing) {
       db.prepare(`UPDATE monsters SET name = ?, hp = ?, maxHp = ?, ac = ?, speed = ?, avatar = ?, xp = ?, description = ?, cr = ?, type = ?, stats = ?, actions = ?, abilities = ?, source = ?, tags = ?, spells = ?, vulnerabilities = ?, resistances = ?, damageImmunities = ?, conditionImmunities = ? WHERE id = ?`)
-        .run(name, hp, maxHp, ac, speed, avatar, xp, description, cr, type, JSON.stringify(stats || {}), JSON.stringify(actions || []), JSON.stringify(abilities || []), source || 'custom', JSON.stringify(tags || []), JSON.stringify(spells || []), JSON.stringify(vulnerabilities || []), JSON.stringify(resistances || []), JSON.stringify(damageImmunities || []), JSON.stringify(conditionImmunities || []), existing.id);
+        .run(name, existing.hp ?? hp, existing.maxHp ?? maxHp, existing.ac ?? ac, existing.speed ?? speed, avatar || existing.avatar || '', xp, description, cr, type, existing.stats || JSON.stringify(stats || {}), JSON.stringify(actions || []), JSON.stringify(abilities || []), source || 'custom', JSON.stringify(tags || []), JSON.stringify(spells || []), JSON.stringify(vulnerabilities || []), JSON.stringify(resistances || []), JSON.stringify(damageImmunities || []), JSON.stringify(conditionImmunities || []), existing.id);
       return res.json({ success: true });
     }
     db.prepare(`INSERT INTO monsters (id, name, hp, maxHp, ac, speed, avatar, xp, description, cr, type, stats, actions, abilities, source, tags, spells, vulnerabilities, resistances, damageImmunities, conditionImmunities) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)

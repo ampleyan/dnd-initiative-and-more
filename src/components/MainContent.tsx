@@ -11,6 +11,7 @@ import { CombatLog } from './CombatLog';
 import { EncounterVault } from './EncounterVault';
 import { ImportScreen } from './ImportScreen';
 import { PlayerView } from './PlayerView';
+import { DmStickyNote } from './DmStickyNote';
 import { MonsterLibrary } from './MonsterLibrary';
 import { HueSettingsPanel } from './HueSettingsPanel';
 import { HomeAssistantSettingsPanel } from './HomeAssistantSettingsPanel';
@@ -282,6 +283,7 @@ interface MainContentProps {
   getAudioCtx?: () => AudioContext;
   onImportScene?: (scene: { name: string; backgroundImg: string }) => void;
   encounterNotes?: EncounterNotes;
+  onUpdateNotes?: (notes: EncounterNotes) => void;
   onSwitchSidebarToNotes?: () => void;
 }
 
@@ -411,6 +413,7 @@ export const MainContent: React.FC<MainContentProps> = ({
   getAudioCtx,
   onImportScene,
   encounterNotes,
+  onUpdateNotes,
   onSwitchSidebarToNotes,
 }) => {
   const currentEncounter = savedEncounters?.find((e: any) => e.id === currentEncounterId);
@@ -548,6 +551,13 @@ export const MainContent: React.FC<MainContentProps> = ({
           exit={{ opacity: 0, y: -20 }}
           className="space-y-4"
         >
+          {activeTab === 'encounters' && currentEncounterId && encounterNotes && onUpdateNotes && (
+            <DmStickyNote
+              encounterId={currentEncounterId}
+              value={encounterNotes.general}
+              onChange={value => onUpdateNotes({ ...encounterNotes, general: value })}
+            />
+          )}
           {activeTab === 'encounters' && !currentEncounterId && (
             <EncounterVault
               encounters={savedEncounters}
@@ -800,12 +810,12 @@ export const MainContent: React.FC<MainContentProps> = ({
               {isEncounterActive && (() => {
                 const active = combatLayout.allSorted[currentTurnIndex];
                 if (!active) return null;
+                if (activeRowVisible) return null;
                 const hpPct = active.hp.max > 0 ? Math.max(0, Math.min(100, (active.hp.current / active.hp.max) * 100)) : 0;
                 const hpColor = hpPct > 50 ? 'bg-emerald-500' : hpPct > 25 ? 'bg-amber-400' : 'bg-error';
                 return (
                   <div
-                    aria-hidden={activeRowVisible}
-                    className={`sticky top-0 z-20 flex items-center gap-3 px-3 py-2 bg-[#0f1419]/95 backdrop-blur border border-primary/30 rounded-xl shadow-lg mb-1 ${activeRowVisible ? 'invisible' : ''}`}
+                    className="sticky top-0 z-20 flex items-center gap-3 px-3 py-2 bg-[#0f1419]/95 backdrop-blur border border-primary/30 rounded-xl shadow-lg mb-1"
                   >
                     <AvatarImg src={active.avatar} name={active.name} className="w-7 h-7 rounded-lg border border-primary/30 shrink-0 text-xs" />
                     <div className="flex-1 min-w-0">

@@ -76,6 +76,10 @@ function buildEncounterFromParsed(
         conditions: [],
         tags: monster.tags ?? [],
         stats: { ...monster.stats },
+        vulnerabilities: monster.vulnerabilities ? [...monster.vulnerabilities] : [],
+        resistances: monster.resistances ? [...monster.resistances] : [],
+        damageImmunities: monster.damageImmunities ? [...monster.damageImmunities] : [],
+        conditionImmunities: monster.conditionImmunities ? [...monster.conditionImmunities] : [],
         actions: monster.actions,
         abilities: monster.abilities,
       });

@@ -29,6 +29,15 @@ function seedEntries(entries: any[]): string {
   }).filter(Boolean).join(' ');
 }
 
+function seedTraitList(traits: any[]): string[] {
+  if (!Array.isArray(traits)) return [];
+  return traits.flatMap(trait => {
+    if (typeof trait === 'string') return [seedClean(trait)];
+    if (trait && typeof trait === 'object' && typeof trait.name === 'string') return [seedClean(trait.name)];
+    return [];
+  }).filter(Boolean);
+}
+
 function seedCR(cr: any): string {
   if (!cr) return '0';
   if (typeof cr === 'string') return cr;
@@ -83,6 +92,10 @@ function seedTransformMonster(m: any): any {
     stats: { str: m.str ?? 10, dex: m.dex ?? 10, con: m.con ?? 10, int: m.int ?? 10, wis: m.wis ?? 10, cha: m.cha ?? 10 },
     actions: (m.action || []).map((a: any) => ({ name: a.name || 'Action', description: seedEntries(a.entries || []) })).filter((a: any) => a.name && a.description),
     abilities: (m.trait || []).map((t: any) => ({ name: t.name || 'Trait', description: seedEntries(t.entries || []) })).filter((a: any) => a.name && a.description),
+    vulnerabilities: seedTraitList(m.vulnerable ?? []),
+    resistances: seedTraitList(m.resist ?? []),
+    damageImmunities: seedTraitList(m.immune ?? []),
+    conditionImmunities: seedTraitList(m.conditionImmune ?? []),
     spells,
   };
 }
@@ -237,7 +250,7 @@ export function createSeedFunctions(db: any, dbAvailable: boolean) {
   }
   async function ensureMonstersInDb(creatures: Array<{ name: string; source?: string }>): Promise<number> {
     if (!dbAvailable || creatures.length === 0) return 0;
-    const ins = db.prepare(`INSERT OR IGNORE INTO monsters (id,name,hp,maxHp,ac,speed,avatar,xp,description,cr,type,source,stats,actions,abilities) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    const ins = db.prepare(`INSERT OR IGNORE INTO monsters (id,name,hp,maxHp,ac,speed,avatar,xp,description,cr,type,source,stats,actions,abilities,vulnerabilities,resistances,damageImmunities,conditionImmunities) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
     const toFind = creatures.map(c => ({
       name: c.name, source: c.source,
       id: c.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
@@ -256,7 +269,7 @@ export function createSeedFunctions(db: any, dbAvailable: boolean) {
     const insertMonster = (raw: any) => {
       try {
         const t = seedTransformMonster(raw);
-        ins.run(t.id, t.name, t.hp, t.maxHp, t.ac, t.speed, t.avatar, t.xp, t.description, t.cr, t.type, t.source, JSON.stringify(t.stats), JSON.stringify(t.actions), JSON.stringify(t.abilities));
+        ins.run(t.id, t.name, t.hp, t.maxHp, t.ac, t.speed, t.avatar, t.xp, t.description, t.cr, t.type, t.source, JSON.stringify(t.stats), JSON.stringify(t.actions), JSON.stringify(t.abilities), JSON.stringify(t.vulnerabilities), JSON.stringify(t.resistances), JSON.stringify(t.damageImmunities), JSON.stringify(t.conditionImmunities));
         inserted++;
         return true;
       } catch { return false; }
@@ -293,7 +306,7 @@ export function createSeedFunctions(db: any, dbAvailable: boolean) {
     const monsterCount = (db.prepare('SELECT COUNT(*) as n FROM monsters').get() as any).n;
     if (monsterCount === 0) {
       console.log('[seed] Importing monsters from MM, MM 2025, and WBTW...');
-      const ins = db.prepare(`INSERT OR REPLACE INTO monsters (id,name,hp,maxHp,ac,speed,avatar,xp,description,cr,type,source,stats,actions,abilities) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+      const ins = db.prepare(`INSERT OR REPLACE INTO monsters (id,name,hp,maxHp,ac,speed,avatar,xp,description,cr,type,source,stats,actions,abilities,vulnerabilities,resistances,damageImmunities,conditionImmunities) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
       for (const file of ['bestiary-mm.json', 'bestiary-xmm.json', 'bestiary-wbtw.json']) {
         const url = `https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/bestiary/${file}`;
         const res = await fetch(url).catch(() => null);
@@ -303,7 +316,7 @@ export function createSeedFunctions(db: any, dbAvailable: boolean) {
         let count = 0;
         db.transaction((list: any[]) => {
           for (const m of list) {
-            try { const t = seedTransformMonster(m); ins.run(t.id, t.name, t.hp, t.maxHp, t.ac, t.speed, t.avatar, t.xp, t.description, t.cr, t.type, t.source, JSON.stringify(t.stats), JSON.stringify(t.actions), JSON.stringify(t.abilities)); count++; } catch {}
+            try { const t = seedTransformMonster(m); ins.run(t.id, t.name, t.hp, t.maxHp, t.ac, t.speed, t.avatar, t.xp, t.description, t.cr, t.type, t.source, JSON.stringify(t.stats), JSON.stringify(t.actions), JSON.stringify(t.abilities), JSON.stringify(t.vulnerabilities), JSON.stringify(t.resistances), JSON.stringify(t.damageImmunities), JSON.stringify(t.conditionImmunities)); count++; } catch {}
           }
         })(eligible);
         console.log(`[seed]   ${count} monsters from ${file}`);
