@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { Combatant, SpellSlots } from '../types';
-import { sortWithCompanions, applyTurnStart, shouldTriggerLairAction } from '../lib/combatantUtils';
+import { sortWithCompanions, applyDamage, applyTurnStart, shouldTriggerLairAction } from '../lib/combatantUtils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function makeCombatant(overrides: Partial<Combatant>): Combatant {
@@ -282,6 +282,23 @@ describe('applyTurnStart', () => {
   it('handles remaining already at max (idempotent)', () => {
     const c = { ...base, legendaryActions: { max: 3, remaining: 3 } };
     expect(applyTurnStart(c).legendaryActions).toEqual({ max: 3, remaining: 3 });
+  });
+});
+
+describe('applyDamage — damage traits', () => {
+  it('halves resisted damage after applying temporary hit points', () => {
+    const c = makeCombatant({ hp: { current: 20, max: 20 }, tempHp: 3, resistances: ['fire'] });
+    const result = applyDamage(c, 10, 'fire');
+    expect(result.actualDamage).toBe(2);
+    expect(result.updated.hp.current).toBe(18);
+    expect(result.updated.tempHp).toBe(0);
+  });
+
+  it('doubles vulnerable damage and immunity prevents it', () => {
+    const vulnerable = makeCombatant({ hp: { current: 20, max: 20 }, vulnerabilities: ['cold'] });
+    const immune = makeCombatant({ hp: { current: 20, max: 20 }, damageImmunities: ['cold'] });
+    expect(applyDamage(vulnerable, 4, 'cold').actualDamage).toBe(8);
+    expect(applyDamage(immune, 4, 'cold').actualDamage).toBe(0);
   });
 });
 

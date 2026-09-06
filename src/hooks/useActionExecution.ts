@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { Combatant, LogEntry, MonsterAction, Spell } from '../types';
+import { applyDamage, applyHeal } from '../lib/combatantUtils';
 
 export interface ActionApplication {
   targetIds: string[];
@@ -9,6 +10,7 @@ export interface ActionApplication {
   actionName: string;
   actionCategory: MonsterAction['category'];
   conditionsToAdd: string[];
+  durationRounds?: number;
   applyConcentration: boolean;
   damageType?: string;
 }
@@ -39,7 +41,7 @@ export function useActionExecution({
   const closeActionModal = useCallback(() => setActionModal(null), []);
 
   const handleActionApply = useCallback((params: ActionApplication) => {
-    const { targetIds, effect, amount, amountPerTarget, actionName, actionCategory, conditionsToAdd, damageType } = params;
+    const { targetIds, effect, amount, amountPerTarget, actionName, actionCategory, conditionsToAdd, durationRounds, damageType } = params;
     const actorCombatant = actionModal?.actor;
 
     if (actorCombatant) {
@@ -71,7 +73,10 @@ export function useActionExecution({
           for (const [targetId, appliedConditions] of Object.entries(actor.concentrationTargets)) {
             const target = pending.get(targetId);
             if (!target || appliedConditions.length === 0) continue;
-            pending.set(targetId, { ...target, conditions: target.conditions.filter(condition => !appliedConditions.includes(condition)) });
+            const conditions = target.conditions.filter(condition => !appliedConditions.includes(condition));
+            const conditionTimers = { ...(target.conditionTimers ?? {}) };
+            appliedConditions.forEach(condition => { delete conditionTimers[condition]; });
+            pending.set(targetId, { ...target, conditions, conditionTimers: Object.keys(conditionTimers).length > 0 ? conditionTimers : undefined });
           }
         }
       }
@@ -86,24 +91,25 @@ export function useActionExecution({
       let updated: Combatant = { ...target };
       const targetAmount = amountPerTarget ? (amountPerTarget[targetId] ?? 0) : amount;
       if (effect === 'damage' && targetAmount > 0) {
-        const tempAbsorb = Math.min(target.tempHp ?? 0, targetAmount);
-        const newTemp = (target.tempHp ?? 0) - tempAbsorb;
-        const actualDamage = targetAmount - tempAbsorb;
-        const newHp = Math.max(0, target.hp.current - actualDamage);
-        updated = { ...updated, hp: { ...target.hp, current: newHp }, tempHp: newTemp };
-        if (target.concentratingOn && actualDamage > 0) {
-          triggerConCheck(targetId, Math.max(10, Math.floor(actualDamage / 2)));
+        const result = applyDamage(target, targetAmount, damageType);
+        updated = result.updated;
+        if (target.concentratingOn && result.actualDamage > 0) {
+          triggerConCheck(targetId, Math.max(10, Math.floor(result.actualDamage / 2)));
         }
       } else if (effect === 'heal' && targetAmount > 0) {
-        const newHp = Math.min(target.hp.max, target.hp.current + targetAmount);
-        updated = { ...updated, hp: { ...target.hp, current: newHp } };
+        updated = applyHeal(target, targetAmount);
       }
 
       if (conditionsToAdd.length > 0) {
+        const applicableConditions = conditionsToAdd.filter(condition =>
+          !(target.conditionImmunities ?? []).some(immunity => immunity.toLowerCase().includes(condition.toLowerCase()))
+        );
         const existing = new Set(updated.conditions);
-        conditionsToAdd.forEach(condition => existing.add(condition));
-        updated = { ...updated, conditions: [...existing] };
-        if (params.applyConcentration) newConcentrationTargets[targetId] = conditionsToAdd;
+        applicableConditions.forEach(condition => existing.add(condition));
+        const timers = { ...(updated.conditionTimers ?? {}) };
+        if (durationRounds && durationRounds > 0) applicableConditions.forEach(condition => { timers[condition] = durationRounds; });
+        updated = { ...updated, conditions: [...existing], conditionTimers: Object.keys(timers).length > 0 ? timers : updated.conditionTimers };
+        if (params.applyConcentration && applicableConditions.length > 0) newConcentrationTargets[targetId] = applicableConditions;
       }
 
       pending.set(targetId, updated);
@@ -113,8 +119,24 @@ export function useActionExecution({
       const actor = pending.get(actorCombatant.id);
       if (actor) {
         const newConditions = [...actor.conditions.filter(condition => condition !== 'concentrating'), 'concentrating'];
-        pending.set(actor.id, { ...actor, conditions: newConditions, concentratingOn: actionName, concentrationTargets: newConcentrationTargets });
+        const timers = { ...(actor.conditionTimers ?? {}) };
+        if (durationRounds && durationRounds > 0) timers.concentrating = durationRounds;
+        pending.set(actor.id, { ...actor, conditions: newConditions, conditionTimers: Object.keys(timers).length > 0 ? timers : actor.conditionTimers, concentratingOn: actionName, concentrationTargets: newConcentrationTargets });
         addLogEntry({ type: 'concentration_start', actorName: actorCombatant.name, actorId: actorCombatant.id, detail: actionName });
+      }
+    }
+
+    if (actionCategory === 'ability' && actorCombatant?.type === 'player') {
+      const actor = pending.get(actorCombatant.id);
+      const entry = actor?.featureUses
+        ? Object.entries(actor.featureUses).find(([, feature]) => feature.name.toLowerCase() === actionName.toLowerCase() && feature.used < feature.total)
+        : undefined;
+      if (actor && entry) {
+        const [featureId, feature] = entry;
+        pending.set(actor.id, {
+          ...actor,
+          featureUses: { ...actor.featureUses, [featureId]: { ...feature, used: feature.used + 1 } },
+        });
       }
     }
 

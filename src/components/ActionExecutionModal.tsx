@@ -112,6 +112,17 @@ function extractFixedAmount(desc: string): number | null {
   return null;
 }
 
+function extractDurationRounds(duration: string): number | null {
+  const match = duration.match(/(?:up to\s+)?(\d+)\s+(round|minute|hour|day)s?/i);
+  if (!match) return null;
+  const value = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  if (unit === 'round') return value;
+  if (unit === 'minute') return value * 10;
+  if (unit === 'hour') return value * 600;
+  return value * 14400;
+}
+
 // Extra effect patterns → condition IDs (checked against the full description)
 const EXTRA_CONDITION_PATTERNS: Array<{ pattern: RegExp; id: string }> = [
   { pattern: /\bdisadvantage\b.{0,60}\b(attack|weapon)\b|\b(attack|weapon)\b.{0,60}\bdisadvantage\b/i, id: 'disadvantaged' },
@@ -178,6 +189,7 @@ interface ActionExecutionModalProps {
     actionName: string;
     actionCategory: MonsterAction['category'];
     conditionsToAdd: string[];
+    durationRounds?: number;
     applyConcentration: boolean;
     damageType?: string;
   }) => void;
@@ -192,6 +204,7 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
   const [perTargetMode, setPerTargetMode] = useState(false);
   const [amountsPerTarget, setAmountsPerTarget] = useState<Record<string, string>>({});
   const [checkedConditions, setCheckedConditions] = useState<Set<string>>(new Set());
+  const [durationRounds, setDurationRounds] = useState('');
   const [isAutoplayEnabled, setIsAutoplayEnabled] = useState(() => localStorage.getItem('sound_autoplay_enabled') !== 'false');
   const [polymorphMonster, setPolymorphMonster] = useState<MonsterTemplate | null>(null);
   const [showPolymorphPicker, setShowPolymorphPicker] = useState(false);
@@ -219,14 +232,18 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
   // Conditions for targets: exclude 'concentrating' — that goes to the caster
   const autoConditions = detectConditions(name, desc).filter(c => c !== 'concentrating');
   const autoAmount = extractFixedAmount(desc);
+  const detectedDurationRounds = extractDurationRounds(spellData?.duration ?? desc);
 
   // All combatants available as targets (actor included for self-buffs; downed excluded for damage)
   const targets = actor
     ? combatants.filter(c => !(hasDamage && c.hp.current <= 0))
     : [];
 
-  const enemies = targets.filter(c => c.id !== actor?.id && c.type !== 'player' && !c.isFriendly);
-  const allies  = targets.filter(c => c.id !== actor?.id && (c.type === 'player' || c.isFriendly));
+  const actorIsPlayerSide = !!actor && (actor.type === 'player' || actor.isFriendly);
+  const isSameSide = (c: Combatant) => (c.type === 'player' || c.isFriendly) === actorIsPlayerSide;
+  const allies  = targets.filter(c => c.id !== actor?.id && isSameSide(c));
+  const enemies = targets.filter(c => c.id !== actor?.id && !isSameSide(c));
+  const allyIds = new Set(allies.map(c => c.id));
 
   useEffect(() => {
     if (!isOpen || !actor) return;
@@ -236,6 +253,7 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
     setPerTargetMode(true);
     setAmountsPerTarget({});
     setCheckedConditions(new Set(autoConditions));
+    setDurationRounds(detectedDurationRounds !== null ? String(detectedDurationRounds) : '');
     // Auto-select default group based on detection
     if (isSelf) {
       setSelectedTargetIds(new Set([actor.id]));
@@ -321,6 +339,7 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
       actionName: name,
       actionCategory: action.category,
       conditionsToAdd: Array.from(checkedConditions).filter(c => c !== 'concentrating'),
+      durationRounds: checkedConditions.size > 0 || isConcentration ? Math.max(0, parseInt(durationRounds) || 0) || undefined : undefined,
       applyConcentration: isConcentration,
       damageType,
     });
@@ -335,7 +354,7 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
 
   const renderTarget = (c: typeof targets[0]) => {
     const self = c.id === actor.id;
-    const ally = c.type === 'player' || !!c.isFriendly;
+    const ally = allyIds.has(c.id);
     const isSelected = selectedTargetIds.has(c.id);
     const pct = hpPct(c);
     const color = hpColor(pct);
@@ -606,6 +625,20 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
                         );
                       })}
                     </div>
+                  </div>
+                )}
+
+                {(autoConditions.length > 0 || isConcentration) && (
+                  <div className="flex items-center gap-3">
+                    <label className="text-[10px] uppercase font-bold text-outline tracking-widest">Duration (rounds)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={durationRounds}
+                      onChange={e => setDurationRounds(e.target.value)}
+                      placeholder="Until removed"
+                      className="w-28 bg-surface-container-high border-none rounded-lg px-2 py-1.5 text-xs font-bold text-on-surface focus:ring-1 focus:ring-primary"
+                    />
                   </div>
                 )}
 

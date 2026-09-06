@@ -21,12 +21,22 @@ export function sortWithCompanions(cs: Combatant[]): Combatant[] {
  * the third failure kills the character.
  * Returns { updated, actualDamage } where actualDamage is post-tempHP absorption.
  */
-export function applyDamage(c: Combatant, amount: number): { updated: Combatant; actualDamage: number } {
+function matchesDamageType(values: string[] | undefined, damageType?: string) {
+  if (!damageType) return false;
+  const type = damageType.toLowerCase();
+  return (values ?? []).some(value => value.toLowerCase().includes(type));
+}
+
+export function applyDamage(c: Combatant, amount: number, damageType?: string): { updated: Combatant; actualDamage: number } {
+  const immune = matchesDamageType(c.damageImmunities, damageType);
+  const vulnerable = matchesDamageType(c.vulnerabilities, damageType);
+  const resistant = matchesDamageType(c.resistances, damageType);
+  const adjustedAmount = immune ? 0 : vulnerable && !resistant ? amount * 2 : resistant && !vulnerable ? Math.floor(amount / 2) : amount;
   const tempHp = c.tempHp ?? 0;
-  const tempAbsorb = Math.min(tempHp, amount);
+  const tempAbsorb = Math.min(tempHp, adjustedAmount);
   const newTemp = tempHp - tempAbsorb;
-  const newCurrent = Math.max(0, c.hp.current - (amount - tempAbsorb));
-  const actualDamage = amount - tempAbsorb;
+  const newCurrent = Math.max(0, c.hp.current - (adjustedAmount - tempAbsorb));
+  const actualDamage = adjustedAmount - tempAbsorb;
   const wasDown = c.hp.current === 0;
   let updated: Combatant = { ...c, hp: { ...c.hp, current: newCurrent }, tempHp: newTemp };
   if (c.type === 'player') {

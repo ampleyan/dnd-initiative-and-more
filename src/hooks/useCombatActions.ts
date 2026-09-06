@@ -378,6 +378,7 @@ export function useCombatActions(params: CombatActionsParams) {
     const endingCombatant = sorted[currentTurnIndex];
 
     let endingConditionUpdate: Partial<Combatant> = {};
+    let expiredConcentrationTargets: Record<string, string[]> = {};
     if (endingCombatant?.conditionTimers && Object.keys(endingCombatant.conditionTimers).length > 0) {
       const newTimers: Record<string, number> = {};
       const newConditions = [...endingCombatant.conditions];
@@ -391,6 +392,10 @@ export function useCombatActions(params: CombatActionsParams) {
       }
       endingConditionUpdate = { conditions: newConditions, conditionTimers: newTimers };
       const expired = endingCombatant.conditions.filter(id => !newConditions.includes(id));
+      if (expired.includes('concentrating') && endingCombatant.concentrationTargets) {
+        expiredConcentrationTargets = endingCombatant.concentrationTargets;
+        endingConditionUpdate = { ...endingConditionUpdate, concentratingOn: undefined, concentrationTargets: undefined };
+      }
       for (const condId of expired) {
         const cond = CONDITIONS.find(c => c.id === condId);
         addLogEntry({ type: 'condition_removed', actorName: endingCombatant.name, actorId: endingCombatant.id, detail: cond?.name ?? condId });
@@ -411,6 +416,21 @@ export function useCombatActions(params: CombatActionsParams) {
       const base = (endingCombatant && c.id === endingCombatant.id)
         ? { ...c, ...endingConditionUpdate }
         : c;
+      const expiredEffects = expiredConcentrationTargets[c.id];
+      if (expiredEffects?.length) {
+        const conditionTimers = { ...(base.conditionTimers ?? {}) };
+        expiredEffects.forEach(condition => { delete conditionTimers[condition]; });
+        return {
+          ...base,
+          conditions: base.conditions.filter(condition => !expiredEffects.includes(condition)),
+          conditionTimers: Object.keys(conditionTimers).length > 0 ? conditionTimers : undefined,
+          isCurrentTurn: c.id === nextCombatant.id,
+          ...(nextIndex === 0 ? { reactionUsed: false } : {}),
+          ...(c.id === nextCombatant.id && c.legendaryActions
+            ? { legendaryActions: applyTurnStart(c).legendaryActions }
+            : {}),
+        };
+      }
       return {
         ...base,
         isCurrentTurn: c.id === nextCombatant.id,
