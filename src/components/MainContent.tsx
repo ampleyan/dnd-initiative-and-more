@@ -692,21 +692,21 @@ export const MainContent: React.FC<MainContentProps> = ({
                           Edit Encounter
                         </button>
                         <div className="h-px bg-outline-variant/10 my-1" />
-                        <button
+                        {optionalFeatures.playerViewTools && <button
                           onClick={() => { window.open(`${window.location.origin}/player/${currentEncounterId}`, '_blank'); setShowToolbarOverflow(false); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-amber-400 hover:bg-surface-container transition-colors text-left"
                         >
                           <Monitor className="w-4 h-4 shrink-0" />
                           Player View
-                        </button>
-                        <button
+                        </button>}
+                        {optionalFeatures.soundpad && <button
                           onClick={() => { setIsSoundpadOpen(true); setShowToolbarOverflow(false); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pink-400 hover:bg-surface-container transition-colors text-left"
                         >
                           <Music className="w-4 h-4 shrink-0" />
                           Soundpad
-                        </button>
-                        <button
+                        </button>}
+                        {optionalFeatures.combatLog && optionalFeatures.playerViewTools && <button
                           onClick={() => { onToggleLogToPlayers(); setShowToolbarOverflow(false); }}
                           className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface-container transition-colors text-left ${showLogToPlayers ? 'text-primary' : 'text-on-surface'}`}
                         >
@@ -714,7 +714,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                             {showLogToPlayers && <span className="text-[8px] font-black text-on-primary leading-none">✓</span>}
                           </div>
                           Log to Players
-                        </button>
+                        </button>}
                         {isEncounterActive && (
                           <>
                             <div className="h-px bg-outline-variant/10 my-1" />
@@ -1077,7 +1077,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 </div>
               )}
 
-              {showLog && combatLog && (
+              {optionalFeatures.combatLog && showLog && combatLog && (
                 <div className="mt-4 p-4 bg-surface-container-low rounded-2xl border border-white/5">
                   <h4 className="text-[10px] uppercase font-bold text-outline mb-3 tracking-widest">Combat Log</h4>
                   <CombatLog entries={combatLog} />
@@ -1182,7 +1182,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 
           {/* Soundpad floating panel */}
           <DraggableSoundpad
-            isOpen={isSoundpadOpen}
+            isOpen={optionalFeatures.soundpad && isSoundpadOpen}
             onClose={() => setIsSoundpadOpen(false)}
             sounds={sounds}
             spells={spells}

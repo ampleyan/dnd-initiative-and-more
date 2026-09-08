@@ -47,10 +47,22 @@ export const HueEncounterControl: React.FC<HueEncounterControlProps> = ({ enable
     }
   };
 
+  const saveImageScene = async (colors: string[]) => {
+    const scene = { id: `image-${Date.now()}`, label: 'Image palette', colors };
+    try {
+      await api.hue.saveConfig({ scenes: [...scenes, scene] });
+      setScenes(current => [...current, scene]);
+      await applyPreset(scene);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return <>
     <button onClick={() => setOpen(true)} title="Hue scene control" aria-label="Hue scene control" aria-expanded={open} className="flex items-center gap-1.5 rounded-lg border border-outline/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-outline transition-colors hover:text-on-surface">
       <Lightbulb className="h-3.5 w-3.5" /><span className="hidden sm:inline">Hue</span>
     </button>
-    {open && <HueSceneModal scenes={scenes} currentSceneId={preset} applying={applying} applied={applied} onApply={applyPreset} onClose={() => setOpen(false)} />}
+    {open && <HueSceneModal scenes={scenes} currentSceneId={preset} applying={applying} applied={applied} onApply={applyPreset} onSaveImage={saveImageScene} onClose={() => setOpen(false)} />}
   </>;
 };

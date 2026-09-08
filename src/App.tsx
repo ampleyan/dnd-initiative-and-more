@@ -303,6 +303,9 @@ export default function App() {
     sessionBoard: storedFeatures?.sessionBoard !== false,
     dmNotes: storedFeatures?.dmNotes !== false,
     ambientMusic: storedFeatures?.ambientMusic !== false,
+    combatLog: storedFeatures?.combatLog !== false,
+    playerViewTools: storedFeatures?.playerViewTools !== false,
+    soundpad: storedFeatures?.soundpad !== false,
   };
 
   const [hueEnabled, setHueEnabled] = React.useState(() => localStorage.getItem('hueEnabled') === 'true');
@@ -470,6 +473,10 @@ export default function App() {
         setIsMusicClosed(false);
         setIsMusicPaused(false);
       }
+      if (feature === 'combatLog' && !enabled) {
+        setShowLog(false);
+        setShowLogToPlayers(false);
+      }
     },
     isPlayerView,
     encounterSubtab,
@@ -627,6 +634,7 @@ export default function App() {
         onShowSessionStats={() => setShowSessionStats(true)}
         onShowHelp={() => setShowHelp(true)}
         showLog={showLog}
+        showCombatLog={optionalFeatures.combatLog}
         theme={theme}
         onToggleTheme={toggleTheme}
         youtubeId={optionalFeatures.ambientMusic ? youtubeId : null}

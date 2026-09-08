@@ -30,6 +30,7 @@ interface SidebarProps {
   onShowSessionStats: () => void;
   onShowHelp: () => void;
   showLog?: boolean;
+  showCombatLog?: boolean;
   theme?: 'light' | 'pink';
   onToggleTheme?: () => void;
   youtubeId?: string | null;
@@ -60,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onShowSessionStats,
   onShowHelp,
   showLog,
+  showCombatLog = true,
   theme = 'pink',
   onToggleTheme,
   youtubeId,
@@ -246,7 +248,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               return () => document.removeEventListener('mousedown', handler);
             }, []);
             const items = [
-              { icon: ScrollText,  label: 'Combat Log',    color: 'text-slate-400',   action: onToggleLog,        active: showLog },
+              ...(showCombatLog ? [{ icon: ScrollText, label: 'Combat Log', color: 'text-slate-400', action: onToggleLog, active: showLog }] : []),
               { icon: BarChart2,   label: 'Session Stats', color: 'text-emerald-400', action: onShowSessionStats, active: false },
               { icon: HelpCircle,  label: 'Help',          color: 'text-sky-400',     action: onShowHelp,         active: false },
               { icon: Sparkles,    label: "What's New",    color: 'text-amber-300',   action: onShowWhatsNew,     active: false },

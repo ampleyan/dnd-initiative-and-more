@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, Loader2, X } from 'lucide-react';
 import { HueScene } from '../lib/hueScenes';
+import { HueImagePalette } from './HueImagePalette';
 
 interface HueSceneModalProps {
   scenes: HueScene[];
@@ -8,10 +9,11 @@ interface HueSceneModalProps {
   applying: string | null;
   applied: string | null;
   onApply: (scene: HueScene) => void;
+  onSaveImage: (colors: string[]) => Promise<boolean>;
   onClose: () => void;
 }
 
-export const HueSceneModal: React.FC<HueSceneModalProps> = ({ scenes, currentSceneId, applying, applied, onApply, onClose }) => (
+export const HueSceneModal: React.FC<HueSceneModalProps> = ({ scenes, currentSceneId, applying, applied, onApply, onSaveImage, onClose }) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0d0f14] shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="hue-scenes-title">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
@@ -30,6 +32,9 @@ export const HueSceneModal: React.FC<HueSceneModalProps> = ({ scenes, currentSce
             <div className="flex gap-1.5">{scene.colors.map((color, index) => <span key={`${scene.id}-${index}`} className="h-8 flex-1 rounded-md border border-white/10" style={{ backgroundColor: color }} />)}</div>
           </button>;
         })}
+      </div>
+      <div className="border-t border-white/10 px-4 py-3">
+        <HueImagePalette onSave={onSaveImage} />
       </div>
     </div>
   </div>
