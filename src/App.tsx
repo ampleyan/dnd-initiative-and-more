@@ -34,6 +34,7 @@ import { api } from './api/client';
 import { SessionBoard } from './components/SessionBoard';
 import { FloatingMusicPlayer } from './components/FloatingMusicPlayer';
 import { useLocalState } from './hooks/useLocalState';
+import { DEFAULT_FEATURES, type OptionalFeatures } from './components/FeaturesSettings';
 import { useRouterSync } from './hooks/useRouterSync';
 import { useActionExecution } from './hooks/useActionExecution';
 import { useToast } from './hooks/useToast';
@@ -105,7 +106,6 @@ export default function App() {
     handleCopyMonster,
     handleAddMonsterToEncounter,
     handleAddPlayerToEncounter,
-    handleAddAllPlayersToEncounter,
     handleHealAll,
     handleSaveEncounter,
     handleImportEncounters,
@@ -298,6 +298,13 @@ export default function App() {
   const toggleTheme = React.useCallback(() =>
     setTheme(t => t === 'pink' ? 'light' : 'pink'), []);
 
+  const [storedFeatures, setStoredFeatures] = useLocalState<Partial<OptionalFeatures>>('optionalFeatures', DEFAULT_FEATURES);
+  const optionalFeatures: OptionalFeatures = {
+    sessionBoard: storedFeatures?.sessionBoard !== false,
+    dmNotes: storedFeatures?.dmNotes !== false,
+    ambientMusic: storedFeatures?.ambientMusic !== false,
+  };
+
   const [hueEnabled, setHueEnabled] = React.useState(() => localStorage.getItem('hueEnabled') === 'true');
   const [haEnabled, setHaEnabled] = React.useState(() => localStorage.getItem('haEnabled') === 'true');
   const [hueSyncScene, setHueSyncScene] = React.useState(() => localStorage.getItem('hueSyncScene') === 'true');
@@ -456,6 +463,14 @@ export default function App() {
   if (!user) return <LoginScreen onLogin={login} />;
 
   const mainContentProps = {
+    optionalFeatures,
+    onToggleFeature: (feature: keyof OptionalFeatures, enabled: boolean) => {
+      setStoredFeatures(previous => ({ ...previous, [feature]: enabled }));
+      if (feature === 'ambientMusic' && enabled) {
+        setIsMusicClosed(false);
+        setIsMusicPaused(false);
+      }
+    },
     isPlayerView,
     encounterSubtab,
     currentEncounterId,
@@ -480,7 +495,6 @@ export default function App() {
     setQuickActionMode,
     handleAddMonsterToEncounter,
     handleAddPlayerToEncounter,
-    handleAddAllPlayersToEncounter,
     handleHealAll,
     onRest: async (type: 'short' | 'long') => {
       await Promise.all(players.map(player => handleRest(player.id, type)));
@@ -615,7 +629,7 @@ export default function App() {
         showLog={showLog}
         theme={theme}
         onToggleTheme={toggleTheme}
-        youtubeId={youtubeId}
+        youtubeId={optionalFeatures.ambientMusic ? youtubeId : null}
         youtubeUrl={activeYoutubeUrl}
         isMusicPaused={isMusicPaused}
         onToggleMusic={() => { setIsMusicClosed(false); setIsMusicPaused(v => !v); }}
@@ -849,7 +863,7 @@ export default function App() {
         />
 
         {/* Floating YouTube Player — draggable, position persisted */}
-        {youtubeId && !isPlayerView && !isMusicClosed && <FloatingMusicPlayer youtubeId={youtubeId} isPaused={isMusicPaused} onClose={() => { setIsMusicClosed(true); setIsMusicPaused(true); }} />}
+        {optionalFeatures.ambientMusic && youtubeId && !isPlayerView && !isMusicClosed && <FloatingMusicPlayer youtubeId={youtubeId} isPaused={isMusicPaused} onClose={() => { setIsMusicClosed(true); setIsMusicPaused(true); }} />}
       </main>
       </>}
       afterMain={<>
@@ -1009,7 +1023,7 @@ export default function App() {
         onQuickHeal={(id) => { setQuickActionCombatantId(id); setQuickActionMode('heal'); setIsQuickActionModalOpen(true); }}
       />
 
-      {!isPlayerView && <SessionBoard ref={sessionBoardRef} isEncounterActive={isEncounterActive} hideTrigger={isEncounterActive} />}
+      {!isPlayerView && optionalFeatures.sessionBoard && <SessionBoard ref={sessionBoardRef} isEncounterActive={isEncounterActive} hideTrigger={isEncounterActive} />}
       </>}
     />
   );

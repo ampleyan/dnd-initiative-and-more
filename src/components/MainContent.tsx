@@ -5,6 +5,8 @@ import { Users, Save, Square, Monitor, ChevronLeft, ChevronRight, ExternalLink, 
 import { TacticalSummary } from './TacticalSummary';
 import { AvatarImg } from './AvatarImg';
 import { CombatantRow } from './CombatantRow';
+import { ParticipantControls } from './ParticipantControls';
+import { FeaturesSettings, DEFAULT_FEATURES, type OptionalFeatures } from './FeaturesSettings';
 import { AoEActionBar } from './AoEActionBar';
 import { MultiTargetDamageModal } from './MultiTargetDamageModal';
 import { CombatLog } from './CombatLog';
@@ -190,7 +192,6 @@ interface MainContentProps {
   setQuickActionMode: (mode: 'damage' | 'heal' | 'tempHp') => void;
   handleAddMonsterToEncounter: (monster: MonsterTemplate) => void;
   handleAddPlayerToEncounter: (player: Player) => void;
-  handleAddAllPlayersToEncounter: () => void;
   handleHealAll: () => void;
   onRest?: (type: 'short' | 'long') => Promise<void>;
   handleClearAllConditions: () => void;
@@ -237,7 +238,7 @@ interface MainContentProps {
   handleUpdateCombatant: (updated: Combatant) => void;
   handleRevertPolymorph?: (combatant: Combatant) => void;
   handleAddCompanion?: (ownerId: string, template: { name: string; hp: number; ac: number; avatar?: string; subtitle?: string; stats?: Combatant['stats'] }) => void;
-  handleDeleteCombatant?: (id: string) => void;
+  handleDeleteCombatant?: (id: string | string[]) => void;
   selectedCombatantId?: string | null;
   setSelectedCombatantId: (id: string | null) => void;
   activeBackground?: string;
@@ -287,6 +288,8 @@ interface MainContentProps {
   encounterNotes?: EncounterNotes;
   onUpdateNotes?: (notes: EncounterNotes) => void;
   onSwitchSidebarToNotes?: () => void;
+  optionalFeatures?: OptionalFeatures;
+  onToggleFeature?: (feature: keyof OptionalFeatures, enabled: boolean) => void;
 }
 
 export const MainContent: React.FC<MainContentProps> = ({
@@ -321,7 +324,6 @@ export const MainContent: React.FC<MainContentProps> = ({
   setQuickActionMode,
   handleAddMonsterToEncounter,
   handleAddPlayerToEncounter,
-  handleAddAllPlayersToEncounter,
   handleHealAll,
   onRest,
   handleClearAllConditions,
@@ -418,6 +420,8 @@ export const MainContent: React.FC<MainContentProps> = ({
   encounterNotes,
   onUpdateNotes,
   onSwitchSidebarToNotes,
+  optionalFeatures = DEFAULT_FEATURES,
+  onToggleFeature,
 }) => {
   const currentEncounter = savedEncounters?.find((e: any) => e.id === currentEncounterId);
   const dmNotes = currentEncounter?.description;
@@ -554,7 +558,7 @@ export const MainContent: React.FC<MainContentProps> = ({
           exit={{ opacity: 0, y: -20 }}
           className="space-y-4"
         >
-          {activeTab === 'encounters' && currentEncounterId && encounterNotes && onUpdateNotes && (
+          {optionalFeatures.dmNotes && activeTab === 'encounters' && currentEncounterId && encounterNotes && onUpdateNotes && (
             <DmStickyNote
               encounterId={currentEncounterId}
               value={encounterNotes.general}
@@ -622,16 +626,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                       </button>
                     </>
                   )}
-                  {!isEncounterActive && players.length > 0 && (
-                    <button
-                      onClick={handleAddAllPlayersToEncounter}
-                      className="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg font-bold text-sm transition-colors flex items-center gap-1.5"
-                      title="Add all players to encounter"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      Add Players
-                    </button>
-                  )}
                   {!isEncounterActive && (
                     <button
                       onClick={() => setIsInitiativeModalOpen(true)}
@@ -690,20 +684,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                           Clear All Conditions
                         </button>
                         <div className="h-px bg-outline-variant/10 my-1" />
-                        <button
-                          onClick={() => { handleAddAllPlayersToEncounter(); setShowToolbarOverflow(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors text-left"
-                        >
-                          <UserPlus className="w-4 h-4 shrink-0" />
-                          Add All Players
-                        </button>
-                        <button
-                          onClick={() => { setIsAddMonsterOpen(true); setShowToolbarOverflow(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors text-left"
-                        >
-                          <Plus className="w-4 h-4 shrink-0" />
-                          Add Monster
-                        </button>
                         <button
                           onClick={() => { setIsEncounterCreatorOpen(true); setShowToolbarOverflow(false); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors text-left"
@@ -856,7 +836,8 @@ export const MainContent: React.FC<MainContentProps> = ({
               })()}
 
               <div className="space-y-2">
-                <div className="flex items-center justify-end gap-2 sm:gap-4 flex-wrap overflow-x-hidden">
+                <div className="flex items-center justify-end gap-2 sm:gap-4 flex-wrap">
+                  <ParticipantControls key={`participants-${currentEncounterId ?? 'unsaved'}`} players={players} combatants={combatants} onAddPlayer={handleAddPlayerToEncounter} onAddMonsters={() => setIsAddMonsterOpen(true)} />
                   {currentEncounterId && <HueEncounterControl
                     key={currentEncounterId}
                     enabled={hueEnabled ?? false}
@@ -897,8 +878,18 @@ export const MainContent: React.FC<MainContentProps> = ({
                         : 'border-outline/20 text-outline hover:text-on-surface'
                     }`}
                   >
-                    <span className="hidden sm:inline">Multi-select </span>{multiSelectMode && selectedCombatantIds.size > 0 && `(${selectedCombatantIds.size})`}
+                    {multiSelectMode ? 'Cancel selection' : 'Multiselect'}
                   </button>
+                  {multiSelectMode && handleDeleteCombatant && <button
+                    disabled={!combatants.some(c => selectedCombatantIds.has(c.id))}
+                    onClick={() => {
+                      const ids = combatants.filter(c => selectedCombatantIds.has(c.id)).map(c => c.id);
+                      if (!confirm(`Remove ${ids.length} selected participants from this encounter? Library entries will be kept.`)) return;
+                      handleDeleteCombatant(ids);
+                      clearMultiSelect();
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg border border-red-400/30 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-400/10 disabled:opacity-40"
+                  ><Trash2 className="h-4 w-4" /> Remove selected ({combatants.filter(c => selectedCombatantIds.has(c.id)).length})</button>}
                   <label className="hidden sm:flex items-center gap-2 cursor-pointer select-none group">
                     <span className="text-[10px] uppercase font-bold text-outline group-hover:text-on-surface transition-colors tracking-widest">Show # in name</span>
                     <div
@@ -1265,6 +1256,7 @@ export const MainContent: React.FC<MainContentProps> = ({
           {activeTab === 'settings' && (
             <div className="@container/settings space-y-6 p-4">
               <h2 className="text-2xl font-headline font-bold text-on-surface tracking-tight">Settings</h2>
+              {onToggleFeature && <FeaturesSettings features={optionalFeatures} onChange={onToggleFeature} />}
               {currentUser && onLogout && (
                 <UsersSettings currentUser={currentUser} onLogout={onLogout} />
               )}

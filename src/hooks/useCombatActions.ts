@@ -119,21 +119,17 @@ export function useCombatActions(params: CombatActionsParams) {
     setRedoStack([]);
   };
 
-  const handleDeleteCombatant = (id: string) => {
+  const handleDeleteCombatant = (id: string | string[]) => {
+    const ids = new Set(Array.isArray(id) ? id : [id]);
+    if (!combatants.some(c => ids.has(c.id))) return;
     const sorted = sortWithCompanions(combatants);
-    const deletedIdx = sorted.findIndex(c => c.id === id);
-    const wasActive = sorted[deletedIdx]?.isCurrentTurn;
-    const remaining = combatants.filter(c => c.id !== id);
+    const remaining = combatants.filter(c => !ids.has(c.id));
     const sortedRemaining = sortWithCompanions(remaining);
-
-    let newTurnIndex = currentTurnIndex;
-    if (wasActive) {
-      // Keep same index (will now point to the next combatant), but clamp to last
-      newTurnIndex = Math.min(currentTurnIndex, sortedRemaining.length - 1);
-    } else if (deletedIdx < currentTurnIndex) {
-      // Deleted combatant was before the active one — shift index back
-      newTurnIndex = Math.max(0, currentTurnIndex - 1);
-    }
+    const active = sorted[currentTurnIndex];
+    const survivingActiveIndex = sortedRemaining.findIndex(c => c.id === active?.id);
+    const removedBefore = sorted.slice(0, Math.max(0, currentTurnIndex)).filter(c => ids.has(c.id)).length;
+    const newTurnIndex = survivingActiveIndex >= 0 ? survivingActiveIndex
+      : Math.min(Math.max(0, currentTurnIndex - removedBefore), sortedRemaining.length - 1);
 
     const activeId = sortedRemaining[newTurnIndex]?.id;
     const updated = remaining.map(c => ({ ...c, isCurrentTurn: c.id === activeId }));
@@ -144,12 +140,9 @@ export function useCombatActions(params: CombatActionsParams) {
 
     if (isDbAvailable && currentEncounterId) {
       const encId = currentEncounterId;
-      api.combatants.delete(id)
-        .then(() => {
-          // Persist the repaired turn index
-          api.encounters.update(encId, { currentTurnIndex: newTurnIndex });
-        })
-        .catch((e: unknown) => console.error('Failed to delete combatant from DB', e));
+      Promise.all(combatants.filter(c => ids.has(c.id)).map(c => api.combatants.delete(c.id)))
+        .then(() => api.encounters.update(encId, { currentTurnIndex: newTurnIndex }))
+        .catch(() => showError('Could not save participant removal. Reload the encounter before continuing.'));
     }
   };
 
