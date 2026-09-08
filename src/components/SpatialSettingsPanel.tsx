@@ -78,7 +78,7 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       <button type="button" onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-between text-left">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -93,12 +93,12 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
       </button>
 
       {expanded && <section className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <h3 className="font-headline font-bold text-sm flex items-center gap-2">
             <Settings2 className="w-4 h-4 text-primary" />
             Output Layout
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
               spatialMode === '5.1'
                 ? 'bg-primary/20 text-primary'
@@ -188,7 +188,6 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
           </div>
         </div>
       </section>}
-
     </div>
   );
 };

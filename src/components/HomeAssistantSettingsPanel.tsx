@@ -96,7 +96,7 @@ export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProp
   };
 
   return (
-    <div className="bg-surface-container rounded-2xl border border-outline-variant/20 overflow-hidden">
+    <div className="@container/ha bg-surface-container rounded-2xl border border-outline-variant/20 overflow-hidden">
       <div className="p-5 border-b border-outline-variant/10 flex items-center justify-between bg-surface-container-low">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-[#03A9F4]/10 rounded-xl">
@@ -127,7 +127,7 @@ export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProp
       {enabled && <div className="p-5 space-y-6">
         {/* Setup Section */}
         <section className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 @[28rem]/ha:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-headline uppercase tracking-widest text-outline">Instance URL</label>
               <input
@@ -180,7 +180,7 @@ export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProp
                 <p className="text-xs">No lights found. Check your URL and Token, or ensure your HA instance has entities starting with <code className="bg-black/20 px-1 rounded">light.</code>.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 @[24rem]/ha:grid-cols-2 @[40rem]/ha:grid-cols-3 gap-3">
                 {lights.map(light => {
                   const selected = config.lightIds.includes(light.entity_id);
                   const isOff = light.state === 'off' || light.state === 'unavailable';

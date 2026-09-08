@@ -96,7 +96,7 @@ export const UsersSettings: React.FC<UsersSettingsProps> = ({ currentUser, onLog
   };
 
   return (
-    <div className="col-span-full grid grid-cols-1 @[50rem]/settings:grid-cols-2 @[76rem]/settings:grid-cols-3 items-start gap-6">
+    <div className="grid grid-cols-1 @[50rem]/settings:grid-cols-2 @[76rem]/settings:grid-cols-3 items-start gap-6">
       {/* Account section */}
       <details className="min-w-0 rounded-xl border border-outline-variant/20 p-4">
         <summary className="cursor-pointer text-sm font-bold text-on-surface">Account</summary>

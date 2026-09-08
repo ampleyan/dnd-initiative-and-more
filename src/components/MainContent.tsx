@@ -1265,8 +1265,11 @@ export const MainContent: React.FC<MainContentProps> = ({
           {activeTab === 'settings' && (
             <div className="@container/settings space-y-6 p-4">
               <h2 className="text-2xl font-headline font-bold text-on-surface tracking-tight">Settings</h2>
-              <div className="grid grid-cols-1 @[50rem]/settings:grid-cols-2 @[76rem]/settings:grid-cols-3 gap-6 items-start [&>*]:min-w-0">
-                <details className="col-span-full rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
+              {currentUser && onLogout && (
+                <UsersSettings currentUser={currentUser} onLogout={onLogout} />
+              )}
+              <div className="space-y-6 [&>*]:min-w-0">
+                <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
                   <summary className="cursor-pointer text-sm font-bold text-on-surface">Philips Hue</summary>
                   <div className="pt-4">
                     <HueSettingsPanel
@@ -1281,31 +1284,27 @@ export const MainContent: React.FC<MainContentProps> = ({
                     />
                   </div>
                 </details>
-                <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
-                  <summary className="cursor-pointer text-sm font-bold text-on-surface">Foundry VTT</summary>
-                  <div className="pt-4"><FoundrySettingsPanel /></div>
-                </details>
+                <div className="grid grid-cols-1 @[50rem]/settings:grid-cols-2 gap-6 items-start [&>*]:min-w-0">
+                  <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
+                    <summary className="cursor-pointer text-sm font-bold text-on-surface">Foundry VTT</summary>
+                    <div className="pt-4"><FoundrySettingsPanel /></div>
+                  </details>
+                  <HomeAssistantSettingsPanel enabled={haEnabled ?? false} onToggleEnabled={onToggleHa ?? (() => {})} />
+                </div>
               </div>
               <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
                 <summary className="cursor-pointer text-sm font-bold text-on-surface">Advanced</summary>
-                <div className="grid grid-cols-1 @[50rem]/settings:grid-cols-2 @[76rem]/settings:grid-cols-3 items-start gap-6 pt-4 [&>*]:min-w-0">
+                <div className="grid grid-cols-1 @[50rem]/settings:grid-cols-2 items-start gap-6 pt-4 [&>*]:min-w-0">
                   <div className="rounded-xl border border-outline-variant/20 p-4">
                     <SpatialSettingsPanel
                       audioCtx={getAudioCtx ? getAudioCtx() : null}
                       spatialMode={spatialMode ?? 'stereo'}
                     />
                   </div>
-                  <details className="rounded-xl border border-outline-variant/20 p-4">
-                    <summary className="cursor-pointer text-sm font-bold text-on-surface">Home Assistant</summary>
-                    <div className="pt-4"><HomeAssistantSettingsPanel enabled={haEnabled ?? false} onToggleEnabled={onToggleHa ?? (() => {})} /></div>
-                  </details>
                   <details className="rounded-xl border border-red-500/20 p-4">
                     <summary className="cursor-pointer text-sm font-bold text-red-400">Danger Zone</summary>
                     <div className="pt-4"><ResetDbPanel /></div>
                   </details>
-                  {currentUser && onLogout && (
-                    <UsersSettings currentUser={currentUser} onLogout={onLogout} />
-                  )}
                 </div>
               </details>
             </div>
