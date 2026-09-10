@@ -2,8 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import type { DragControls } from 'motion/react';
 import { Users, Save, Square, Monitor, ChevronLeft, ChevronRight, ExternalLink, ArrowLeft, Play, Edit2, Heart, UserPlus, Swords, Sparkles, AlertTriangle, Plus, Trash2, Music, Undo2, Redo2, MoreHorizontal, Coffee } from 'lucide-react';
-import { TacticalSummary } from './TacticalSummary';
-import { AvatarImg } from './AvatarImg';
+import { TurnCommandCenter } from './TurnCommandCenter';
 import { CombatantRow } from './CombatantRow';
 import { ParticipantControls } from './ParticipantControls';
 import { FeaturesSettings, DEFAULT_FEATURES, type OptionalFeatures } from './FeaturesSettings';
@@ -79,18 +78,16 @@ function tokenizeNote(note: string, combatants: Combatant[], activeCombatantId?:
 
 interface DraggableCombatantRowProps {
   id: string;
-  activeRef?: (el: HTMLDivElement | null) => void;
   children: (dragControls: DragControls) => React.ReactNode;
 }
 
-const DraggableCombatantRow: React.FC<DraggableCombatantRowProps> = ({ id, activeRef, children }) => {
+const DraggableCombatantRow: React.FC<DraggableCombatantRowProps> = ({ id, children }) => {
   const dragControls = useDragControls();
   return (
     <Reorder.Item
       value={id}
       dragListener={false}
       dragControls={dragControls}
-      ref={activeRef}
       as="div"
     >
       {children(dragControls)}
@@ -446,23 +443,15 @@ export const MainContent: React.FC<MainContentProps> = ({
     }
   };
 
-  const [activeRowVisible, setActiveRowVisible] = React.useState(true);
-  const activeRowObserverRef = React.useRef<IntersectionObserver | null>(null);
-  const activeRowCallbackRef = React.useCallback((node: HTMLDivElement | null) => {
-    activeRowObserverRef.current?.disconnect();
-    activeRowObserverRef.current = null;
-    if (!node) { setActiveRowVisible(true); return; }
-    activeRowObserverRef.current = new IntersectionObserver(
-      ([entry]) => setActiveRowVisible(entry.isIntersecting),
-      { threshold: 0.1 }
-    );
-    activeRowObserverRef.current.observe(node);
-  }, [currentTurnIndex]);
-
   const [dmNotesOpen, setDmNotesOpen] = React.useState(() => {
     if (!currentEncounterId) return false;
     return !localStorage.getItem(`dm-notes-dismissed-${currentEncounterId}`);
   });
+  const [roundCueOpen, setRoundCueOpen] = React.useState(true);
+
+  React.useEffect(() => {
+    setRoundCueOpen(true);
+  }, [currentEncounterId]);
 
   const [isAddMonsterOpen, setIsAddMonsterOpen] = React.useState(false);
   const [encounterEditMonster, setEncounterEditMonster] = React.useState<import('../types').MonsterTemplate | null>(null);
@@ -757,9 +746,17 @@ export const MainContent: React.FC<MainContentProps> = ({
                   {Array.from(new Set(combatants.filter(c => c.type === 'monster').map(c => c.waveId ?? 'default'))).map(waveId => {
                     const members = combatants.filter(c => c.type === 'monster' && (c.waveId ?? 'default') === waveId);
                     const hiddenCount = members.filter(c => c.hidden).length;
+                    const livingCount = members.filter(c => c.hp.current > 0).length;
+                    const status = livingCount === 0
+                      ? 'Defeated'
+                      : hiddenCount === members.length
+                        ? 'Hidden'
+                        : hiddenCount === 0
+                          ? 'Revealed'
+                          : 'Partially revealed';
                     return (
                       <div key={waveId} className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-on-surface">{waveId} <span className="text-outline">· {members.length - hiddenCount}/{members.length} visible</span></span>
+                        <span className="text-xs text-on-surface">{waveId} <span className="text-outline">· {status}</span></span>
                         <button
                           aria-label={`Reveal ${waveId}`}
                           disabled={changingWave !== null || hiddenCount === 0}
@@ -801,37 +798,17 @@ export const MainContent: React.FC<MainContentProps> = ({
                 </div>
               )}
 
-              <TacticalSummary
-                combatants={combatants}
-                currentTurnIndex={currentTurnIndex}
-                isEncounterActive={isEncounterActive}
-                currentRound={currentRound}
-              />
-
               {isEncounterActive && (() => {
                 const active = combatLayout.allSorted[currentTurnIndex];
                 if (!active) return null;
-                if (activeRowVisible) return null;
-                const hpPct = active.hp.max > 0 ? Math.max(0, Math.min(100, (active.hp.current / active.hp.max) * 100)) : 0;
-                const hpColor = hpPct > 50 ? 'bg-emerald-500' : hpPct > 25 ? 'bg-amber-400' : 'bg-error';
                 return (
-                  <div
-                    className="sticky top-0 z-20 flex items-center gap-3 px-3 py-2 bg-[#0f1419]/95 backdrop-blur border border-primary/30 rounded-xl shadow-lg mb-1"
-                  >
-                    <AvatarImg src={active.avatar} name={active.name} className="w-7 h-7 rounded-lg border border-primary/30 shrink-0 text-xs" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs font-bold text-on-surface truncate">{active.name}</span>
-                        <span className="text-[10px] text-primary font-bold shrink-0">Active Turn</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${hpColor}`} style={{ width: `${hpPct}%` }} />
-                        </div>
-                        <span className="text-[10px] tabular-nums text-outline shrink-0">{active.hp.current}/{active.hp.max}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <TurnCommandCenter
+                    currentRound={currentRound}
+                    activeCombatant={active}
+                    nextCombatant={combatLayout.allSorted[(currentTurnIndex + 1) % combatLayout.allSorted.length]}
+                    onPreviousTurn={handlePrevTurn}
+                    onNextTurn={handleNextTurn}
+                  />
                 );
               })()}
 
@@ -930,16 +907,26 @@ export const MainContent: React.FC<MainContentProps> = ({
                     ? tokenizeNote(note, combatants, activeCombatantId)
                     : [{ type: 'text' as const, text: note }];
                   return (
-                    <>
+                    <section className="mx-2 mb-2 overflow-hidden rounded-lg border border-amber-400/30 bg-amber-500/5">
+                      <button
+                        type="button"
+                        aria-expanded={roundCueOpen}
+                        onClick={() => setRoundCueOpen(open => !open)}
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-bold text-amber-200 hover:bg-amber-500/10"
+                      >
+                        <span>Round {currentRound} cues</span>
+                        <span>{roundCueOpen ? 'Hide' : 'Show'}</span>
+                      </button>
+                      {roundCueOpen && <div className="space-y-2 border-t border-amber-400/20 p-2">
                     {roundNote?.readout?.trim() && (
-                      <div className="mx-2 mb-2 px-3 py-2 rounded-lg bg-sky-500/5 border border-sky-400/30 flex items-start gap-2">
+                      <div className="px-3 py-2 rounded-lg bg-sky-500/5 border border-sky-400/30 flex items-start gap-2">
                         <span className="text-sky-300 text-xs font-bold shrink-0">R{currentRound} · Readout</span>
                         <p className="flex-1 text-xs text-on-surface leading-relaxed whitespace-pre-wrap">{roundNote.readout}</p>
                         <button onClick={() => onSwitchSidebarToNotes?.()} className="text-xs text-sky-300 hover:text-on-surface shrink-0">edit</button>
                       </div>
                     )}
                     {note.trim() && (
-                    <div className="mx-2 mb-2 px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-400/30 text-sm text-on-surface shrink-0 flex items-start gap-2">
+                    <div className="px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-400/30 text-sm text-on-surface shrink-0 flex items-start gap-2">
                       <span className="text-amber-300 text-xs font-bold shrink-0 mt-0.5">R{currentRound} · NPC actions</span>
                       <span className="flex-1 text-xs leading-relaxed">
                         {tokens.map((tok, i) =>
@@ -965,7 +952,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                       </button>
                     </div>
                     )}
-                    </>
+                      </div>}
+                    </section>
                   );
                 })()}
                 {(() => {
@@ -990,7 +978,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                           <DraggableCombatantRow
                             key={combatant.id}
                             id={combatant.id}
-                            activeRef={isActive ? activeRowCallbackRef : undefined}
                           >
                             {(dragControls) => (
                               <CombatantRow
@@ -1254,14 +1241,32 @@ export const MainContent: React.FC<MainContentProps> = ({
           )}
 
           {activeTab === 'settings' && (
-            <div className="@container/settings space-y-6 p-4">
-              <h2 className="text-2xl font-headline font-bold text-on-surface tracking-tight">Settings</h2>
-              {onToggleFeature && <FeaturesSettings features={optionalFeatures} onChange={onToggleFeature} />}
-              {currentUser && onLogout && (
-                <UsersSettings currentUser={currentUser} onLogout={onLogout} />
-              )}
-              <div className="space-y-6 [&>*]:min-w-0">
-                <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
+            <div className="@container/settings mx-auto max-w-7xl space-y-8 px-1 py-3 sm:px-4 sm:py-6">
+              <header className="border-b border-outline-variant/20 pb-6">
+                <h2 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Settings</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-outline">Set up the tools around your table, then connect the services that make the room feel alive.</p>
+              </header>
+
+              <section className="space-y-4" aria-labelledby="table-settings-heading">
+                <div>
+                  <h3 id="table-settings-heading" className="font-headline text-lg font-bold text-on-surface">Your table</h3>
+                  <p className="mt-1 text-sm text-outline">Choose the controls you use during a session and manage access to this tracker.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-5 @[66rem]/settings:grid-cols-[minmax(20rem,0.8fr)_minmax(0,1.2fr)]">
+                  {onToggleFeature && <FeaturesSettings features={optionalFeatures} onChange={onToggleFeature} />}
+                  {currentUser && onLogout && <UsersSettings currentUser={currentUser} onLogout={onLogout} />}
+                </div>
+              </section>
+
+              <section className="space-y-4" aria-labelledby="connections-heading">
+                <div className="flex flex-wrap items-end justify-between gap-2 border-b border-outline-variant/20 pb-3">
+                  <div>
+                    <h3 id="connections-heading" className="font-headline text-lg font-bold text-on-surface">Connections</h3>
+                    <p className="mt-1 text-sm text-outline">Link the tools that extend the table into your room and virtual tabletop.</p>
+                  </div>
+                </div>
+                <div className="space-y-5 [&>*]:min-w-0">
+                  <details className="rounded-2xl border border-amber-400/20 bg-surface-container-low p-4 shadow-[inset_3px_0_0_0_rgba(251,191,36,0.65)]">
                   <summary className="cursor-pointer text-sm font-bold text-on-surface">Philips Hue</summary>
                   <div className="pt-4">
                     <HueSettingsPanel
@@ -1276,29 +1281,34 @@ export const MainContent: React.FC<MainContentProps> = ({
                     />
                   </div>
                 </details>
-                <div className="grid grid-cols-1 @[50rem]/settings:grid-cols-2 gap-6 items-start [&>*]:min-w-0">
+                  <div className="grid grid-cols-1 gap-5 @[54rem]/settings:grid-cols-2 items-start [&>*]:min-w-0">
                   <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
                     <summary className="cursor-pointer text-sm font-bold text-on-surface">Foundry VTT</summary>
                     <div className="pt-4"><FoundrySettingsPanel /></div>
                   </details>
                   <HomeAssistantSettingsPanel enabled={haEnabled ?? false} onToggleEnabled={onToggleHa ?? (() => {})} />
                 </div>
-              </div>
-              <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
-                <summary className="cursor-pointer text-sm font-bold text-on-surface">Advanced</summary>
-                <div className="grid grid-cols-1 @[50rem]/settings:grid-cols-2 items-start gap-6 pt-4 [&>*]:min-w-0">
-                  <div className="rounded-xl border border-outline-variant/20 p-4">
+                </div>
+              </section>
+
+              <section className="space-y-4" aria-labelledby="system-heading">
+                <div className="border-b border-outline-variant/20 pb-3">
+                  <h3 id="system-heading" className="font-headline text-lg font-bold text-on-surface">System</h3>
+                  <p className="mt-1 text-sm text-outline">Adjust audio output and perform maintenance tasks.</p>
+                </div>
+                <div className="grid grid-cols-1 items-start gap-5 @[54rem]/settings:grid-cols-2 [&>*]:min-w-0">
+                  <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
                     <SpatialSettingsPanel
                       audioCtx={getAudioCtx ? getAudioCtx() : null}
                       spatialMode={spatialMode ?? 'stereo'}
                     />
                   </div>
-                  <details className="rounded-xl border border-red-500/20 p-4">
+                  <details className="rounded-2xl border border-red-500/30 bg-red-500/[0.03] p-4">
                     <summary className="cursor-pointer text-sm font-bold text-red-400">Danger Zone</summary>
                     <div className="pt-4"><ResetDbPanel /></div>
                   </details>
                 </div>
-              </details>
+              </section>
             </div>
           )}
 

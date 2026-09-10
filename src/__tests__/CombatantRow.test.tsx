@@ -22,10 +22,10 @@ const combatant: Combatant = {
 describe('CombatantRow', () => {
   it('allows closing ambient music when expanded or minimized', () => {
     const onClose = vi.fn();
-    render(<FloatingMusicPlayer youtubeId="abcdefghijk" isPaused={false} onClose={onClose} />);
+    render(<FloatingMusicPlayer youtubeId="abcdefghijk" isPaused={false} onTogglePause={vi.fn()} onClose={onClose} />);
     fireEvent.click(screen.getByRole('button', { name: 'Close ambient music' }));
     expect(onClose).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTitle('Minimize'));
+    fireEvent.click(screen.getByTitle('Expand'));
     fireEvent.click(screen.getByRole('button', { name: 'Close ambient music' }));
     expect(onClose).toHaveBeenCalledTimes(2);
   });

@@ -271,7 +271,7 @@ export function createLightsRouter(getSetting: GetSetting, setSetting: SetSettin
       const huePromises = targetLights.map((id, index) => {
         const hex = colors[index % colors.length];
         const { hue, sat } = hexToHS(hex);
-        const state = { hue, sat, bri: Math.round(bri * briScale), transitiontime: 60 };
+        const state = { on: true, hue, sat, bri: Math.round(bri * briScale), transitiontime: 60 };
         if (index === 0) setSetting('hue_restore_state', JSON.stringify({ ...state, alert: 'none' }));
         return hueRequest('PUT', `/lights/${id}/state`, state).catch(() => {});
       });

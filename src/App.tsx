@@ -27,6 +27,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { useAppState } from './hooks/useAppState';
 import { useSoundboard } from './hooks/useSoundboard';
 import { getDisplayNames } from './lib/combatantUtils';
+import { getCombatTurnShortcut, isInteractiveShortcutTarget } from './lib/combatShortcuts';
 import { useHueEffects } from './hooks/useHueEffects';
 import { HueEffectName, HueEffectTargets } from './lib/hueEffects';
 import { Combatant, Encounter, Player, EncounterNotes } from './types';
@@ -205,11 +206,12 @@ export default function App() {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!isEncounterActive || isPlayerView) return;
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable) return;
+      if (isInteractiveShortcutTarget(e.target)) return;
       const anyModalOpen = isEditModalOpen || isStatusModalOpen || isQuickActionModalOpen || isMonsterEditModalOpen || isSaveEncounterModalOpen || isEncounterCreatorOpen || isInitiativeModalOpen || isCommandPaletteOpen || actionModal !== null || showSummary;
       if (anyModalOpen) return;
-      if (e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); handleNextTurn(); }
+      const turnShortcut = getCombatTurnShortcut(e.key, e.shiftKey);
+      if (turnShortcut === 'next' || e.key === 'ArrowRight') { e.preventDefault(); handleNextTurn(); }
+      else if (turnShortcut === 'previous') { e.preventDefault(); handlePrevTurn(); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); handlePrevTurn(); }
       else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); handleUndo?.(); }
       else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); handleRedo?.(); }
@@ -871,7 +873,7 @@ export default function App() {
         />
 
         {/* Floating YouTube Player — draggable, position persisted */}
-        {optionalFeatures.ambientMusic && youtubeId && !isPlayerView && !isMusicClosed && <FloatingMusicPlayer youtubeId={youtubeId} isPaused={isMusicPaused} onClose={() => { setIsMusicClosed(true); setIsMusicPaused(true); }} />}
+        {optionalFeatures.ambientMusic && youtubeId && !isPlayerView && !isMusicClosed && <FloatingMusicPlayer youtubeId={youtubeId} isPaused={isMusicPaused} onTogglePause={() => setIsMusicPaused(paused => !paused)} onClose={() => { setIsMusicClosed(true); setIsMusicPaused(true); }} />}
       </main>
       </>}
       afterMain={<>

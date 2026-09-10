@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Sparkles, Shield, Heart, Zap, ArrowDown, EyeOff, Wind, ChevronDown, ChevronUp, Swords, UserPlus, X, Search, Trash2, BookOpen, Target, GripVertical, RotateCcw, Wand2 } from 'lucide-react';
+import { Edit2, Sparkles, Shield, Heart, Zap, ArrowDown, EyeOff, Wind, ChevronDown, ChevronUp, Swords, UserPlus, X, Search, Trash2, BookOpen, Target, GripVertical, RotateCcw, Wand2, MoreHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { DragControls } from 'motion/react';
 import { Combatant, MonsterTemplate } from '../types';
@@ -346,7 +346,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
       </div>
 
       {(onMoveUp || onMoveDown) && (show('moveUp') || show('moveDown')) && (
-        <div className="hidden sm:flex flex-col gap-0.5 shrink-0 -ml-1 mr-0.5">
+        <div className="hidden">
           {onMoveUp && show('moveUp') && (
             <button
               onClick={e => { e.stopPropagation(); onMoveUp(); }}
@@ -672,7 +672,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
           </div>
 
           <div className={cn("flex items-center gap-1 sm:gap-2 transition-opacity shrink-0 flex-wrap justify-end min-w-0 max-w-[38%] overflow-hidden", isActive ? "opacity-100" : "sm:opacity-0 sm:group-hover:opacity-100")}>
-            <div className="hidden sm:flex gap-0.5">
+            <div className="hidden">
               {show('companion') && onAddCompanion && (
                 <button onClick={e => { e.stopPropagation(); setAddingCompanion(v => !v); setCompanionSearch(''); }} title="Add companion/minion" className="p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-emerald-400 transition-colors">
                   <UserPlus className="w-3.5 h-3.5" />
@@ -689,17 +689,17 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
               </button>
             )}
             {show('edit') && (
-              <button onClick={e => { e.stopPropagation(); onEdit(); }} title="Edit combatant" className="p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-primary transition-colors">
+              <button onClick={e => { e.stopPropagation(); onEdit(); }} title="Edit combatant" className="hidden p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-primary transition-colors">
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
             )}
             {onEditLibrary && (
-              <button onClick={e => { e.stopPropagation(); onEditLibrary(); }} title="Edit library entry (spells, CR, actions…)" className="p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-violet-400 transition-colors">
+              <button onClick={e => { e.stopPropagation(); onEditLibrary(); }} title="Edit library entry (spells, CR, actions…)" className="hidden p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-violet-400 transition-colors">
                 <BookOpen className="w-3.5 h-3.5" />
               </button>
             )}
             {onRemove && (
-              <button onClick={e => { e.stopPropagation(); onRemove(); }} title="Remove from encounter" className="p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-error transition-colors">
+              <button onClick={e => { e.stopPropagation(); onRemove(); }} title="Remove from encounter" className="hidden p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-error transition-colors">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
@@ -708,7 +708,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
               <button
                 onClick={e => { e.stopPropagation(); const waveId = combatant.waveId ?? (window.prompt('Wave name', 'reinforcements') || 'default'); onUpdate({ ...combatant, hidden: !combatant.hidden, waveId }); }}
                 title={combatant.hidden ? 'Reveal to players' : 'Hide from players / assign wave'}
-                className={cn('p-1.5 hover:bg-surface-container-highest rounded-lg transition-colors', combatant.hidden ? 'text-amber-300' : 'text-outline hover:text-amber-300')}
+                className={cn('hidden p-1.5 hover:bg-surface-container-highest rounded-lg transition-colors', combatant.hidden ? 'text-amber-300' : 'text-outline hover:text-amber-300')}
               >
                 <EyeOff className="w-3.5 h-3.5" />
               </button>
@@ -721,7 +721,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
                 <button
                   onClick={e => { e.stopPropagation(); onUpdate({ ...combatant, conditions: [], conditionTimers: undefined, concentratingOn: undefined }); }}
                   title="Clear all conditions"
-                  className="p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-error transition-colors"
+                  className="hidden p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-error transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -766,6 +766,21 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
                 </button>
               )}
             </div>
+            <details className="relative">
+              <summary aria-label="More actions" className="list-none cursor-pointer rounded-lg p-1.5 text-outline hover:bg-surface-container-highest hover:text-on-surface">
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </summary>
+              <div className="absolute right-0 z-30 mt-1 flex min-w-40 flex-col rounded-lg border border-outline/20 bg-surface-container-highest p-1 shadow-xl">
+                {onAddCompanion && <button onClick={e => { e.stopPropagation(); setAddingCompanion(v => !v); setCompanionSearch(''); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">Add companion</button>}
+                {onMoveUp && <button onClick={e => { e.stopPropagation(); onMoveUp(); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">Move up in order</button>}
+                {onMoveDown && <button onClick={e => { e.stopPropagation(); onMoveDown(); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">Move down in order</button>}
+                <button onClick={e => { e.stopPropagation(); onEdit(); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">Edit combatant</button>
+                {onEditLibrary && <button onClick={e => { e.stopPropagation(); onEditLibrary(); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">Edit library entry</button>}
+                <button onClick={e => { e.stopPropagation(); const waveId = combatant.waveId ?? (window.prompt('Wave name', 'reinforcements') || 'default'); onUpdate({ ...combatant, hidden: !combatant.hidden, waveId }); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">{combatant.hidden ? 'Reveal to players' : 'Hide from players'}</button>
+                {combatant.conditions.length > 0 && <button onClick={e => { e.stopPropagation(); onUpdate({ ...combatant, conditions: [], conditionTimers: undefined, concentratingOn: undefined }); }} className="px-3 py-2 text-left text-xs text-error hover:bg-surface-container">Clear conditions</button>}
+                {onRemove && <button onClick={e => { e.stopPropagation(); onRemove(); }} className="px-3 py-2 text-left text-xs text-error hover:bg-surface-container">Remove from encounter</button>}
+              </div>
+            </details>
           </div>
         </div>
       </div>

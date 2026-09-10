@@ -12,7 +12,6 @@ vi.mock('../api/client', async importOriginal => ({
 }));
 vi.mock('../hooks/useToast', () => ({ useToast: () => ({ showError: requests.error }) }));
 vi.mock('../components/CombatantRow', () => ({ CombatantRow: () => null }));
-vi.mock('../components/TacticalSummary', () => ({ TacticalSummary: () => null }));
 
 const monster = { id: 'goblin', name: 'Goblin', type: 'humanoid', cr: '1/4', hp: 7, ac: 15, stats: { dex: 14 } } as MonsterTemplate;
 const combatant = (id: string, waveId: string, hidden: boolean, type: 'monster' | 'player' = 'monster') => ({
@@ -30,11 +29,19 @@ function contentProps(overrides = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal('IntersectionObserver', class {
+    observe() {}
+    disconnect() {}
+    unobserve() {}
+  });
   requests.reveal.mockResolvedValue({ success: true });
   requests.conceal.mockResolvedValue({ success: true });
   requests.get.mockResolvedValue({ id: 'a' });
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('NPC waves', () => {
   it('creates distinct named waves and lets the DM choose initial visibility', () => {
@@ -91,7 +98,7 @@ describe('NPC waves', () => {
 });
 
 describe('current round notes', () => {
-  it('shows separate readout and NPC action blocks only for the current round', () => {
+  it('shows the current round cues by default', () => {
     const props = contentProps({ encounterNotes: { general: '', rounds: [
       { round: 2, text: 'Guards attack.', readout: 'The gate opens.' },
       { round: 3, text: 'Archers arrive.', readout: 'A horn sounds.' },
@@ -105,5 +112,24 @@ describe('current round notes', () => {
     expect(screen.getByText('R3 · Readout')).toBeInTheDocument();
     expect(screen.getByText('Archers arrive.')).toBeInTheDocument();
     expect(screen.queryByText('Guards attack.')).not.toBeInTheDocument();
+  });
+});
+
+describe('turn command center', () => {
+  it('uses the existing turn handlers for the active encounter', () => {
+    const handlePrevTurn = vi.fn();
+    const handleNextTurn = vi.fn();
+    render(<MainContent {...contentProps({ currentTurnIndex: 0, handlePrevTurn, handleNextTurn })} />);
+
+    const commandCenter = screen.getByRole('region', { name: 'Turn command center' });
+    expect(commandCenter).toHaveTextContent('Round 2');
+    expect(commandCenter).toHaveTextContent('one');
+    expect(commandCenter).toHaveTextContent('two');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous turn' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next turn' }));
+
+    expect(handlePrevTurn).toHaveBeenCalledOnce();
+    expect(handleNextTurn).toHaveBeenCalledOnce();
   });
 });

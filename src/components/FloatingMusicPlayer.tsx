@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
-import { GripHorizontal, X } from 'lucide-react';
+import { GripHorizontal, Pause, Play, Volume2, VolumeX, X } from 'lucide-react';
 import { useLocalState } from '../hooks/useLocalState';
 
 const STORAGE_KEY = 'floatingMusicPlayer.position';
@@ -21,12 +21,14 @@ function defaultPosition(): { x: number; y: number } {
 interface FloatingMusicPlayerProps {
   youtubeId: string;
   isPaused: boolean;
+  onTogglePause: () => void;
   onClose: () => void;
 }
 
-export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({ youtubeId, isPaused, onClose }) => {
+export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({ youtubeId, isPaused, onTogglePause, onClose }) => {
   const isMobile = window.innerWidth < 768;
-  const [collapsed, setCollapsed] = useState(() => isMobile);
+  const [collapsed, setCollapsed] = useState(true);
+  const [muted, setMuted] = useState(false);
   // Use separate storage key on mobile so desktop positions don't pollute; pin below sticky header
   const [position, setPosition] = useLocalState<{ x: number; y: number }>(
     isMobile ? `${STORAGE_KEY}.mobile` : STORAGE_KEY,
@@ -46,6 +48,15 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({ youtub
   }, [isPaused]);
 
   useEffect(() => { isFirstRender.current = true; }, [youtubeId]);
+
+  const toggleMuted = () => {
+    const nextMuted = !muted;
+    setMuted(nextMuted);
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'command', func: nextMuted ? 'mute' : 'unMute', args: [] }),
+      '*',
+    );
+  };
 
   useEffect(() => {
     const clampToViewport = () => {
@@ -127,8 +138,14 @@ export const FloatingMusicPlayer: React.FC<FloatingMusicPlayerProps> = ({ youtub
           <div className="flex items-center gap-2 min-w-0">
             <GripHorizontal className="w-3.5 h-3.5 text-outline shrink-0" />
             <span className="text-[10px] uppercase tracking-wider text-outline font-bold truncate">Ambient Music</span>
-            {collapsed && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />}
+            {collapsed && <span className={`w-2 h-2 rounded-full shrink-0 ${isPaused ? 'bg-outline' : 'bg-emerald-400 animate-pulse'}`} />}
           </div>
+          <button onClick={onTogglePause} onPointerDown={e => e.stopPropagation()} className="text-outline hover:text-on-surface p-1" aria-label={isPaused ? 'Play ambient music' : 'Pause ambient music'} title={isPaused ? 'Play' : 'Pause'}>
+            {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+          </button>
+          <button onClick={toggleMuted} onPointerDown={e => e.stopPropagation()} className="text-outline hover:text-on-surface p-1" aria-label={muted ? 'Unmute ambient music' : 'Mute ambient music'} title={muted ? 'Unmute' : 'Mute'}>
+            {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+          </button>
           <button
             onClick={() => setCollapsed(v => !v)}
             onPointerDown={e => e.stopPropagation()}
