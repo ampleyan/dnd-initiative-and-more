@@ -118,13 +118,18 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
     setIsFetchingUrl(false);
   };
 
-  const handleImport = useCallback((importedMonsters: MonsterTemplate[], spells: Spell[], encounters: Encounter[], features: ClassFeature[]) => {
+  const handleImport = useCallback(async (importedMonsters: MonsterTemplate[], spells: Spell[], encounters: Encounter[], features: ClassFeature[], importedPlayers: Player[]) => {
     if (importedMonsters.length > 0) onImportMonsters(importedMonsters);
     if (spells.length > 0) onImportSpells(spells);
     if (encounters.length > 0) onImportEncounters(encounters);
     if (features.length > 0) onImportClassFeatures?.(features);
+    await Promise.all(importedPlayers.map(player => {
+      if (player.dndBeyondId?.startsWith('foundry:')) return onCreatePlayer?.(player);
+      if (!player.dndBeyondId) return Promise.resolve();
+      return onImportPlayer(player.dndBeyondId, (player as Player & { importCobaltSession?: string }).importCobaltSession);
+    }));
     setMappedEntities([]);
-  }, [onImportMonsters, onImportSpells, onImportEncounters, onImportClassFeatures]);
+  }, [onImportMonsters, onImportSpells, onImportEncounters, onImportClassFeatures, onCreatePlayer, onImportPlayer]);
 
   const handleRepairTraits = async () => {
     setIsRepairingTraits(true);
@@ -274,7 +279,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
         {selectedSource === 'dndbeyond' && (
           <DndBeyondImport
             players={players}
-            onImportPlayer={onImportPlayer}
+            onStageEntities={addEntities}
             onUpdatePlayer={onUpdatePlayer}
             onRemovePlayer={onRemovePlayer}
           />
@@ -286,11 +291,9 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
 
         {selectedSource === 'foundry' && (
           <FoundryImport
-            onImportMonsters={onImportMonsters}
-            onImportSpells={onImportSpells}
+            onStageEntities={addEntities}
             onImportScene={onImportScene}
             currentEncounterId={currentEncounterId}
-            onCreatePlayer={onCreatePlayer}
             onImportEncounters={handleFoundryJournals}
           />
         )}
@@ -372,6 +375,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
             monsters={monsters}
             classFeatures={classFeatures}
             existingEncounters={existingEncounters}
+            players={players}
             onImport={handleImport}
             onClear={() => setMappedEntities([])}
           />

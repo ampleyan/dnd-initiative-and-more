@@ -611,6 +611,8 @@ export default function App() {
     encounterNotes,
     onUpdateNotes: handleUpdateNotes,
     onSwitchSidebarToNotes: () => setSidebarView('notes'),
+    activeYoutubeUrl,
+    isMusicPaused,
   };
 
   return (

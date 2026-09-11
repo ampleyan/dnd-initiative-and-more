@@ -1,6 +1,6 @@
 import React from 'react';
-import { Swords, BookOpen, Shield, Sparkles, Clock, Map as MapIcon, UploadCloud, ChevronRight, MapPin, Users } from 'lucide-react';
-import { Combatant, Encounter, MonsterTemplate, Player, Spell, Campaign } from '../types';
+import { Swords, BookOpen, Shield, Sparkles, Clock, Map as MapIcon, UploadCloud, ChevronRight, MapPin, Users, Play, Radio, ScrollText } from 'lucide-react';
+import { Combatant, Encounter, MonsterTemplate, Player, Spell, Campaign, Session } from '../types';
 
 type ActiveTab = 'dashboard' | 'monsters' | 'players' | 'encounters' | 'spells' | 'archive' | 'settings' | 'import' | 'campaigns' | 'abilities' | 'soundboard';
 
@@ -15,6 +15,11 @@ interface DashboardViewProps {
   players: Player[];
   spells: Spell[];
   campaigns?: Campaign[];
+  activeCampaignId?: string | null;
+  sessions?: Session[];
+  activeSoundCount?: number;
+  hasAmbientMusic?: boolean;
+  isMusicPaused?: boolean;
   setActiveTab: (tab: ActiveTab) => void;
   setIsEncounterCreatorOpen: (v: boolean) => void;
   onSelectCampaign?: (id: string) => void;
@@ -32,13 +37,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   players,
   spells,
   campaigns,
+  activeCampaignId,
+  sessions,
+  activeSoundCount = 0,
+  hasAmbientMusic = false,
+  isMusicPaused = false,
   setActiveTab,
   setIsEncounterCreatorOpen,
   onSelectCampaign,
   handleLoadEncounter,
 }) => {
+  const campaignList = campaigns ?? [];
+  const activeCampaign = campaignList.find(campaign => campaign.id === activeCampaignId)
+    ?? [...campaignList].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  const campaignEncounters = activeCampaign
+    ? savedEncounters.filter(encounter => encounter.campaignId === activeCampaign.id)
+    : [];
+  const latestEncounter = [...savedEncounters].sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())[0];
+  const startOfToday = new Date().setHours(0, 0, 0, 0);
+  const upcomingSession = [...(sessions ?? [])].filter(session => new Date(session.date).getTime() >= startOfToday).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+  const lastSession = [...(sessions ?? [])].filter(session => new Date(session.date).getTime() < startOfToday).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  const playerLevels = players.flatMap(player => player.level === undefined ? [] : [player.level]);
+  const averagePartyLevel = playerLevels.length
+    ? (playerLevels.reduce((total, level) => total + level, 0) / playerLevels.length).toFixed(1).replace(/\.0$/, '')
+    : '—';
+  const currentEncounter = savedEncounters.find(encounter => encounter.id === currentEncounterId);
+  const lastPrepNote = currentEncounter?.notes?.general || latestEncounter?.notes?.general || lastSession?.notes;
+  const nextEncounter = isEncounterActive ? encounterName : upcomingSession?.name || latestEncounter?.name;
+  const musicStatus = hasAmbientMusic && !isMusicPaused ? 'Ambient music playing' : activeSoundCount > 0 ? `${activeSoundCount} sound${activeSoundCount === 1 ? '' : 's'} playing` : 'Music idle';
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      <section className="bg-surface-container-low border border-primary/20 rounded-2xl p-5 sm:p-6 space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-primary font-bold">Tonight's session</p>
+            <h2 className="font-headline font-bold text-2xl text-on-surface mt-1">{isEncounterActive ? encounterName : nextEncounter ?? 'Prepare the next encounter'}</h2>
+            <p className="text-sm text-outline mt-1">{isEncounterActive ? `Round ${currentRound} is in progress.` : nextEncounter ? 'Ready when the table is.' : 'Create an encounter to get started.'}</p>
+          </div>
+          <button onClick={() => isEncounterActive ? setActiveTab('encounters') : latestEncounter ? handleLoadEncounter(latestEncounter) : setIsEncounterCreatorOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-xs uppercase tracking-widest shrink-0 hover:bg-primary/90 transition-colors">
+            <Play className="w-3.5 h-3.5" fill="currentColor" />
+            {isEncounterActive || latestEncounter ? 'Resume' : 'Start'}
+          </button>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+          <div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Party average</p><p className="font-bold mt-1">Level {averagePartyLevel}</p></div>
+          <div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Next location</p><p className="font-bold mt-1 truncate">{upcomingSession?.name ?? 'Not set'}</p></div>
+          <div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Up next</p><p className="font-bold mt-1 truncate">{nextEncounter ?? 'Not set'}</p></div>
+          <div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Campaign</p><p className="font-bold mt-1 truncate">{activeCampaign?.name ?? 'Not selected'}</p></div>
+        </div>
+        {lastPrepNote && <div className="flex gap-3 rounded-xl border border-white/5 bg-black/10 p-3"><ScrollText className="w-4 h-4 text-primary shrink-0 mt-0.5" /><div className="min-w-0"><p className="text-[10px] uppercase tracking-widest text-outline">Last prep note</p><p className="text-sm text-on-surface/80 mt-1 line-clamp-2">{lastPrepNote}</p></div></div>}
+      </section>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs text-outline" aria-label="Shared DM context">
+        <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-primary" />{activeCampaign?.name ?? 'No campaign selected'}</span>
+        <span className="inline-flex items-center gap-1.5"><Swords className="w-3.5 h-3.5 text-violet-400" />{isEncounterActive ? `${encounterName}, round ${currentRound}` : 'No active encounter'}</span>
+        <span className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-emerald-400" />{players.length} party member{players.length === 1 ? '' : 's'}</span>
+        <span className="inline-flex items-center gap-1.5"><Radio className="w-3.5 h-3.5 text-pink-400" />{musicStatus}</span>
+      </div>
+
       {isEncounterActive && currentEncounterId && (
         <div
           className="bg-primary/10 border border-primary/30 rounded-2xl p-6 flex items-center justify-between gap-4 cursor-pointer hover:bg-primary/15 transition-colors"
@@ -104,7 +161,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {(campaigns ?? []).length > 0 && (() => {
-        const featuredCampaign = [...(campaigns ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+        const featuredCampaign = activeCampaign ?? [...(campaigns ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
         const otherCampaigns = [...(campaigns ?? [])].filter(c => c.id !== featuredCampaign.id).slice(0, 2);
         return (
           <div className="space-y-3">
@@ -155,7 +212,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between">
                 <div>
                   <h2 className="font-headline font-bold text-2xl text-white leading-tight mb-1">{featuredCampaign.name}</h2>
-                  <p className="text-[11px] uppercase tracking-widest text-white/50 font-semibold">{savedEncounters.length} encounter{savedEncounters.length !== 1 ? 's' : ''}</p>
+                  <p className="text-[11px] uppercase tracking-widest text-white/50 font-semibold">{campaignEncounters.length} encounter{campaignEncounters.length !== 1 ? 's' : ''} · {lastSession ? `Last played ${new Date(lastSession.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Not played yet'}</p>
+                  <p className="text-sm text-white/70 mt-2 line-clamp-2 max-w-xl">{featuredCampaign.description || 'No lore recorded yet.'}</p>
                 </div>
                 <div className="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary font-bold text-xs uppercase tracking-widest rounded-xl shrink-0 group-hover:bg-primary/90 transition-all"
                   style={{ boxShadow: '0 4px 20px rgba(255,135,189,0.3)' }}>
@@ -163,6 +221,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             </button>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+              <div className="bg-surface-container-low border border-white/5 rounded-xl p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Next location</p><p className="font-medium mt-1 truncate">{upcomingSession?.name ?? 'Not set'}</p></div>
+              <div className="bg-surface-container-low border border-white/5 rounded-xl p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Next encounter</p><p className="font-medium mt-1 truncate">{nextEncounter ?? 'Not set'}</p></div>
+            </div>
 
             {otherCampaigns.map(c => (
               <button

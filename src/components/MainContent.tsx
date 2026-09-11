@@ -288,6 +288,8 @@ interface MainContentProps {
   onSwitchSidebarToNotes?: () => void;
   optionalFeatures?: OptionalFeatures;
   onToggleFeature?: (feature: keyof OptionalFeatures, enabled: boolean) => void;
+  activeYoutubeUrl?: string;
+  isMusicPaused?: boolean;
 }
 
 export const MainContent: React.FC<MainContentProps> = ({
@@ -421,6 +423,8 @@ export const MainContent: React.FC<MainContentProps> = ({
   onSwitchSidebarToNotes,
   optionalFeatures = DEFAULT_FEATURES,
   onToggleFeature,
+  activeYoutubeUrl,
+  isMusicPaused,
 }) => {
   const currentEncounter = savedEncounters?.find((e: any) => e.id === currentEncounterId);
   const dmNotes = currentEncounter?.description;
@@ -1146,6 +1150,11 @@ export const MainContent: React.FC<MainContentProps> = ({
               players={players}
               spells={spells}
               campaigns={campaigns}
+              activeCampaignId={activeCampaignId}
+              sessions={sessions}
+              activeSoundCount={soundPlayingIds?.size}
+              hasAmbientMusic={Boolean(activeYoutubeUrl)}
+              isMusicPaused={isMusicPaused}
               setActiveTab={setActiveTab}
               setIsEncounterCreatorOpen={setIsEncounterCreatorOpen}
               onSelectCampaign={onSelectCampaign}

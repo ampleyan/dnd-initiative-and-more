@@ -1,5 +1,5 @@
 import { clean5eTags } from '../../lib/utils';
-import { MonsterTemplate, MonsterAction, Spell, Combatant, CombatantType, Encounter, ClassFeature } from '../../types';
+import { MonsterTemplate, MonsterAction, Spell, Combatant, CombatantType, Encounter, ClassFeature, Player } from '../../types';
 
 export const CR_TO_XP: Record<string, number> = {
   '0': 10, '1/8': 25, '1/4': 50, '1/2': 100,
@@ -110,6 +110,7 @@ export interface ExistingImportData {
   spells?: Spell[];
   encounters: Encounter[];
   features: ClassFeature[];
+  players: Player[];
 }
 
 export function getImportIdentity(value: unknown): string {
@@ -132,20 +133,26 @@ function getEntityIdentity(entity: MappedEntity): string {
   if (entity.type === 'Feature') {
     return getFeatureIdentity(entity.data ?? {});
   }
+  if (entity.type === 'Player') {
+    return getImportIdentity(entity.data?.dndBeyondId) || getEntityName(entity);
+  }
   return getEntityName(entity);
 }
 
-function getExistingEntities(type: string, existing: ExistingImportData): Array<MonsterTemplate | Spell | Encounter | ClassFeature> {
+function getExistingEntities(type: string, existing: ExistingImportData): Array<MonsterTemplate | Spell | Encounter | ClassFeature | Player> {
   if (type === 'Monster') return existing.monsters;
   if (type === 'Spell') return existing.spells ?? [];
   if (type === 'Encounter') return existing.encounters;
   if (type === 'Feature') return existing.features;
+  if (type === 'Player') return existing.players;
   return [];
 }
 
-function getExistingIdentity(type: string, item: MonsterTemplate | Spell | Encounter | ClassFeature): string {
+function getExistingIdentity(type: string, item: MonsterTemplate | Spell | Encounter | ClassFeature | Player): string {
   return type === 'Feature'
     ? getFeatureIdentity(item as ClassFeature)
+    : type === 'Player'
+      ? getImportIdentity((item as Player).dndBeyondId) || getImportIdentity(item.name)
     : getImportIdentity(item.name);
 }
 
@@ -158,7 +165,7 @@ export function reviewImportEntities(entities: MappedEntity[], existing: Existin
     const duplicateKey = `${entity.type}:${identity}`;
     let item: ImportReviewItem;
 
-    if (!['Monster', 'Spell', 'Encounter', 'Feature'].includes(entity.type) || !identity || !entity.data || typeof entity.data !== 'object') {
+    if (!['Monster', 'Spell', 'Encounter', 'Feature', 'Player'].includes(entity.type) || !identity || !entity.data || typeof entity.data !== 'object') {
       item = { entity, action: 'invalid', reason: 'Missing a supported entity type or exact identity.' };
     } else if (seen.has(duplicateKey)) {
       item = { entity, action: 'skip', reason: 'Duplicate of an earlier staged item.' };

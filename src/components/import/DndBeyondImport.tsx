@@ -5,17 +5,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { Player } from '../../types';
 import { PlayerDetailModal } from '../PlayerDetailModal';
+import { MappedEntity } from './helpers';
 
 interface DndBeyondImportProps {
   players: Player[];
-  onImportPlayer: (dndBeyondId: string, cobaltSession?: string) => Promise<any>;
+  onStageEntities: (entities: MappedEntity[]) => void;
   onUpdatePlayer: (id: string, updates: Partial<Player>) => Promise<any>;
   onRemovePlayer: (id: string) => Promise<void>;
 }
 
 export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
   players,
-  onImportPlayer,
+  onStageEntities,
   onUpdatePlayer,
   onRemovePlayer,
 }) => {
@@ -70,6 +71,18 @@ export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
 
   const DEFAULT_PARTY_IDS = ['153118837', '153118241', '153117278', '153116510', '155606059'];
 
+  const stageDndPlayer = async (dndBeyondId: string, cobaltSession?: string) => {
+    const character = await api.dndBeyond.importCharacter(dndBeyondId, cobaltSession) as Partial<Player>;
+    onStageEntities([{
+      id: `ddb-${dndBeyondId}-${Math.random().toString(36).slice(2)}`,
+      name: character.name || `D&D Beyond character ${dndBeyondId}`,
+      type: 'Player',
+      format: 'D&D Beyond',
+      status: 'detected',
+      data: { ...character, dndBeyondId, importCobaltSession: cobaltSession },
+    }]);
+  };
+
   const handleImportDefaultParty = async () => {
     setDefaultPartyLoading(true);
     setDefaultPartyProgress(null);
@@ -77,7 +90,7 @@ export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
     for (const id of DEFAULT_PARTY_IDS) {
       setDefaultPartyProgress(`Importing ${imported + 1}/${DEFAULT_PARTY_IDS.length}...`);
       try {
-        await onImportPlayer(id, cobaltSession || undefined);
+        await stageDndPlayer(id, cobaltSession || undefined);
         imported++;
       } catch (e) {
         // continue with others on failure
@@ -105,7 +118,7 @@ export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
     setDdbLoading(true);
     setDdbError('');
     try {
-      await onImportPlayer(id, cobaltSession || undefined);
+      await stageDndPlayer(id, cobaltSession || undefined);
       setDdbInput('');
     } catch (e: any) {
       setDdbError(e.message || 'Import failed.');
@@ -118,7 +131,7 @@ export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
     if (!player.dndBeyondId) return;
     setRefreshingId(player.dndBeyondId);
     try {
-      await onImportPlayer(player.dndBeyondId, cobaltToken || cobaltSession || undefined);
+      await stageDndPlayer(player.dndBeyondId, cobaltToken || cobaltSession || undefined);
     } finally {
       setRefreshingId(null);
     }
@@ -194,7 +207,7 @@ export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
               className="bg-primary text-on-primary px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50 flex items-center gap-1.5"
             >
               {ddbLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-              Import
+              Review
             </button>
           </div>
           {ddbError && (
@@ -209,7 +222,7 @@ export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-bold hover:bg-primary/20 transition-colors disabled:opacity-50"
             >
               {defaultPartyLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Users className="w-3 h-3" />}
-              Import Default Party
+              Review Default Party
             </button>
             {defaultPartyProgress && <span className="text-xs text-outline">{defaultPartyProgress}</span>}
           </div>
@@ -301,10 +314,10 @@ export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
                 <p className="text-xs text-outline font-bold uppercase tracking-widest">{campaignCharacters.length} Characters Found</p>
                 <div className="flex gap-3">
                   <button 
-                    onClick={() => campaignCharacters.forEach((c: Player) => c.dndBeyondId && onImportPlayer(c.dndBeyondId, cobaltToken || undefined))}
+                    onClick={() => Promise.all(campaignCharacters.map(character => character.dndBeyondId ? stageDndPlayer(character.dndBeyondId, cobaltToken || undefined) : Promise.resolve()))}
                     className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider"
                   >
-                    Import All
+                    Review All
                   </button>
                 </div>
               </div>
@@ -315,13 +328,13 @@ export const DndBeyondImport = React.memo<DndBeyondImportProps>(({
                     <p className="text-sm font-bold truncate">{char.name}</p>
                     <p className="text-[10px] text-outline">{char.subtitle}</p>
                   </div>
-                  <button onClick={() => char.dndBeyondId && onImportPlayer(char.dndBeyondId, cobaltToken || undefined)} className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold border border-primary/20 hover:bg-primary/20">
-                    Import
+                  <button onClick={() => char.dndBeyondId && stageDndPlayer(char.dndBeyondId, cobaltToken || undefined)} className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold border border-primary/20 hover:bg-primary/20">
+                    Review
                   </button>
                 </div>
               ))}
-              <button onClick={() => campaignCharacters.forEach((c: Player) => c.dndBeyondId && onImportPlayer(c.dndBeyondId, cobaltToken || undefined))} className="w-full py-2 rounded-lg bg-primary text-on-primary font-semibold text-sm hover:opacity-90">
-                Import All ({campaignCharacters.length})
+              <button onClick={() => Promise.all(campaignCharacters.map(character => character.dndBeyondId ? stageDndPlayer(character.dndBeyondId, cobaltToken || undefined) : Promise.resolve()))} className="w-full py-2 rounded-lg bg-primary text-on-primary font-semibold text-sm hover:opacity-90">
+                Review All ({campaignCharacters.length})
               </button>
             </div>
           )}

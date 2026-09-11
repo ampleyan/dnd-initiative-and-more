@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, RefreshCw, ChevronDown, Image as ImageIcon, Check, Settings, ChevronRight, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { api } from '../../api/client';
-import { MonsterTemplate, ParsedEncounter } from '../../types';
+import { ParsedEncounter } from '../../types';
 import { parseFoundryJournal } from '../../lib/adventureParser';
 import { FOUNDRY_SETTINGS_CHANGED } from '../FoundrySettingsPanel';
+import { MappedEntity } from './helpers';
 
 const LS_DATA_PATH = 'foundry_data_path';
 const LS_URL = 'foundry_url';
@@ -18,15 +19,13 @@ interface Scene {
 }
 
 interface Props {
-  onImportMonsters: (monsters: MonsterTemplate[]) => void;
-  onImportSpells?: (spells: any[]) => void;
-  onCreatePlayer?: (data: any) => Promise<any>;
+  onStageEntities: (entities: MappedEntity[]) => void;
   onImportScene?: (scene: { name: string; backgroundImg: string }) => void;
   onImportEncounters?: (encounters: ParsedEncounter[]) => void;
   currentEncounterId?: string | null;
 }
 
-export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpells, onCreatePlayer, onImportScene, onImportEncounters, currentEncounterId }) => {
+export const FoundryImport: React.FC<Props> = ({ onStageEntities, onImportScene, onImportEncounters, currentEncounterId }) => {
   const [tab, setTab] = useState<'actors' | 'scenes' | 'spells' | 'players' | 'journals'>('actors');
   const [worlds, setWorlds] = useState<{ id: string; title: string }[]>([]);
   const [selectedWorld, setSelectedWorld] = useState('');
@@ -320,7 +319,14 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
       if (data.actors.length === 0) {
         console.warn('[foundry] no actors returned — check id matching on backend');
       }
-      onImportMonsters(data.actors);
+      onStageEntities(data.actors.map((actor: any) => ({
+        id: actor.id || `foundry-monster-${Math.random().toString(36).slice(2)}`,
+        name: actor.name,
+        type: 'Monster',
+        format: 'Foundry VTT',
+        status: 'detected' as const,
+        data: actor,
+      })));
       setSelected(new Set());
     } catch (e: any) {
       setError(e.message ?? 'Import failed');
@@ -330,12 +336,19 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
   };
 
   const handleImportSpellsClick = async () => {
-    if (selectedSpells.size === 0 || !onImportSpells) return;
+    if (selectedSpells.size === 0) return;
     setImportingSpells(true);
     setError('');
     try {
       const toImport = spells.filter(s => selectedSpells.has(s.id));
-      onImportSpells(toImport);
+      onStageEntities(toImport.map((spell: any) => ({
+        id: spell.id || `foundry-spell-${Math.random().toString(36).slice(2)}`,
+        name: spell.name,
+        type: 'Spell',
+        format: 'Foundry VTT',
+        status: 'detected' as const,
+        data: spell,
+      })));
       setSelectedSpells(new Set());
     } catch (e: any) {
       setError(e.message ?? 'Spell import failed');
@@ -345,7 +358,7 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
   };
 
   const handleImportPlayers = async () => {
-    if (selectedChars.size === 0 || !onCreatePlayer) return;
+    if (selectedChars.size === 0) return;
     setImportingPlayers(true);
     setError('');
     try {
@@ -356,9 +369,14 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
         full: true,
         dataPath: effectiveDataPath,
       });
-      for (const char of data.actors) {
-        await onCreatePlayer(char);
-      }
+      onStageEntities(data.actors.map((player: any) => ({
+        id: player.dndBeyondId || `foundry-player-${Math.random().toString(36).slice(2)}`,
+        name: player.name,
+        type: 'Player',
+        format: 'Foundry VTT',
+        status: 'detected' as const,
+        data: player,
+      })));
       setSelectedChars(new Set());
     } catch (e: any) {
       setError(e.message ?? 'Player import failed');
@@ -580,7 +598,7 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm disabled:opacity-40 transition-all hover:brightness-110"
           >
             {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-            {importing ? 'Importing…' : `Import ${selected.size > 0 ? selected.size : ''} Monster${selected.size !== 1 ? 's' : ''}`}
+            {importing ? 'Staging…' : `Review ${selected.size > 0 ? selected.size : ''} Monster${selected.size !== 1 ? 's' : ''}`}
           </button>
         </>
       )}
@@ -676,22 +694,17 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
           )}
           <button
             onClick={handleImportSpellsClick}
-            disabled={selectedSpells.size === 0 || importingSpells || !onImportSpells}
+            disabled={selectedSpells.size === 0 || importingSpells}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm disabled:opacity-40 transition-all hover:brightness-110"
           >
             {importingSpells ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-            {importingSpells ? 'Importing…' : `Import ${selectedSpells.size > 0 ? selectedSpells.size : ''} Spell${selectedSpells.size !== 1 ? 's' : ''}`}
+            {importingSpells ? 'Staging…' : `Review ${selectedSpells.size > 0 ? selectedSpells.size : ''} Spell${selectedSpells.size !== 1 ? 's' : ''}`}
           </button>
         </>
       )}
 
       {tab === 'players' && (
         <>
-          {!onCreatePlayer && (
-            <p className="text-xs text-outline bg-surface-container-low rounded-lg px-3 py-2">
-              Player import is not available in this context.
-            </p>
-          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-outline" />
             <input
@@ -770,11 +783,11 @@ export const FoundryImport: React.FC<Props> = ({ onImportMonsters, onImportSpell
           </div>
           <button
             onClick={handleImportPlayers}
-            disabled={selectedChars.size === 0 || importingPlayers || !onCreatePlayer}
+            disabled={selectedChars.size === 0 || importingPlayers}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm disabled:opacity-40 transition-all hover:brightness-110"
           >
             {importingPlayers ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-            {importingPlayers ? 'Importing…' : `Import ${selectedChars.size > 0 ? selectedChars.size : ''} Player${selectedChars.size !== 1 ? 's' : ''}`}
+            {importingPlayers ? 'Staging…' : `Review ${selectedChars.size > 0 ? selectedChars.size : ''} Player${selectedChars.size !== 1 ? 's' : ''}`}
           </button>
         </>
       )}

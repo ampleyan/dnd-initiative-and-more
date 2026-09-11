@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, RefreshCw } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ImportReviewAction, MappedEntity, reviewImportEntities } from './helpers';
-import { ClassFeature, Encounter, MonsterTemplate, Spell } from '../../types';
+import { ClassFeature, Encounter, MonsterTemplate, Player, Spell } from '../../types';
 
 interface EntitySelectorProps {
   entities: MappedEntity[];
@@ -10,7 +10,8 @@ interface EntitySelectorProps {
   spells?: Spell[];
   classFeatures: ClassFeature[];
   existingEncounters: Encounter[];
-  onImport: (monsters: MonsterTemplate[], spells: Spell[], encounters: Encounter[], features: ClassFeature[]) => void;
+  players: Player[];
+  onImport: (monsters: MonsterTemplate[], spells: Spell[], encounters: Encounter[], features: ClassFeature[], players: Player[]) => Promise<void> | void;
   onClear: () => void;
 }
 
@@ -35,6 +36,7 @@ export const EntitySelector = React.memo<EntitySelectorProps>(({
   spells,
   classFeatures,
   existingEncounters,
+  players,
   onImport,
   onClear,
 }) => {
@@ -59,8 +61,8 @@ export const EntitySelector = React.memo<EntitySelectorProps>(({
     [entities, selectedIds],
   );
   const review = useMemo(
-    () => reviewImportEntities(selectedEntities, { monsters, spells, encounters: existingEncounters, features: classFeatures }),
-    [selectedEntities, monsters, spells, existingEncounters, classFeatures],
+    () => reviewImportEntities(selectedEntities, { monsters, spells, encounters: existingEncounters, features: classFeatures, players }),
+    [selectedEntities, monsters, spells, existingEncounters, classFeatures, players],
   );
   const unresolvedChoices = review.items.filter(item => item.action === 'needs-choice' && !choices[item.entity.id]).length;
 
@@ -76,7 +78,7 @@ export const EntitySelector = React.memo<EntitySelectorProps>(({
     });
   };
 
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     if (isImporting || unresolvedChoices > 0) return;
     const approved = review.items.filter(item => {
       const action = getEffectiveAction(item.action, item.entity.id);
@@ -84,16 +86,20 @@ export const EntitySelector = React.memo<EntitySelectorProps>(({
     }).map(item => item.entity);
 
     setIsImporting(true);
-    onImport(
-      approved.filter(entity => entity.type === 'Monster').map(entity => entity.data as MonsterTemplate),
-      approved.filter(entity => entity.type === 'Spell').map(entity => entity.data as Spell),
-      approved.filter(entity => entity.type === 'Encounter').map(entity => entity.data as Encounter),
-      approved.filter(entity => entity.type === 'Feature').map(entity => entity.data as ClassFeature),
-    );
-    setSelectedIds(new Set());
-    setChoices({});
-    setIsReviewing(false);
-    setIsImporting(false);
+    try {
+      await onImport(
+        approved.filter(entity => entity.type === 'Monster').map(entity => entity.data as MonsterTemplate),
+        approved.filter(entity => entity.type === 'Spell').map(entity => entity.data as Spell),
+        approved.filter(entity => entity.type === 'Encounter').map(entity => entity.data as Encounter),
+        approved.filter(entity => entity.type === 'Feature').map(entity => entity.data as ClassFeature),
+        approved.filter(entity => entity.type === 'Player').map(entity => entity.data as Player),
+      );
+      setSelectedIds(new Set());
+      setChoices({});
+      setIsReviewing(false);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const clearSelection = () => {
