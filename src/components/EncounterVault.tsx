@@ -181,6 +181,14 @@ const EncounterCard: React.FC<{
       {/* Clickable main area */}
       <div
         onClick={() => selectionMode ? onToggleSelect?.(encounter.id) : (loadingEncounterId !== encounter.id && mergedLoad(encounter))}
+        onKeyDown={event => {
+          if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+          event.preventDefault();
+          selectionMode ? onToggleSelect?.(encounter.id) : (loadingEncounterId !== encounter.id && mergedLoad(encounter));
+        }}
+        role="button"
+        tabIndex={loadingEncounterId === encounter.id ? -1 : 0}
+        aria-label={selectionMode ? `Select ${encounter.name}` : `${encounter.isEncounterActive ? 'Resume' : 'Load'} ${encounter.name}`}
         className={cn("overflow-hidden rounded-2xl cursor-pointer", loadingEncounterId === encounter.id && "cursor-not-allowed")}
       >
       {/* Hero image */}
@@ -227,6 +235,7 @@ const EncounterCard: React.FC<{
             onClick={(e) => { e.stopPropagation(); onEdit(encounter); }}
             className="absolute top-2.5 left-2.5 p-1.5 bg-black/60 text-outline hover:text-primary rounded-lg opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm border border-white/10"
             title="Edit encounter settings"
+            aria-label={`Edit ${encounter.name}`}
           >
             <Settings className="w-3.5 h-3.5" />
           </button>
@@ -254,6 +263,7 @@ const EncounterCard: React.FC<{
                 onClick={e => { e.stopPropagation(); onToggleFavorite(encounter.id); }}
                 className="shrink-0 p-0.5 -mr-0.5"
                 title={encounter.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                aria-label={encounter.favorite ? `Remove ${encounter.name} from favorites` : `Add ${encounter.name} to favorites`}
               >
                 <Star className={cn("w-3.5 h-3.5 transition-colors", encounter.favorite ? "fill-amber-400 text-amber-400" : "text-outline/30 hover:text-amber-400")} />
               </button>
@@ -328,6 +338,8 @@ const EncounterCard: React.FC<{
       {!selectionMode && combatants.length > 0 && (
         <button
           onClick={e => { e.stopPropagation(); setShowCombatants(v => !v); }}
+          aria-expanded={showCombatants}
+          aria-label={`${showCombatants ? 'Hide' : 'Show'} combatants for ${encounter.name}`}
           className={cn(
             "w-full flex items-center justify-center gap-1 px-3 py-1.5 text-[9px] uppercase tracking-widest font-bold border-t transition-colors",
             showCombatants
@@ -465,6 +477,7 @@ const EncounterListItem: React.FC<{
                 onClick={e => { e.stopPropagation(); onToggleFavorite(encounter.id); }}
                 className={cn("p-1.5 transition-colors rounded-lg", encounter.favorite ? "text-amber-400 opacity-100" : "text-outline opacity-30 group-hover:opacity-100 hover:text-amber-400")}
                 title={encounter.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                aria-label={encounter.favorite ? `Remove ${encounter.name} from favorites` : `Add ${encounter.name} to favorites`}
               >
                 <Star className={cn("w-4 h-4", encounter.favorite && "fill-amber-400")} />
               </button>
@@ -473,6 +486,7 @@ const EncounterListItem: React.FC<{
               onClick={e => { e.stopPropagation(); onEdit?.(encounter); }}
               className="p-1.5 text-outline hover:text-primary transition-colors rounded-lg opacity-30 group-hover:opacity-100"
               title="Edit Encounter Settings"
+              aria-label={`Edit ${encounter.name}`}
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -482,6 +496,8 @@ const EncounterListItem: React.FC<{
                 onClick={e => { e.stopPropagation(); setShowCombatants(v => !v); }}
                 className={cn("p-1.5 transition-colors rounded-lg hover:bg-white/5", showCombatants ? "text-primary" : "text-outline hover:text-on-surface")}
                 title="Show combatants"
+                aria-label={`${showCombatants ? 'Hide' : 'Show'} combatants for ${encounter.name}`}
+                aria-expanded={showCombatants}
               >
                 {showCombatants ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
@@ -491,6 +507,7 @@ const EncounterListItem: React.FC<{
               disabled={loadingEncounterId === encounter.id}
               className={cn("p-1.5 text-outline hover:text-primary transition-colors opacity-30 group-hover:opacity-100", loadingEncounterId === encounter.id && "cursor-not-allowed")}
               title="Load Encounter"
+              aria-label={`Load ${encounter.name}`}
             >
               {loadingEncounterId === encounter.id
                 ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -581,6 +598,7 @@ const FolderSettingsModal: React.FC<{
               onClick={() => setImagePickerOpen(true)}
               className="px-3 py-2 bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-colors text-outline hover:text-on-surface shrink-0"
               title="Search images"
+              aria-label="Search images"
             >
               <Search className="w-4 h-4" />
             </button>
@@ -637,6 +655,24 @@ const FolderSection: React.FC<{
 
   const campaignNames = Array.from(new Set(encounters.map(e => e.campaignName).filter(Boolean)));
   const commonCampaign = campaignNames.length === 1 ? campaignNames[0] : null;
+  const difficultyMix = useMemo(() => {
+    const counts = encounters.reduce<Record<string, number>>((result, encounter) => {
+      const difficulty = (computeDifficulty(encounter.combatants ?? [], players) || encounter.difficulty || 'MEDIUM').toUpperCase();
+      result[difficulty] = (result[difficulty] ?? 0) + 1;
+      return result;
+    }, {});
+    return ['TRIVIAL', 'EASY', 'MEDIUM', 'HARD', 'DEADLY'].filter(difficulty => counts[difficulty]).map(difficulty => `${counts[difficulty]} ${difficulty.toLowerCase()}`).join(' · ');
+  }, [encounters, players]);
+  const latestPlayed = useMemo(() => encounters.reduce<string | null>((latest, encounter) => {
+    if (!encounter.completedAt || (latest && new Date(encounter.completedAt) <= new Date(latest))) return latest;
+    return encounter.completedAt;
+  }, null), [encounters]);
+  const summary = `${encounters.length} encounter${encounters.length !== 1 ? 's' : ''} · ${difficultyMix}${latestPlayed ? ` · played ${relativeDate(latestPlayed)}` : ''}`;
+  const handleDeleteGroup = () => {
+    if (!onDeleteGroup) return;
+    const count = encounters.length;
+    if (window.confirm(`Delete ${count} encounter${count !== 1 ? 's' : ''} in ${label}? This cannot be undone.`)) onDeleteGroup(encounters.map(encounter => encounter.id));
+  };
 
   return (
     <div className={cn(
@@ -659,6 +695,8 @@ const FolderSection: React.FC<{
           <button
             onClick={() => setOpen(o => !o)}
             className="relative w-full text-left px-5 py-5 flex items-end justify-between gap-4"
+            aria-expanded={open}
+            aria-label={`${open ? 'Collapse' : 'Expand'} ${label}`}
           >
             <div>
               <div className="flex items-center gap-2">
@@ -670,7 +708,7 @@ const FolderSection: React.FC<{
                 )}
               </div>
               <p className="text-sm text-white/60 mt-0.5">
-                {encounters.length} encounter{encounters.length !== 1 ? 's' : ''} in this location
+                {summary}
               </p>
             </div>
             <div className="shrink-0 flex items-center gap-2">
@@ -685,9 +723,10 @@ const FolderSection: React.FC<{
           <div className="absolute top-3 right-3 flex items-center gap-1">
             {onDeleteGroup && (
               <button
-                onClick={() => onDeleteGroup(encounters.map(e => e.id))}
+                onClick={handleDeleteGroup}
                 className="p-1.5 text-white/30 hover:text-red-400 transition-colors rounded-lg hover:bg-black/30"
                 title="Delete entire group"
+                aria-label={`Delete ${label}`}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -696,6 +735,7 @@ const FolderSection: React.FC<{
               onClick={() => onSettingsClick(label)}
               className="p-1.5 text-white/30 hover:text-primary transition-colors rounded-lg hover:bg-black/30"
               title="Folder Settings"
+              aria-label={`Edit ${label} folder settings`}
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -709,6 +749,8 @@ const FolderSection: React.FC<{
               "flex items-center gap-3 group flex-1 text-left p-3 rounded-xl transition-all",
               open ? "bg-white/5" : "hover:bg-white/5"
             )}
+            aria-expanded={open}
+            aria-label={`${open ? 'Collapse' : 'Expand'} ${label}`}
           >
             <div className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
@@ -729,7 +771,7 @@ const FolderSection: React.FC<{
                 )}
               </div>
               <p className="text-[10px] text-outline font-medium">
-                {encounters.length} encounter{encounters.length !== 1 ? 's' : ''} in this location
+                {summary}
               </p>
             </div>
 
@@ -740,9 +782,10 @@ const FolderSection: React.FC<{
           </button>
           {onDeleteGroup && (
             <button
-              onClick={() => onDeleteGroup(encounters.map(e => e.id))}
-              className="p-2 text-outline/30 hover:text-red-400 transition-colors rounded-lg hover:bg-red-400/10"
+              onClick={handleDeleteGroup}
+              className="ml-2 border-l border-outline-variant/20 pl-3 p-2 text-red-400/70 hover:text-red-400 transition-colors rounded-lg hover:bg-red-400/10"
               title="Delete entire group"
+              aria-label={`Delete ${label}`}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -751,6 +794,7 @@ const FolderSection: React.FC<{
             onClick={() => onSettingsClick(label)}
             className="p-2 text-outline/30 hover:text-primary transition-colors rounded-lg hover:bg-primary/10"
             title="Folder Settings"
+            aria-label={`Edit ${label} folder settings`}
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -816,8 +860,11 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
 
   const handleDeleteSelected = () => {
     if (selectedIds.size === 0 || !onDeleteEncounters) return;
-    onDeleteEncounters(Array.from(selectedIds));
-    exitSelectionMode();
+    const count = selectedIds.size;
+    if (window.confirm(`Delete ${count} selected encounter${count !== 1 ? 's' : ''}? This cannot be undone.`)) {
+      onDeleteEncounters(Array.from(selectedIds));
+      exitSelectionMode();
+    }
   };
 
   useEffect(() => {
@@ -932,12 +979,14 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
           <p className="text-outline text-sm mt-1">{encounters.length} saved scenarios</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3" role="toolbar" aria-label="Encounter controls">
           <div className="relative">
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search..."
+              type="search"
+              aria-label="Search encounters"
               className="bg-surface-container-high border border-outline-variant/20 rounded-lg pl-9 pr-4 py-2 text-sm w-64 focus:outline-none focus:border-primary/50 transition-colors"
             />
             <Search className="w-4 h-4 text-outline/40 absolute left-3 top-2.5" />
@@ -949,6 +998,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
               className="bg-transparent text-[11px] font-bold uppercase tracking-wider text-outline focus:outline-none cursor-pointer pr-1"
+              aria-label="Sort encounters"
             >
               <option value="newest">Newest</option>
               <option value="oldest">Oldest</option>
@@ -957,16 +1007,22 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
             </select>
           </div>
 
-          <div className="flex items-center bg-surface-container-high rounded-lg border border-outline-variant/20 p-1">
+          <div className="flex items-center bg-surface-container-high rounded-lg border border-outline-variant/20 p-1" role="group" aria-label="Encounter view">
             <button
               onClick={() => setViewMode('grid')}
               className={cn("p-1.5 rounded transition-all", viewMode === 'grid' ? "bg-white/10 text-primary shadow-sm" : "text-outline/50 hover:text-outline")}
+              title="Grid view"
+              aria-label="Grid view"
+              aria-pressed={viewMode === 'grid'}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
               className={cn("p-1.5 rounded transition-all", viewMode === 'list' ? "bg-white/10 text-primary shadow-sm" : "text-outline/50 hover:text-outline")}
+              title="List view"
+              aria-label="List view"
+              aria-pressed={viewMode === 'list'}
             >
               <List className="w-4 h-4" />
             </button>
@@ -982,6 +1038,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
                     setSelectedIds(allSelected ? new Set() : new Set(all));
                   }}
                   className="px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-xs font-bold text-outline hover:text-on-surface transition-colors"
+                  aria-label={sortedAndFiltered.every(e => selectedIds.has(e.id)) ? 'Deselect all visible encounters' : 'Select all visible encounters'}
                 >
                   {sortedAndFiltered.every(e => selectedIds.has(e.id)) ? 'Deselect All' : 'Select All'}
                 </button>
@@ -1003,6 +1060,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
           <button
             onClick={onNewEncounter}
             className="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-bold transition-all hover:bg-primary/90 shadow-lg shadow-primary/20 ml-2"
+            aria-label="Create new encounter"
           >
             <Plus className="w-4 h-4" /> New
           </button>
@@ -1016,6 +1074,8 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
                 : "border-outline-variant/20 text-outline hover:text-on-surface hover:border-white/20"
             )}
             title="Filter encounters"
+            aria-label="Filter encounters"
+            aria-expanded={showFilters}
           >
             <SlidersHorizontal className="w-4 h-4" />
             {activeFilterCount > 0 && (
@@ -1272,6 +1332,8 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
           <button
             onClick={exitSelectionMode}
             className="p-1.5 text-outline/50 hover:text-outline transition-colors rounded-lg"
+            title="Close selection controls"
+            aria-label="Close selection controls"
           >
             <X className="w-4 h-4" />
           </button>

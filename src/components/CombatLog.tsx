@@ -5,6 +5,7 @@ import { cn } from '../lib/utils';
 const EVENT_LABEL: Record<LogEventType, string> = {
   round_start: '—',
   turn_start: '▶',
+  creature_revealed: '👁',
   damage: '💢',
   heal: '💚',
   condition_applied: '⚑',
@@ -43,6 +44,7 @@ function formatEntry(e: LogEntry): string {
   switch (e.type) {
     case 'round_start': return `Round ${e.detail ?? ''}`;
     case 'turn_start': return `${e.actorName}'s turn`;
+    case 'creature_revealed': return `${e.actorName} is revealed`;
     case 'damage': return e.actionName
       ? `${e.actorName} → ${e.actionName} → ${e.targetName ?? e.actorName} [${e.value} dmg]`
       : `${e.targetName ?? e.actorName} takes ${e.value} damage`;

@@ -27,6 +27,7 @@ export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProp
   const [lights, setLights] = useState<HaLight[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
 
   // Form states
   const [urlInput, setUrlInput] = useState('');
@@ -39,8 +40,10 @@ export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProp
       onToggleEnabled(data.enabled ?? false);
       setUrlInput(data.url);
       setTokenInput(data.token);
+      setConnectionError(false);
     } catch (e) {
       console.error('Failed to fetch HA config', e);
+      setConnectionError(true);
     }
   };
 
@@ -54,18 +57,26 @@ export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProp
       const data = await api.ha.getLights();
       if (Array.isArray(data)) {
         setLights(data as HaLight[]);
+        setConnectionError(false);
       } else {
         setLights([]);
+        setConnectionError(true);
       }
     } catch (e) {
       console.error('Failed to fetch HA lights', e);
       setLights([]);
+      setConnectionError(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
   const isConfigured = !!config?.url && !!config?.token;
+  const connectionStatus = connectionError
+    ? { label: 'Unavailable', action: 'Review the connection details and refresh.', className: 'border-red-400/20 bg-red-400/10 text-red-300' }
+    : isConfigured
+      ? { label: 'Connected', action: 'Choose the lights to use at your table.', className: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300' }
+      : { label: 'Needs setup', action: 'Add the instance URL and access token, then connect.', className: 'border-amber-400/20 bg-amber-400/10 text-amber-200' };
 
   useEffect(() => {
     if (isConfigured) fetchLights();
@@ -76,6 +87,7 @@ export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProp
     try {
       await api.ha.saveConfig({ url: urlInput, token: tokenInput, enabled: true });
       await fetchConfig();
+      await fetchLights();
     } finally {
       setSaving(false);
     }
@@ -122,6 +134,14 @@ export const HomeAssistantSettingsPanel: React.FC<HomeAssistantSettingsPanelProp
             <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </div>
         </div>
+      </div>
+
+      <div className={`mx-5 mt-5 rounded-xl border px-3 py-2 ${connectionStatus.className}`} role="status">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-bold">{connectionStatus.label}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider opacity-75">Next action</span>
+        </div>
+        <p className="mt-1 text-xs opacity-90">{connectionStatus.action}</p>
       </div>
 
       {enabled && <div className="p-5 space-y-6">

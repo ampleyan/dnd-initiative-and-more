@@ -83,6 +83,111 @@ export interface MappedEntity {
   data: any;
 }
 
+export type ImportReviewAction = 'create' | 'update' | 'skip' | 'invalid' | 'needs-choice';
+
+export interface ImportReviewItem {
+  entity: MappedEntity;
+  action: ImportReviewAction;
+  reason: string;
+  matchingId?: string;
+}
+
+export interface ImportReviewSummary {
+  create: number;
+  update: number;
+  skip: number;
+  invalid: number;
+  needsChoice: number;
+}
+
+export interface ImportReview {
+  items: ImportReviewItem[];
+  summary: ImportReviewSummary;
+}
+
+export interface ExistingImportData {
+  monsters: MonsterTemplate[];
+  spells?: Spell[];
+  encounters: Encounter[];
+  features: ClassFeature[];
+}
+
+export function getImportIdentity(value: unknown): string {
+  return typeof value === 'string'
+    ? value.trim().replace(/\s+/g, ' ').toLowerCase()
+    : '';
+}
+
+function getEntityName(entity: MappedEntity): string {
+  return getImportIdentity(entity.name || entity.data?.name);
+}
+
+function getFeatureIdentity(feature: Partial<Pick<ClassFeature, 'className' | 'name' | 'classSource' | 'level' | 'subclassName'>>): string {
+  return [feature.className, feature.name, feature.classSource, feature.level, feature.subclassName]
+    .map(value => getImportIdentity(String(value ?? '')))
+    .join('|');
+}
+
+function getEntityIdentity(entity: MappedEntity): string {
+  if (entity.type === 'Feature') {
+    return getFeatureIdentity(entity.data ?? {});
+  }
+  return getEntityName(entity);
+}
+
+function getExistingEntities(type: string, existing: ExistingImportData): Array<MonsterTemplate | Spell | Encounter | ClassFeature> {
+  if (type === 'Monster') return existing.monsters;
+  if (type === 'Spell') return existing.spells ?? [];
+  if (type === 'Encounter') return existing.encounters;
+  if (type === 'Feature') return existing.features;
+  return [];
+}
+
+function getExistingIdentity(type: string, item: MonsterTemplate | Spell | Encounter | ClassFeature): string {
+  return type === 'Feature'
+    ? getFeatureIdentity(item as ClassFeature)
+    : getImportIdentity(item.name);
+}
+
+export function reviewImportEntities(entities: MappedEntity[], existing: ExistingImportData): ImportReview {
+  const summary: ImportReviewSummary = { create: 0, update: 0, skip: 0, invalid: 0, needsChoice: 0 };
+  const seen = new Set<string>();
+  const items = entities.map(entity => {
+    const identity = getEntityIdentity(entity);
+    const existingItems = getExistingEntities(entity.type, existing);
+    const duplicateKey = `${entity.type}:${identity}`;
+    let item: ImportReviewItem;
+
+    if (!['Monster', 'Spell', 'Encounter', 'Feature'].includes(entity.type) || !identity || !entity.data || typeof entity.data !== 'object') {
+      item = { entity, action: 'invalid', reason: 'Missing a supported entity type or exact identity.' };
+    } else if (seen.has(duplicateKey)) {
+      item = { entity, action: 'skip', reason: 'Duplicate of an earlier staged item.' };
+    } else {
+      seen.add(duplicateKey);
+      const idMatch = existingItems.find(existingItem => existingItem.id === entity.data?.id);
+      const identityMatches = existingItems.filter(existingItem => getExistingIdentity(entity.type, existingItem) === identity);
+      if (idMatch) {
+        item = { entity, action: 'update', reason: 'Exact ID match.', matchingId: idMatch.id };
+      } else if (identityMatches.length === 0) {
+        item = { entity, action: 'create', reason: 'No exact existing match.' };
+      } else {
+        item = {
+          entity,
+          action: 'needs-choice',
+          reason: identityMatches.length === 1 ? 'Exact identity match requires a choice.' : 'Multiple exact identity matches require a choice.',
+          matchingId: identityMatches[0].id,
+        };
+      }
+    }
+
+    if (item.action === 'needs-choice') summary.needsChoice += 1;
+    else summary[item.action] += 1;
+    return item;
+  });
+
+  return { items, summary };
+}
+
 export function processImprovedInitiativeCreature(c: any): MonsterTemplate {
   const cleanContent = (s: any): string => {
     if (!s) return '';

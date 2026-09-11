@@ -4,6 +4,7 @@ import { Sound, Spell } from '../types';
 import { uuid } from '../lib/utils';
 import { CATEGORIES, categoryMeta, SoundCard, LibraryBrowser, CompactSoundList, DEFAULT_LIVE } from './soundboard';
 import type { LiveSettings } from './soundboard';
+import type { PlaybackInfo } from '../hooks/useSoundboard';
 
 interface AddFormState {
   name: string;
@@ -15,6 +16,11 @@ interface AddFormState {
 }
 
 const EMPTY_FORM: AddFormState = { name: '', url: '', category: 'custom', spellId: '', volume: 0.8, file: null };
+
+const formatPlaybackTime = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
+};
 
 interface Props {
   sounds: Sound[];
@@ -35,13 +41,14 @@ interface Props {
   onStopAll: () => void;
   onPatchLive: (id: string, patch: any) => void;
   onSetVolume: (id: string, volume: number) => void;
+  getPlaybackInfo?: (id: string) => PlaybackInfo | null;
 }
 
 export const SoundboardScreen: React.FC<Props> = ({
   sounds, spells = [], onAdd, onUpdate, onDelete, onRefresh,
   compact = false, masterVolume = 1.0, isMuted = false,
   onMasterVolumeChange, onMuteToggle,
-  playingIds, liveSettings, onTogglePlay, onStopAll, onPatchLive, onSetVolume
+  playingIds, liveSettings, onTogglePlay, onStopAll, onPatchLive, onSetVolume, getPlaybackInfo
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -62,6 +69,14 @@ export const SoundboardScreen: React.FC<Props> = ({
     } catch { return new Set(); }
   });
   const overflowRef = useRef<HTMLDivElement>(null);
+
+  const [, setPlaybackTick] = useState(0);
+
+  useEffect(() => {
+    if (playingIds.size === 0) return;
+    const timer = window.setInterval(() => setPlaybackTick(tick => tick + 1), 500);
+    return () => window.clearInterval(timer);
+  }, [playingIds]);
 
   const toggleSection = useCallback((key: string) => {
     setCollapsedSections(prev => {
@@ -561,11 +576,33 @@ export const SoundboardScreen: React.FC<Props> = ({
             {sounds.filter(s => playingIds.has(s.id)).map(s => {
               const cat = categoryMeta(s.category);
               return (
-                <div key={s.id} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shrink-0 ${cat.bg} ${cat.border}`}>
-                  <span className={`text-xs font-bold truncate max-w-[120px] ${cat.color}`}>{s.name}</span>
+                <div key={s.id} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shrink-0 ${cat.bg} ${cat.border}`}>
+                  <div className="min-w-0 max-w-[160px]">
+                    <span className={`block text-xs font-bold truncate ${cat.color}`}>{s.name}</span>
+                    {(() => {
+                      const playback = getPlaybackInfo?.(s.id);
+                      if (!playback) return null;
+                      const progress = Math.min(100, (playback.currentTime / playback.duration) * 100);
+                      return (
+                        <div className="flex items-center gap-1.5 mt-1" aria-label={`${formatPlaybackTime(playback.currentTime)} of ${formatPlaybackTime(playback.duration)}`}>
+                          <div
+                            className="h-1 flex-1 min-w-16 rounded-full bg-outline/20 overflow-hidden"
+                            role="progressbar"
+                            aria-valuemin={0}
+                            aria-valuemax={playback.duration}
+                            aria-valuenow={playback.currentTime}
+                          >
+                            <div className={`h-full ${cat.color.replace('text-', 'bg-')}`} style={{ width: `${progress}%` }} />
+                          </div>
+                          <span className="text-[9px] font-mono text-outline/60 whitespace-nowrap">{formatPlaybackTime(playback.currentTime)} / {formatPlaybackTime(playback.duration)}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <button
                     onClick={() => onTogglePlay(s)}
                     title="Stop"
+                    aria-label={`Stop ${s.name}`}
                     className="text-outline/50 hover:text-error transition-colors shrink-0"
                   >
                     <VolumeX className="w-3 h-3" />

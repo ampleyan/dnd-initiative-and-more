@@ -271,6 +271,7 @@ interface MainContentProps {
   onRefreshSounds?: () => Promise<void>;
   soundPlayingIds?: Set<string>;
   soundLiveSettings?: Record<string, import('../hooks/useSoundboard').LiveSettings>;
+  getPlaybackInfo?: (id: string) => import('../hooks/useSoundboard').PlaybackInfo | null;
   onTogglePlay?: (sound: import('../types').Sound) => void;
   onStopAllSounds?: () => void;
   onPatchLive?: (id: string, patch: any) => void;
@@ -403,6 +404,7 @@ export const MainContent: React.FC<MainContentProps> = ({
   onRefreshSounds,
   soundPlayingIds,
   soundLiveSettings,
+  getPlaybackInfo,
   onTogglePlay,
   onStopAllSounds,
   onPatchLive,
@@ -1177,6 +1179,7 @@ export const MainContent: React.FC<MainContentProps> = ({
             onRefreshSounds={onRefreshSounds}
             soundPlayingIds={soundPlayingIds}
             soundLiveSettings={soundLiveSettings}
+            getPlaybackInfo={getPlaybackInfo}
             onTogglePlay={onTogglePlay}
             onStopAllSounds={onStopAllSounds}
             onPatchLive={onPatchLive}
@@ -1204,6 +1207,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 onRefresh={onRefreshSounds ?? (async () => {})}
                 playingIds={soundPlayingIds ?? new Set()}
                 liveSettings={soundLiveSettings ?? {}}
+                getPlaybackInfo={getPlaybackInfo}
                 onTogglePlay={onTogglePlay ?? (() => {})}
                 onStopAll={onStopAllSounds ?? (() => {})}
                 onPatchLive={onPatchLive ?? (() => {})}
@@ -1263,7 +1267,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                     <p className="mt-1 text-sm text-outline">Link the tools that extend the table into your room and virtual tabletop.</p>
                   </div>
                 </div>
-                <div className="space-y-5 [&>*]:min-w-0">
+                <div className="grid grid-cols-1 items-start gap-5 @[54rem]/settings:grid-cols-2 [&>*]:min-w-0">
                   <details className="rounded-2xl border border-amber-400/20 bg-surface-container-low p-4 shadow-[inset_3px_0_0_0_rgba(251,191,36,0.65)]">
                   <summary className="cursor-pointer text-sm font-bold text-on-surface">Philips Hue</summary>
                   <div className="pt-4">
@@ -1279,13 +1283,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                     />
                   </div>
                 </details>
-                  <div className="grid grid-cols-1 gap-5 @[54rem]/settings:grid-cols-2 items-start [&>*]:min-w-0">
-                  <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
-                    <summary className="cursor-pointer text-sm font-bold text-on-surface">Foundry VTT</summary>
-                    <div className="pt-4"><FoundrySettingsPanel /></div>
-                  </details>
+                  <FoundrySettingsPanel />
                   <HomeAssistantSettingsPanel enabled={haEnabled ?? false} onToggleEnabled={onToggleHa ?? (() => {})} />
-                </div>
                 </div>
               </section>
 

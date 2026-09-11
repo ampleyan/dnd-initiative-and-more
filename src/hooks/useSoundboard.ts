@@ -12,6 +12,11 @@ export const DEFAULT_LIVE: LiveSettings = { loop: false, panX: 0, panZ: 0, repea
 
 export type SpatialMode = '5.1' | 'stereo';
 
+export interface PlaybackInfo {
+  currentTime: number;
+  duration: number;
+}
+
 /**
  * Maps a pan position to 5.1 output channels.
  * Channel layout: 0=FL, 1=FR, 2=C, 3=LFE (unused), 4=SL, 5=SR
@@ -92,6 +97,23 @@ export function useSoundboard(masterVolume: number, isMuted: boolean) {
 
   const getLive = (id: string): LiveSettings => liveSettingsRef.current[id] ?? DEFAULT_LIVE;
 
+  const removeAudio = useCallback((id: string, expected?: HTMLAudioElement) => {
+    const audio = audioRefs.current.get(id);
+    if (!audio || (expected && audio !== expected)) return;
+    audioRefs.current.delete(id);
+    pannerNodesRef.current.delete(id);
+    const nodes = routingNodesRef.current.get(id);
+    if (nodes) {
+      nodes.forEach(node => node.disconnect());
+      routingNodesRef.current.delete(id);
+    }
+    setPlayingIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
   const patchLive = useCallback((id: string, patch: Partial<LiveSettings>) => {
     const next = { ...getLive(id), ...patch };
     liveSettingsRef.current = { ...liveSettingsRef.current, [id]: next };
@@ -104,12 +126,9 @@ export function useSoundboard(masterVolume: number, isMuted: boolean) {
       // 5.1 mode: pan change requires restart (MediaElementSourceNode can't be reconnected)
       const existingAudio = audioRefs.current.get(id);
       if (existingAudio) {
-        const oldGains = routingNodesRef.current.get(id);
-        if (oldGains) { oldGains.forEach(n => n.disconnect()); routingNodesRef.current.delete(id); }
         existingAudio.pause();
         existingAudio.currentTime = 0;
-        audioRefs.current.delete(id);
-        setPlayingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+        removeAudio(id, existingAudio);
       }
     } else {
       const panner = pannerNodesRef.current.get(id);
@@ -119,7 +138,7 @@ export function useSoundboard(masterVolume: number, isMuted: boolean) {
         panner.positionZ.setValueAtTime(next.panZ * 6, t);
       }
     }
-  }, []);
+  }, [removeAudio]);
 
   const setVolume = useCallback((id: string, volume: number) => {
     const audio = audioRefs.current.get(id);
@@ -165,46 +184,50 @@ export function useSoundboard(masterVolume: number, isMuted: boolean) {
       }
     }
 
-    audio.play().catch(console.error);
     audio.onended = onEnded;
     return audio;
   }, [getCtx, makePanner]);
 
   const togglePlay = useCallback((sound: Sound) => {
     const existing = audioRefs.current.get(sound.id);
-    if (existing) {
+    const timer = repeatTimers.current.get(sound.id);
+    if (existing || timer) {
+      if (timer) {
+        clearTimeout(timer);
+        repeatTimers.current.delete(sound.id);
+      }
+      if (!existing) return;
       existing.pause();
       existing.currentTime = 0;
-      audioRefs.current.delete(sound.id);
-      pannerNodesRef.current.delete(sound.id);
-      const rn = routingNodesRef.current.get(sound.id);
-      if (rn) { rn.forEach(n => n.disconnect()); routingNodesRef.current.delete(sound.id); }
-      const t = repeatTimers.current.get(sound.id);
-      if (t) { clearTimeout(t); repeatTimers.current.delete(sound.id); }
-      setPlayingIds(prev => { const s = new Set(prev); s.delete(sound.id); return s; });
+      removeAudio(sound.id, existing);
       return;
     }
 
     const scheduleNext = () => {
+      removeAudio(sound.id);
       const s = getLive(sound.id);
       if (s.repeatSecs > 0) {
         const timer = setTimeout(() => {
-          const newAudio = playAudio(sound, scheduleNext);
-          audioRefs.current.set(sound.id, newAudio);
+          repeatTimers.current.delete(sound.id);
+          startPlayback();
         }, s.repeatSecs * 1000);
         repeatTimers.current.set(sound.id, timer);
-      } else {
-        audioRefs.current.delete(sound.id);
-        pannerNodesRef.current.delete(sound.id);
-        routingNodesRef.current.delete(sound.id);
-        setPlayingIds(prev => { const s = new Set(prev); s.delete(sound.id); return s; });
       }
     };
 
-    const audio = playAudio(sound, scheduleNext);
-    audioRefs.current.set(sound.id, audio);
-    setPlayingIds(prev => new Set(prev).add(sound.id));
-  }, [playAudio]);
+    const startPlayback = () => {
+      const audio = playAudio(sound, scheduleNext);
+      audioRefs.current.set(sound.id, audio);
+      audio.onplay = () => {
+        if (audioRefs.current.get(sound.id) === audio && !audio.paused) {
+          setPlayingIds(prev => new Set(prev).add(sound.id));
+        }
+      };
+      audio.play().catch(() => removeAudio(sound.id, audio));
+    };
+
+    startPlayback();
+  }, [playAudio, removeAudio]);
 
   const stopAll = useCallback(() => {
     audioRefs.current.forEach(a => { a.pause(); a.currentTime = 0; });
@@ -215,6 +238,14 @@ export function useSoundboard(masterVolume: number, isMuted: boolean) {
     repeatTimers.current.forEach(t => clearTimeout(t));
     repeatTimers.current.clear();
     setPlayingIds(new Set());
+  }, []);
+
+  const getPlaybackInfo = useCallback((id: string): PlaybackInfo | null => {
+    const audio = audioRefs.current.get(id);
+    if (!audio || !Number.isFinite(audio.currentTime) || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+      return null;
+    }
+    return { currentTime: audio.currentTime, duration: audio.duration };
   }, []);
 
   useEffect(() => {
@@ -233,6 +264,7 @@ export function useSoundboard(masterVolume: number, isMuted: boolean) {
     patchLive,
     setVolume,
     getAudioCtx,
+    getPlaybackInfo,
     audioRefs,
   };
 }

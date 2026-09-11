@@ -14,6 +14,12 @@ export const FoundrySettingsPanel: React.FC = () => {
   const [world, setWorld] = React.useState('');
   const [status, setStatus] = React.useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
   const [error, setError] = React.useState('');
+  const isConfigured = Boolean(dataPath.trim());
+  const connectionStatus = status === 'connected'
+    ? { label: 'Connected', action: 'Choose a world when you are ready to import.', className: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300' }
+    : status === 'error'
+      ? { label: 'Unavailable', action: 'Review the connection details and try again.', className: 'border-red-400/20 bg-red-400/10 text-red-300' }
+      : { label: 'Needs setup', action: isConfigured ? 'Save and test the connection.' : 'Add the Foundry data folder, then save and test.', className: 'border-amber-400/20 bg-amber-400/10 text-amber-200' };
 
   const save = async () => {
     setStatus('checking');
@@ -42,7 +48,7 @@ export const FoundrySettingsPanel: React.FC = () => {
   };
 
   return (
-    <section className="rounded-2xl bg-surface-container-low p-5 space-y-4">
+    <section className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-5 space-y-4">
       <div className="flex items-center gap-2">
         <Server className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-bold text-on-surface">Foundry VTT</h3>
@@ -51,6 +57,13 @@ export const FoundrySettingsPanel: React.FC = () => {
       <p className="text-xs text-outline leading-relaxed">
         Configure the Foundry world used for character and spell-slot imports. The data folder is read by this app's server.
       </p>
+      <div className={`rounded-xl border px-3 py-2 ${connectionStatus.className}`} role="status">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-bold">{connectionStatus.label}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider opacity-75">Next action</span>
+        </div>
+        <p className="mt-1 text-xs opacity-90">{connectionStatus.action}</p>
+      </div>
       <label className="block space-y-1">
         <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Foundry URL</span>
         <div className="flex items-center gap-2 rounded-lg bg-surface-container-high px-3">

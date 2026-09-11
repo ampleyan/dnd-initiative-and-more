@@ -247,6 +247,7 @@ export default function App() {
     patchLive: handlePatchLive,
     setVolume: handleSetVolume,
     getAudioCtx,
+    getPlaybackInfo,
     spatialMode,
   } = useSoundboard(masterVolume, isMuted);
 
@@ -589,6 +590,7 @@ export default function App() {
     onRefreshSounds: handleRefreshSounds,
     soundPlayingIds: activePlayingIds,
     soundLiveSettings: activeLiveSettings,
+    getPlaybackInfo,
     onTogglePlay: handleTogglePlay,
     onStopAllSounds: handleStopAllSounds,
     onPatchLive: handlePatchLive,

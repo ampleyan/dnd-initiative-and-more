@@ -676,7 +676,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
             {/* Conditions moved next to name, but keeping a small indicator here if needed or removing it */}
           </div>
 
-          <div className={cn("flex items-center gap-1 sm:gap-2 transition-opacity shrink-0 flex-wrap justify-end min-w-0 max-w-[38%] overflow-hidden", isActive ? "opacity-100" : "sm:opacity-0 sm:group-hover:opacity-100")}>
+          <div className={cn("flex items-center gap-1 sm:gap-2 transition-opacity shrink-0 flex-wrap justify-end min-w-0 max-w-[38%] overflow-visible", isActive ? "opacity-100" : "sm:opacity-0 sm:group-hover:opacity-100")}>
             <div className="hidden">
               {show('companion') && onAddCompanion && (
                 <button onClick={e => { e.stopPropagation(); setAddingCompanion(v => !v); setCompanionSearch(''); }} title="Add companion/minion" className="p-1.5 hover:bg-surface-container-highest rounded-lg text-outline hover:text-emerald-400 transition-colors">

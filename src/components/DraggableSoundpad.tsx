@@ -3,7 +3,7 @@ import { Music, X } from 'lucide-react';
 import { SoundboardScreen } from './SoundboardScreen';
 import { Spell } from '../types';
 import type { Sound } from '../types';
-import type { LiveSettings } from '../hooks/useSoundboard';
+import type { LiveSettings, PlaybackInfo } from '../hooks/useSoundboard';
 
 interface DraggableSoundpadProps {
   isOpen: boolean;
@@ -16,6 +16,7 @@ interface DraggableSoundpadProps {
   onRefreshSounds?: () => Promise<void>;
   soundPlayingIds?: Set<string>;
   soundLiveSettings?: Record<string, LiveSettings>;
+  getPlaybackInfo?: (id: string) => PlaybackInfo | null;
   onTogglePlay?: (sound: Sound) => void;
   onStopAllSounds?: () => void;
   onPatchLive?: (id: string, patch: unknown) => void;
@@ -37,6 +38,7 @@ export const DraggableSoundpad: React.FC<DraggableSoundpadProps> = ({
   onRefreshSounds,
   soundPlayingIds,
   soundLiveSettings,
+  getPlaybackInfo,
   onTogglePlay,
   onStopAllSounds,
   onPatchLive,
@@ -112,6 +114,7 @@ export const DraggableSoundpad: React.FC<DraggableSoundpadProps> = ({
           onRefresh={onRefreshSounds ?? (async () => {})}
           playingIds={soundPlayingIds ?? new Set()}
           liveSettings={soundLiveSettings ?? {}}
+          getPlaybackInfo={getPlaybackInfo}
           onTogglePlay={onTogglePlay ?? (() => {})}
           onStopAll={onStopAllSounds ?? (() => {})}
           onPatchLive={onPatchLive ?? (() => {})}
