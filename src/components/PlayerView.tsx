@@ -4,7 +4,6 @@ import { Activity, ChevronDown, ChevronUp, Clock, Heart, Shield, Skull, Sparkles
 import { AnimationLevel, Combatant, LogEntry } from '../types';
 import { DAMAGE_COLORS, DamageType } from '../lib/damageTypes';
 import { AvatarImg } from './AvatarImg';
-import { CombatLog } from './CombatLog';
 import { cn } from '../lib/utils';
 import { sortWithCompanions } from '../lib/combatantUtils';
 import { CONDITIONS, INITIATIVE_COLORS } from '../constants';
@@ -17,6 +16,14 @@ function initiativeColor(initiative: number): string {
 
 const BENEFICIAL_IDS = new Set(['blessed', 'hasted', 'concentrating', 'raging', 'inspired']);
 const ATTACK_DISADVANTAGE_CONDITIONS = new Set(['blinded', 'frightened', 'poisoned', 'prone', 'restrained', 'disadvantaged']);
+
+const PLAYER_LOG_LABELS: Partial<Record<LogEntry['type'], string>> = {
+  turn_start: 'takes their turn',
+  creature_revealed: 'is revealed',
+  condition_applied: 'gains',
+  condition_removed: 'loses',
+  creature_downed: 'is defeated',
+};
 
 interface DamagePillProps {
   delta: number;
@@ -98,10 +105,8 @@ const DeathSavesView: React.FC<DeathSavesViewProps> = ({ ds, large }) => {
 
 interface PlayerViewProps {
   combatants: Combatant[];
-  currentTurnIndex: number;
   isEncounterActive: boolean;
   currentRound: number;
-  encounterName: string;
   backgroundImage?: string;
   backgroundOpacity?: number;
   panelOpacity?: number;
@@ -146,14 +151,17 @@ function healthColor(c: Combatant): string {
 }
 
 export const PlayerView: React.FC<PlayerViewProps> = ({
-  combatants, currentTurnIndex, isEncounterActive, currentRound, encounterName, backgroundImage, backgroundOpacity = 0.22, panelOpacity = 0.92, animationLevel = 'minimal', displayNames, showOrderInName, pendingConChecks, combatLog,
+  combatants, isEncounterActive, currentRound, backgroundImage, backgroundOpacity = 0.22, panelOpacity = 0.92, animationLevel = 'minimal', displayNames, showOrderInName, pendingConChecks, combatLog,
 }) => {
   const panelBg = `rgba(18,22,28,${panelOpacity})`;
   const activeBg = `rgba(40,48,58,${Math.min(1, panelOpacity + 0.03)})`;
   const emptyBg = `rgba(18,22,28,${Math.max(0, panelOpacity - 0.12)})`;
   const [summaryOpen, setSummaryOpen] = useState(true);
   const [portraitsOpen, setPortraitsOpen] = useState(true);
+  const [logOpen, setLogOpen] = useState(false);
   const [expandedAbilities, setExpandedAbilities] = useState<Set<string>>(new Set());
+  const previousActiveCombatantId = useRef<string | null>(null);
+  const [turnCueActive, setTurnCueActive] = useState(false);
 
   const prevHpRef = useRef<Map<string, number>>(new Map());
   const [dmgEvents, setDmgEvents] = useState<Array<{ combatantId: string; delta: number; key: number; damageType?: string }>>([]);
@@ -217,45 +225,41 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
     : 0;
 
   const activeCombatant = isEncounterActive ? sorted.find(c => c.isCurrentTurn) ?? null : null;
-  const activeCombatantConditions = new Set(activeCombatant?.conditions ?? []);
 
-  const allConditions = useMemo(() => {
-    const map = new Map<string, { names: string[]; timers: number[] }>();
-    combatants.forEach(c => {
-      c.conditions.forEach(condId => {
-        if (!map.has(condId)) map.set(condId, { names: [], timers: [] });
-        const entry = map.get(condId)!;
-        entry.names.push(c.name);
-        const rounds = c.conditionTimers?.[condId];
-        if (rounds !== undefined) entry.timers.push(rounds);
-      });
-    });
-    return Array.from(map.entries()).map(([id, { names, timers }]) => ({
-      condition: CONDITIONS.find(cd => cd.id === id),
-      names,
-      timers,
-      isBeneficial: BENEFICIAL_IDS.has(id),
-      isOnActiveCombatant: activeCombatantConditions.has(id),
-    })).filter(entry => entry.condition != null)
-      .sort((a, b) => {
-        if (a.isOnActiveCombatant !== b.isOnActiveCombatant) return a.isOnActiveCombatant ? -1 : 1;
-        return 0;
-      });
-  }, [combatants, activeCombatantConditions]);
+  useEffect(() => {
+    const activeCombatantId = activeCombatant?.id ?? null;
+    if (previousActiveCombatantId.current && activeCombatantId && previousActiveCombatantId.current !== activeCombatantId) {
+      setTurnCueActive(true);
+      const timer = window.setTimeout(() => setTurnCueActive(false), 700);
+      previousActiveCombatantId.current = activeCombatantId;
+      return () => window.clearTimeout(timer);
+    }
+    previousActiveCombatantId.current = activeCombatantId;
+  }, [activeCombatant?.id]);
 
-  const customTagEntries = useMemo(() => {
-    const map = new Map<string, { names: string[]; description: string; isOnActiveCombatant: boolean }>();
-    combatants.forEach(c => {
-      const descs = c.customTagDescriptions ?? {};
-      c.tags.forEach(tag => {
-        if (!descs[tag]) return;
-        if (!map.has(tag)) map.set(tag, { names: [], description: descs[tag], isOnActiveCombatant: false });
-        map.get(tag)!.names.push(c.name);
-        if (activeCombatant?.id === c.id) map.get(tag)!.isOnActiveCombatant = true;
-      });
-    });
-    return Array.from(map.entries()).map(([tag, data]) => ({ tag, ...data }));
-  }, [combatants, activeCombatant]);
+  const conditionGroups = useMemo(() => {
+    const groups = [
+      { label: 'Active character', combatants: activeCombatant ? [activeCombatant] : [] },
+      { label: 'Party', combatants: players.filter(player => player.id !== activeCombatant?.id) },
+      { label: 'Visible foes', combatants: enemies.filter(enemy => enemy.id !== activeCombatant?.id) },
+    ];
+
+    return groups.map(group => ({
+      ...group,
+      entries: Array.from(group.combatants.reduce((entries, combatant) => {
+        combatant.conditions.forEach(conditionId => {
+          const condition = CONDITIONS.find(item => item.id === conditionId);
+          if (!condition) return;
+          const entry = entries.get(conditionId) ?? { condition, combatants: [], rounds: [] };
+          entry.combatants.push(combatant);
+          const rounds = combatant.conditionTimers?.[conditionId];
+          if (rounds !== undefined) entry.rounds.push(rounds);
+          entries.set(conditionId, entry);
+        });
+        return entries;
+      }, new Map<string, { condition: (typeof CONDITIONS)[number]; combatants: Combatant[]; rounds: number[] }>()).values()),
+    })).filter(group => group.entries.length > 0);
+  }, [activeCombatant, enemies, players]);
 
   return (
     <>
@@ -292,6 +296,14 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       }
       .card-flash-typed { animation: cardFlashTyped .5s ease-out forwards; }
       .particle-burst   { animation: particleBurst .8s ease-out forwards; position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; }
+      @keyframes turnCue {
+        0% { transform: scale(.98); opacity: .55; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .turn-cue-enter { animation: turnCue .7s ease-out; }
+      @media (prefers-reduced-motion: reduce) {
+        .turn-cue-enter { animation: none; }
+      }
     `}</style>
     <div className="fixed inset-0 z-50 bg-surface-container-lowest overflow-y-auto overflow-x-hidden">
 
@@ -342,127 +354,53 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               "overflow-y-auto custom-scrollbar p-3",
               combatLog && combatLog.length > 0 ? "max-h-[calc(50vh-4rem)]" : "max-h-[calc(100vh-12rem)]"
             )}>
-              {allConditions.length === 0 && customTagEntries.length === 0 ? (
+              {conditionGroups.length === 0 ? (
                 <p className="text-[11px] text-on-surface-variant/50 italic font-body text-center py-6">
                   No active conditions
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {allConditions.map(({ condition, names, timers, isBeneficial, isOnActiveCombatant }) => (
-                    <div
-                      key={condition!.id}
-                      className={cn(
-                        'rounded-lg px-3 py-2.5 border transition-all duration-200',
-                        isOnActiveCombatant
-                          ? isBeneficial
-                            ? 'border-emerald-500/50 bg-emerald-500/10 ring-1 ring-emerald-500/25'
-                            : 'border-red-500/50 bg-red-500/10 ring-1 ring-red-500/25'
-                          : isBeneficial
-                            ? 'border-emerald-900/40 bg-surface-container/20'
-                            : 'border-red-900/40 bg-surface-container/20',
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-1 gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={cn(
-                            'w-2 h-2 rounded-full shrink-0',
-                            isBeneficial ? 'bg-emerald-400' : 'bg-red-400',
-                          )} />
-                          <span className={cn(
-                            'font-headline font-bold text-xs',
-                            isOnActiveCombatant
-                              ? isBeneficial ? 'text-emerald-300' : 'text-red-300'
-                              : isBeneficial ? 'text-emerald-500' : 'text-red-500',
-                          )}>
-                            {condition!.name}
-                          </span>
-                          {isOnActiveCombatant && (
-                            <span className={cn(
-                              'text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm shrink-0',
-                              isBeneficial
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-red-500/20 text-red-400',
-                            )}>
-                              Active
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[9px] text-on-surface-variant/50 font-body shrink-0 text-right max-w-[45%] truncate">
-                          {names.join(', ')}
-                        </span>
-                      </div>
-                      {timers.length > 0 && (
-                        <div className="pl-4 mb-1 flex flex-wrap gap-1">
-                          {timers.map((rounds, i) => (
-                            <span key={`${condition!.id}-${i}`} className="inline-flex items-center rounded-md bg-amber-400/20 border border-amber-300/30 px-2 py-0.5 text-[10px] font-black text-amber-200">
-                              {rounds} {rounds === 1 ? 'round left' : 'rounds left'}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <p className={cn(
-                        'text-[10px] font-body leading-relaxed pl-4',
-                        isOnActiveCombatant
-                          ? isBeneficial ? 'text-emerald-200/80' : 'text-red-200/80'
-                          : 'text-on-surface-variant/55',
-                      )}>
-                        {condition!.description}
-                      </p>
-                    </div>
-                  ))}
-                  {customTagEntries.map(({ tag, description, names, isOnActiveCombatant }) => (
-                    <div
-                      key={tag}
-                      className={cn(
-                        'rounded-lg px-3 py-2.5 border transition-all duration-200',
-                        isOnActiveCombatant
-                          ? 'border-violet-500/50 bg-violet-500/10 ring-1 ring-violet-500/25'
-                          : 'border-violet-900/40 bg-surface-container/20',
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-1 gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-2 h-2 rounded-full shrink-0 bg-violet-400" />
-                          <span className={cn(
-                            'font-headline font-bold text-xs',
-                            isOnActiveCombatant ? 'text-violet-300' : 'text-violet-500',
-                          )}>
-                            {tag}
-                          </span>
-                          {isOnActiveCombatant && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm shrink-0 bg-violet-500/20 text-violet-400">
-                              Active
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[9px] text-on-surface-variant/50 font-body shrink-0 text-right max-w-[45%] truncate">
-                          {names.join(', ')}
-                        </span>
-                      </div>
-                      <p className={cn(
-                        'text-[10px] font-body leading-relaxed pl-4',
-                        isOnActiveCombatant ? 'text-violet-200/80' : 'text-on-surface-variant/55',
-                      )}>
-                        {description}
-                      </p>
-                    </div>
+                <div className="space-y-4">
+                  {conditionGroups.map(group => (
+                    <section key={group.label} className="space-y-2">
+                      <h4 className="text-[9px] font-black uppercase tracking-widest text-outline">{group.label}</h4>
+                      {group.entries.map(({ combatants: affectedCombatants, condition, rounds }) => {
+                        const isBeneficial = BENEFICIAL_IDS.has(condition!.id);
+                        return (
+                          <details key={`${group.label}-${condition!.id}`} className={cn('rounded-lg border px-3 py-2', isBeneficial ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/5')}>
+                            <summary className="flex cursor-pointer list-none items-center gap-2">
+                              <span className={cn('h-2 w-2 shrink-0 rounded-full', isBeneficial ? 'bg-emerald-400' : 'bg-red-400')} />
+                              <span className={cn('flex-1 font-headline text-xs font-bold', isBeneficial ? 'text-emerald-300' : 'text-red-300')}>{condition!.name}</span>
+                              {rounds.length > 0 && <span className="text-[9px] font-bold text-amber-200">{[...new Set(rounds)].join('/')}r</span>}
+                              <ChevronDown className="h-3.5 w-3.5 text-outline" />
+                            </summary>
+                            <div className="mt-2 space-y-2">
+                              <div className="flex flex-wrap gap-1">
+                                <span className="text-[9px] text-outline">Affected</span>
+                                {affectedCombatants.map(combatant => <span key={combatant.id} className="rounded bg-surface-container-highest px-1.5 py-0.5 text-[9px] text-on-surface">{displayNames?.get(combatant.id) ?? combatant.name}</span>)}
+                              </div>
+                              <p className="text-[10px] leading-relaxed text-on-surface-variant">{condition!.description}</p>
+                            </div>
+                          </details>
+                        );
+                      })}
+                    </section>
                   ))}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Combat Log (shown when DM enables "Log to Players") */}
           {combatLog && combatLog.length > 0 && (
             <div className="rounded-xl border border-outline-variant/15 overflow-hidden backdrop-blur-md"
                  style={{ backgroundColor: panelBg }}>
-              <div className="bg-surface-container/40 px-4 py-2.5 border-b border-outline-variant/10 flex items-center gap-2 shrink-0">
+              <button onClick={() => setLogOpen(open => !open)} className="w-full bg-surface-container/40 px-4 py-2.5 border-b border-outline-variant/10 flex items-center gap-2 text-left shrink-0">
                 <Activity className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-outline">Combat Log</span>
-              </div>
-              <div className="p-3 max-h-48 overflow-y-auto custom-scrollbar">
-                <CombatLog entries={combatLog} />
-              </div>
+                <span className="flex-1 text-[10px] font-black uppercase tracking-widest text-outline">Combat events</span>
+                {logOpen ? <ChevronUp className="h-3.5 w-3.5 text-outline" /> : <ChevronDown className="h-3.5 w-3.5 text-outline" />}
+              </button>
+              {logOpen && <div className="max-h-48 space-y-2 overflow-y-auto p-3 custom-scrollbar">
+                {combatLog.map(event => <p key={event.id} className="text-[11px] text-on-surface-variant"><span className="font-bold text-on-surface">{event.actorName}</span> {PLAYER_LOG_LABELS[event.type]}{event.detail ? ` ${event.detail}` : ''}</p>)}
+              </div>}
             </div>
           )}
         </aside>
@@ -493,7 +431,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                 <div className="min-w-0">
                   <p className="font-headline font-bold text-on-surface truncate">{displayNames?.get(next.id) ?? next.name}</p>
                   <p className="text-[10px] font-headline text-on-surface-variant uppercase tracking-widest">
-                    {next.type === 'player' ? 'Player' : 'Enemy'}
+                    is on deck
                   </p>
                 </div>
               </div>
@@ -564,7 +502,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       <div className="font-headline font-bold text-sm text-error">{enemies.length}</div>
                       {enemies.length > 0 && (
                         <div className="text-[8px] text-on-surface-variant/60 leading-none mt-0.5">
-                          {aliveEnemies} up · {downEnemies} down
+                          {aliveEnemies} conscious · {downEnemies} down
                         </div>
                       )}
                     </div>
@@ -717,6 +655,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           {isEncounterActive && activeCombatant && (
             <div className={cn(
               'rounded-xl border px-4 py-3 flex items-center gap-3 backdrop-blur-sm',
+              turnCueActive && animationLevel !== 'none' && 'turn-cue-enter',
               activeCombatant.type === 'player'
                 ? 'border-primary/30 bg-primary/8 ring-1 ring-primary/20'
                 : 'border-error/25 bg-error/6'
@@ -730,9 +669,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-widest text-outline mb-0.5">Active</p>
                 <p className="font-headline font-bold text-sm text-on-surface truncate leading-tight">
-                  {displayNames?.get(activeCombatant.id) ?? activeCombatant.name}
+                  {displayNames?.get(activeCombatant.id) ?? activeCombatant.name}&apos;s turn
                 </p>
               </div>
               <div className="shrink-0 text-right">

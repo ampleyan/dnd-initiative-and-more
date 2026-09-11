@@ -340,6 +340,7 @@ export interface ParsedEncounter {
 
 export type LogEventType =
   | 'round_start' | 'turn_start'
+  | 'creature_revealed'
   | 'damage' | 'heal'
   | 'condition_applied' | 'condition_removed'
   | 'creature_downed' | 'creature_stabilized'

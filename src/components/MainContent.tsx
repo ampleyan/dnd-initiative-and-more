@@ -526,10 +526,8 @@ export const MainContent: React.FC<MainContentProps> = ({
       {isPlayerView ? (
         <PlayerView
           combatants={combatants.filter(c => !c.hidden)}
-          currentTurnIndex={currentTurnIndex}
           isEncounterActive={isEncounterActive}
           currentRound={currentRound}
-          encounterName={encounterName}
           backgroundImage={activeBackground}
           backgroundOpacity={activeBackgroundOpacity}
           panelOpacity={activePanelOpacity}

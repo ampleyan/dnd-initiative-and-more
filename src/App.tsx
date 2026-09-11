@@ -189,8 +189,9 @@ export default function App() {
   });
 
   React.useEffect(() => {
-    syncPlayerLog(showLogToPlayers, showLogToPlayers ? combatLog : []);
-  }, [showLogToPlayers, combatLog, syncPlayerLog]);
+    const visibleCombatantIds = new Set(combatants.filter(combatant => !combatant.hidden).map(combatant => combatant.id));
+    syncPlayerLog(showLogToPlayers, showLogToPlayers ? combatLog : [], visibleCombatantIds);
+  }, [showLogToPlayers, combatLog, combatants, syncPlayerLog]);
 
   React.useEffect(() => {
     const onCmdK = (e: KeyboardEvent) => {
@@ -800,10 +801,8 @@ export default function App() {
                 <Route path="/player/:id" element={
                   <PlayerView
                     combatants={combatants.filter(c => !c.hidden)}
-                    currentTurnIndex={currentTurnIndex}
                     isEncounterActive={isEncounterActive}
                     currentRound={currentRound}
-                    encounterName={encounterName}
                     backgroundImage={activeBackground}
                     backgroundOpacity={activeBackgroundOpacity}
                     panelOpacity={activePanelOpacity}

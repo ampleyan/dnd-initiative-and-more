@@ -22,6 +22,7 @@ import { createDndBeyondRouter } from './routes/dnd-beyond.ts';
 import { createFoundryRouter, createFoundryConfigRouter, createFoundryLiveRouter } from './routes/foundry.ts';
 import { createImagesRouter } from './routes/images.ts';
 import { createBackupsRouter } from './routes/backups.ts';
+import { toPlayerLog } from './src/lib/playerLog.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -105,7 +106,7 @@ async function startServer() {
       const session = (socket.request as any).session;
       const authed = (lanAuthBypassEnabled() && isLocalNetwork(socketIp)) || (session?.userId && session?.role === 'admin');
       if (!authed) return;
-      io.to(`encounter:${encounterId}`).emit('player-log-updated', { show, entries });
+      io.to(`encounter:${encounterId}`).emit('player-log-updated', { show, entries: toPlayerLog(entries) });
     });
   });
 

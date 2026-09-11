@@ -13,6 +13,7 @@ import { useCampaignActions } from './useCampaignActions';
 import { useEncounterManagement } from './useEncounterManagement';
 import { sortWithCompanions } from '../lib/combatantUtils';
 import { computeEncounterStats, enrichStatsFromLog, CombatantTracking } from '../lib/encounterStats';
+import { toPlayerLog } from '../lib/playerLog';
 
 function mergePlayerSpellSlots(rosterSlots: SpellSlots | undefined, combatantSlots: SpellSlots | undefined): SpellSlots | undefined {
   if (!rosterSlots) return combatantSlots;
@@ -345,7 +346,7 @@ export function useAppState() {
 
     socket.on('player-log-updated', ({ show, entries }: { show: boolean; entries: LogEntry[] }) => {
       setPlayerLogVisible(show);
-      setPlayerLog(entries);
+      setPlayerLog(toPlayerLog(entries));
     });
 
     return () => { socket.disconnect(); };
@@ -493,9 +494,9 @@ export function useAppState() {
     showSuccess,
   });
 
-  const syncPlayerLog = useCallback((show: boolean, entries: LogEntry[]) => {
+  const syncPlayerLog = useCallback((show: boolean, entries: LogEntry[], visibleCombatantIds: Set<string>) => {
     if (socketRef.current && currentEncounterId) {
-      socketRef.current.emit('dm-log-sync', { encounterId: currentEncounterId, show, entries });
+      socketRef.current.emit('dm-log-sync', { encounterId: currentEncounterId, show, entries: toPlayerLog(entries, visibleCombatantIds) });
     }
   }, [currentEncounterId]);
 

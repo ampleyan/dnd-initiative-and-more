@@ -168,6 +168,11 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
   const hpInputRef = React.useRef<HTMLInputElement>(null);
   const dmgInputRef = React.useRef<HTMLInputElement>(null);
   const cancellingRef = React.useRef(false);
+  const togglePlayerVisibility = () => {
+    const waveId = combatant.waveId ?? (window.prompt('Wave name', 'reinforcements') || 'default');
+    onUpdate({ ...combatant, hidden: !combatant.hidden, waveId });
+    if (combatant.hidden) addLogEntry?.({ type: 'creature_revealed', actorName: combatant.name, actorId: combatant.id });
+  };
   const commitHpEdit = () => {
     if (cancellingRef.current) { cancellingRef.current = false; setEditingHp(false); return; }
     setEditingHp(false);
@@ -706,7 +711,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
             <div className="hidden sm:block w-px h-4 bg-outline/20 shrink-0" />
             <div className="flex gap-0.5">
               <button
-                onClick={e => { e.stopPropagation(); const waveId = combatant.waveId ?? (window.prompt('Wave name', 'reinforcements') || 'default'); onUpdate({ ...combatant, hidden: !combatant.hidden, waveId }); }}
+                onClick={e => { e.stopPropagation(); togglePlayerVisibility(); }}
                 title={combatant.hidden ? 'Reveal to players' : 'Hide from players / assign wave'}
                 className={cn('hidden p-1.5 hover:bg-surface-container-highest rounded-lg transition-colors', combatant.hidden ? 'text-amber-300' : 'text-outline hover:text-amber-300')}
               >
@@ -776,7 +781,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
                 {onMoveDown && <button onClick={e => { e.stopPropagation(); onMoveDown(); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">Move down in order</button>}
                 <button onClick={e => { e.stopPropagation(); onEdit(); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">Edit combatant</button>
                 {onEditLibrary && <button onClick={e => { e.stopPropagation(); onEditLibrary(); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">Edit library entry</button>}
-                <button onClick={e => { e.stopPropagation(); const waveId = combatant.waveId ?? (window.prompt('Wave name', 'reinforcements') || 'default'); onUpdate({ ...combatant, hidden: !combatant.hidden, waveId }); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">{combatant.hidden ? 'Reveal to players' : 'Hide from players'}</button>
+                <button onClick={e => { e.stopPropagation(); togglePlayerVisibility(); }} className="px-3 py-2 text-left text-xs hover:bg-surface-container">{combatant.hidden ? 'Reveal to players' : 'Hide from players'}</button>
                 {combatant.conditions.length > 0 && <button onClick={e => { e.stopPropagation(); onUpdate({ ...combatant, conditions: [], conditionTimers: undefined, concentratingOn: undefined }); }} className="px-3 py-2 text-left text-xs text-error hover:bg-surface-container">Clear conditions</button>}
                 {onRemove && <button onClick={e => { e.stopPropagation(); onRemove(); }} className="px-3 py-2 text-left text-xs text-error hover:bg-surface-container">Remove from encounter</button>}
               </div>
