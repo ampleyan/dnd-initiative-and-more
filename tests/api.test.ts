@@ -374,6 +374,51 @@ describe('Encounter waves', () => {
   });
 });
 
+describe('Encounter budget and variants persistence', () => {
+  it('persists budget through PUT and retrieves it on GET', async () => {
+    const agent = await loginAdmin();
+    const id = 'budget-test-enc';
+    await agent.post('/api/encounters').send({ id, name: id });
+    const budget = { partySize: 4, partyLevels: [5, 5, 5, 5], targetDifficulty: 'hard', dmAdjustment: 200 };
+    await agent.put(`/api/encounters/${id}`).send({ budget });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.body.budget).toEqual(budget);
+  });
+
+  it('persists variants through PUT and retrieves them on GET', async () => {
+    const agent = await loginAdmin();
+    const id = 'variants-test-enc';
+    await agent.post('/api/encounters').send({ id, name: id });
+    const variants = [
+      { id: 'v1', name: 'Hard Mode', notes: 'Add extra wolf', combatants: [], createdAt: '2025-01-01T00:00:00.000Z' },
+    ];
+    await agent.put(`/api/encounters/${id}`).send({ variants });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.body.variants).toHaveLength(1);
+    expect(res.body.variants[0].name).toBe('Hard Mode');
+  });
+
+  it('defaults budget to null and variants to [] when not set', async () => {
+    const agent = await loginAdmin();
+    const id = 'defaults-test-enc';
+    await agent.post('/api/encounters').send({ id, name: id });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.body.budget).toBeNull();
+    expect(res.body.variants).toEqual([]);
+  });
+
+  it('budget and variants survive a bulk combatant update round-trip', async () => {
+    const agent = await loginAdmin();
+    const id = 'bulk-budget-enc';
+    await agent.post('/api/encounters').send({ id, name: id });
+    const budget = { partySize: 3, partyLevels: [3, 3, 3], targetDifficulty: 'easy' };
+    await agent.put(`/api/encounters/${id}`).send({ budget });
+    await agent.post(`/api/encounters/${id}/bulk-update`).send({ encounter: { currentRound: 2 }, combatants: [] });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.body.budget).toEqual(budget);
+  });
+});
+
 describe('Monsters API', () => {
   it('creates a monster with spells', async () => {
     const agent = await loginAdmin();

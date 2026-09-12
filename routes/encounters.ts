@@ -28,6 +28,8 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       ...collection,
       lairActionsEnabled: !!encounter.lairActionsEnabled,
       trackingData: encounter.trackingData ? JSON.parse(encounter.trackingData) : null,
+      budget: encounter.budget ? JSON.parse(encounter.budget) : null,
+      variants: encounter.variants ? JSON.parse(encounter.variants) : [],
     };
   };
   const combatantValues = (combatant: any) => {
@@ -199,6 +201,8 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       waves = undefined,
       playerViewSettings = undefined,
       weather = existing.weather ?? 'none',
+      budget = undefined,
+      variants = undefined,
     } = req.body;
     const statsJson = typeof encounterStats === 'string' ? encounterStats : (encounterStats ? JSON.stringify(encounterStats) : existing.encounterStats);
     const soundIdsJson = soundIds !== undefined ? JSON.stringify(soundIds) : existing.soundIds;
@@ -206,20 +210,24 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
     const notesJson = notes !== undefined ? JSON.stringify(notes) : existing.notes;
     const wavesJson = waves !== undefined ? JSON.stringify(waves) : existing.waves;
     const playerViewSettingsJson = playerViewSettings !== undefined ? JSON.stringify(normalizePlayerViewSettings(playerViewSettings)) : existing.playerViewSettings;
+    const budgetJson = budget !== undefined ? JSON.stringify(budget) : existing.budget;
+    const variantsJson = variants !== undefined ? JSON.stringify(variants) : existing.variants;
     db.prepare(`
       UPDATE encounters
       SET name = ?, currentRound = ?, currentTurnIndex = ?, isEncounterActive = ?,
           showSummary = ?, backgroundImage = ?, youtubeUrl = ?, musicUrl = ?,
           encounterStats = ?, folder = ?, completedAt = ?, difficulty = ?,
           backgroundOpacity = ?, panelOpacity = ?, soundIds = ?, huePreset = ?, animationLevel = ?,
-          trackingData = ?, favorite = ?, lairActionsEnabled = ?, notes = ?, waves = ?, playerViewSettings = ?, weather = ?
+          trackingData = ?, favorite = ?, lairActionsEnabled = ?, notes = ?, waves = ?, playerViewSettings = ?, weather = ?,
+          budget = ?, variants = ?
       WHERE id = ?
     `).run(
       name, currentRound, currentTurnIndex, isEncounterActive ? 1 : 0,
       showSummary ? 1 : 0, backgroundImage, youtubeUrl, musicUrl,
       statsJson, folder, completedAt, difficulty,
       backgroundOpacity, panelOpacity, soundIdsJson, huePreset, animationLevel,
-      trackingJson, favorite ? 1 : 0, lairActionsEnabled ? 1 : 0, notesJson, wavesJson, playerViewSettingsJson, normalizeWeather(weather), req.params.id
+      trackingJson, favorite ? 1 : 0, lairActionsEnabled ? 1 : 0, notesJson, wavesJson, playerViewSettingsJson, normalizeWeather(weather),
+      budgetJson, variantsJson, req.params.id
     );
     io.to(`encounter:${req.params.id}`).emit('encounter-updated', { encounterId: req.params.id });
     res.json({ success: true });
@@ -353,25 +361,30 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
             soundIds = undefined, trackingData = undefined,
             lairActionsEnabled = existing.lairActionsEnabled,
             playerViewSettings = undefined, weather = existing.weather ?? 'none',
+            budget = undefined, variants = undefined,
           } = encounter;
           const statsJson = typeof encounterStats === 'string' ? encounterStats : (encounterStats ? JSON.stringify(encounterStats) : existing.encounterStats);
           const soundIdsJson = soundIds !== undefined ? JSON.stringify(soundIds) : existing.soundIds;
           const trackingJson = trackingData !== undefined ? (typeof trackingData === 'string' ? trackingData : JSON.stringify(trackingData)) : existing.trackingData;
           const playerViewSettingsJson = playerViewSettings !== undefined ? JSON.stringify(normalizePlayerViewSettings(playerViewSettings)) : existing.playerViewSettings;
+          const budgetJson = budget !== undefined ? JSON.stringify(budget) : existing.budget;
+          const variantsJson = variants !== undefined ? JSON.stringify(variants) : existing.variants;
           db.prepare(`
             UPDATE encounters
             SET name = ?, currentRound = ?, currentTurnIndex = ?, isEncounterActive = ?,
                 showSummary = ?, backgroundImage = ?, youtubeUrl = ?, musicUrl = ?,
                 encounterStats = ?, folder = ?, completedAt = ?, difficulty = ?,
                 backgroundOpacity = ?, panelOpacity = ?, soundIds = ?, trackingData = ?,
-                lairActionsEnabled = ?, playerViewSettings = ?, weather = ?
+                lairActionsEnabled = ?, playerViewSettings = ?, weather = ?,
+                budget = ?, variants = ?
             WHERE id = ?
           `).run(
             name, currentRound, currentTurnIndex, isEncounterActive ? 1 : 0,
             showSummary ? 1 : 0, backgroundImage, youtubeUrl, musicUrl,
             statsJson, folder, completedAt, difficulty,
             backgroundOpacity, panelOpacity, soundIdsJson, trackingJson,
-            lairActionsEnabled ? 1 : 0, playerViewSettingsJson, normalizeWeather(weather), encounterId
+            lairActionsEnabled ? 1 : 0, playerViewSettingsJson, normalizeWeather(weather),
+            budgetJson, variantsJson, encounterId
           );
         }
       }

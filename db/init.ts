@@ -111,6 +111,8 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
       ['encounters', "weather TEXT DEFAULT 'none'"],
       ['combatants', 'hidden INTEGER DEFAULT 0'],
       ['combatants', "waveId TEXT DEFAULT 'default'"],
+      ['encounters', 'budget TEXT DEFAULT NULL'],
+      ['encounters', "variants TEXT DEFAULT '[]'"],
     ];
 
     for (const [table, col] of migrations) {

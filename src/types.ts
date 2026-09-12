@@ -86,6 +86,22 @@ export interface Combatant {
   waveId?: string;
 }
 
+export interface EncounterBudget {
+  partySize: number;
+  partyLevels: number[];
+  targetDifficulty: 'easy' | 'medium' | 'hard' | 'deadly';
+  dmAdjustment?: number;
+}
+
+export interface EncounterVariant {
+  id: string;
+  name: string;
+  notes?: string;
+  combatants: Combatant[];
+  waves?: EncounterWave[];
+  createdAt: string;
+}
+
 export interface WaveTrigger {
   kind: 'manual' | 'round' | 'boss-bloodied' | 'combatant-defeated';
   combatantId?: string;
@@ -316,6 +332,8 @@ export interface Encounter {
   waves?: EncounterWave[];
   playerViewSettings?: import('./lib/playerViewSettings').PlayerViewSettings;
   weather?: import('./lib/playerViewSettings').PlayerViewWeather;
+  budget?: EncounterBudget;
+  variants?: EncounterVariant[];
 }
 
 export interface Sound {
