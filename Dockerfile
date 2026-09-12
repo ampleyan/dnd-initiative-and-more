@@ -1,5 +1,5 @@
 # Stage 1: Build the frontend and prepare production dependencies
-FROM node:22-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -12,7 +12,7 @@ COPY . .
 RUN npm run build && npm prune --omit=dev
 
 # Stage 2: Final runtime image
-FROM node:22-slim AS runtime
+FROM node:26-slim AS runtime
 WORKDIR /app
 RUN apt-get update && apt-get install -y python3 python3-pip ffmpeg && \
     pip3 install yt-dlp --break-system-packages && \
