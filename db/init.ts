@@ -114,6 +114,7 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
       ['encounters', 'budget TEXT DEFAULT NULL'],
       ['encounters', "variants TEXT DEFAULT '[]'"],
       ['monsters', 'imported_at TEXT DEFAULT NULL'],
+      ['encounters', 'sceneStart TEXT DEFAULT NULL'],
     ];
 
     for (const [table, col] of migrations) {

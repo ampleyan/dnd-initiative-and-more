@@ -334,6 +334,7 @@ export interface Encounter {
   weather?: import('./lib/playerViewSettings').PlayerViewWeather;
   budget?: EncounterBudget;
   variants?: EncounterVariant[];
+  sceneStart?: import('./lib/sceneStart').SceneStartConfig | null;
 }
 
 export interface Sound {

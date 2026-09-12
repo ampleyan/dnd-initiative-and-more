@@ -36,6 +36,8 @@ import { api, ApiError } from '../api/client';
 import { useToast } from '../hooks/useToast';
 import { getCombatantLayout, evaluateWaveAvailability, deriveTurnLedger } from '../lib/combatantUtils';
 import { DEFAULT_PLAYER_VIEW_SETTINGS, PLAYER_VIEW_PRESETS, applyPreset, type PlayerViewPreset } from '../lib/playerViewSettings';
+import { buildSceneStartCommands, normalizeSceneStartConfig, type SceneStartConfig } from '../lib/sceneStart';
+import { cn } from '../lib/utils';
 
 type NoteToken =
   | { type: 'text'; text: string }
@@ -441,6 +443,25 @@ export const MainContent: React.FC<MainContentProps> = ({
   const [changingWave, setChangingWave] = React.useState<string | null>(null);
   const waveEncounterRef = React.useRef(currentEncounterId);
   React.useEffect(() => { waveEncounterRef.current = currentEncounterId; }, [currentEncounterId]);
+
+  const prevActiveRef = React.useRef(isEncounterActive);
+  React.useEffect(() => {
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = isEncounterActive;
+    if (!isEncounterActive || wasActive || !currentEncounterId || !onUpdateEncounter || !currentEncounter) return;
+    const config = normalizeSceneStartConfig(currentEncounter.sceneStart);
+    const commands = buildSceneStartCommands(currentEncounter, config);
+    if (commands.length === 0) return;
+    const updates: Partial<Encounter> = {};
+    for (const cmd of commands) {
+      if (cmd.type === 'background') updates.backgroundImage = cmd.value as string;
+      else if (cmd.type === 'music') updates.musicUrl = cmd.value as string;
+      else if (cmd.type === 'hue') updates.huePreset = cmd.value as string;
+      else if (cmd.type === 'playerView') updates.playerViewSettings = cmd.value as Encounter['playerViewSettings'];
+      else if (cmd.type === 'weather') updates.weather = cmd.value as Encounter['weather'];
+    }
+    onUpdateEncounter(currentEncounterId, updates);
+  }, [isEncounterActive]);
 
   const changeWaveVisibility = async (waveId: string, hidden: boolean) => {
     if (!currentEncounterId || changingWave !== null) return;
@@ -857,6 +878,36 @@ export const MainContent: React.FC<MainContentProps> = ({
                       ? preset => onUpdateEncounter(currentEncounterId, { huePreset: preset })
                       : undefined}
                   />}
+                  {currentEncounterId && onUpdateEncounter && currentEncounter && <details className="relative">
+                    <summary className="cursor-pointer rounded-lg border border-outline/25 px-3 py-2 text-xs font-bold text-outline hover:text-on-surface">Scene start</summary>
+                    <div className="absolute right-0 z-30 mt-1 w-60 space-y-2 rounded-xl border border-outline/20 bg-surface-container-highest p-3 shadow-xl">
+                      <p className="text-[10px] font-black uppercase text-outline/60 tracking-wider">Auto-apply on combat start</p>
+                      {([
+                        ['applyBackground', 'Background image', !!currentEncounter.backgroundImage],
+                        ['applyMusic', 'Music URL', !!currentEncounter.musicUrl],
+                        ['applyHuePreset', 'Hue preset', !!currentEncounter.huePreset],
+                        ['applyPlayerView', 'Player view settings', !!currentEncounter.playerViewSettings],
+                        ['applyWeather', 'Weather', !!currentEncounter.weather && currentEncounter.weather !== 'none'],
+                      ] as [keyof SceneStartConfig, string, boolean][]).map(([key, label, hasValue]) => {
+                        const config = normalizeSceneStartConfig(currentEncounter.sceneStart);
+                        return (
+                          <label key={key} className={cn('flex items-center gap-2 text-xs cursor-pointer', !hasValue && 'opacity-40 cursor-not-allowed')}>
+                            <input
+                              type="checkbox"
+                              disabled={!hasValue}
+                              checked={config[key]}
+                              onChange={e => {
+                                const next: SceneStartConfig = { ...normalizeSceneStartConfig(currentEncounter.sceneStart), [key]: e.target.checked };
+                                onUpdateEncounter(currentEncounterId!, { sceneStart: next });
+                              }}
+                            />
+                            <span className={hasValue ? 'text-on-surface' : 'text-outline'}>{label}</span>
+                            {!hasValue && <span className="text-[9px] text-outline/50 ml-auto">not set</span>}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </details>}
                   {currentEncounterId && onUpdateEncounter && <details className="relative">
                     <summary className="cursor-pointer rounded-lg border border-outline/25 px-3 py-2 text-xs font-bold text-outline hover:text-on-surface">Player view</summary>
                     <div className="absolute right-0 z-30 mt-1 w-72 space-y-2 rounded-xl border border-outline/20 bg-surface-container-highest p-3 shadow-xl">
