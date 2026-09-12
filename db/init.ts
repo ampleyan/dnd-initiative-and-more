@@ -113,6 +113,7 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
       ['combatants', "waveId TEXT DEFAULT 'default'"],
       ['encounters', 'budget TEXT DEFAULT NULL'],
       ['encounters', "variants TEXT DEFAULT '[]'"],
+      ['monsters', 'imported_at TEXT DEFAULT NULL'],
     ];
 
     for (const [table, col] of migrations) {
@@ -171,6 +172,8 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
       "feature_uses TEXT DEFAULT '{}'",
       "data_hash TEXT DEFAULT ''",
       'hp_current INTEGER DEFAULT NULL',
+      'imported_at TEXT DEFAULT NULL',
+      'imported_from TEXT DEFAULT NULL',
     ];
     for (const col of playerMigrations) {
       try { db.exec(`ALTER TABLE players ADD COLUMN ${col}`); } catch (e: any) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }

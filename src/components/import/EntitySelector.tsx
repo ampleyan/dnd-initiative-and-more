@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Check, RefreshCw } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ImportReviewAction, MappedEntity, reviewImportEntities } from './helpers';
 import { ClassFeature, Encounter, MonsterTemplate, Player, Spell } from '../../types';
+import { buildImportPreview, type ImportDiffStatus, type ImportSource } from '../../lib/importDiff';
 
 interface EntitySelectorProps {
   entities: MappedEntity[];
@@ -29,6 +30,28 @@ const entityStyles: Record<string, string> = {
   Feature: 'bg-amber-500/10 text-amber-400',
   Encounter: 'bg-blue-500/10 text-blue-400',
 };
+
+const diffStatusStyles: Record<ImportDiffStatus, string> = {
+  new: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  update: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  unchanged: 'bg-white/5 text-outline border-white/10',
+};
+
+function inferSource(format: string): ImportSource {
+  if (/foundry/i.test(format)) return 'foundry';
+  if (/d&d beyond|ddb/i.test(format)) return 'ddb';
+  return 'manual';
+}
+
+function existingToMapped(monsters: MonsterTemplate[], spells: Spell[], encounters: Encounter[], features: ClassFeature[], players: Player[]): MappedEntity[] {
+  return [
+    ...monsters.map(m => ({ id: m.id, name: m.name, type: 'Monster', format: m.source ?? 'custom', status: 'detected' as const, data: m })),
+    ...spells.map(s => ({ id: s.id, name: s.name, type: 'Spell', format: s.source ?? 'custom', status: 'detected' as const, data: s })),
+    ...encounters.map(e => ({ id: e.id, name: e.name, type: 'Encounter', format: 'local', status: 'detected' as const, data: e })),
+    ...features.map(f => ({ id: f.id, name: f.name, type: 'Feature', format: f.source ?? 'custom', status: 'detected' as const, data: f })),
+    ...players.map(p => ({ id: p.id, name: p.name, type: 'Player', format: 'local', status: 'detected' as const, data: p })),
+  ];
+}
 
 export const EntitySelector = React.memo<EntitySelectorProps>(({
   entities,
@@ -60,6 +83,20 @@ export const EntitySelector = React.memo<EntitySelectorProps>(({
     () => entities.filter(entity => selectedIds.has(entity.id)),
     [entities, selectedIds],
   );
+
+  const diffPreview = useMemo(() => {
+    if (entities.length === 0) return null;
+    const source = inferSource(entities[0]?.format ?? '');
+    const existingMapped = existingToMapped(monsters, spells ?? [], existingEncounters, classFeatures, players);
+    return buildImportPreview(entities, existingMapped, { source, importedAt: new Date().toISOString() });
+  }, [entities, monsters, spells, existingEncounters, classFeatures, players]);
+
+  const diffByEntityId = useMemo(() => {
+    const map = new Map<string, ImportDiffStatus>();
+    if (diffPreview) diffPreview.items.forEach(item => map.set(item.entity.id, item.status));
+    return map;
+  }, [diffPreview]);
+
   const review = useMemo(
     () => reviewImportEntities(selectedEntities, { monsters, spells, encounters: existingEncounters, features: classFeatures, players }),
     [selectedEntities, monsters, spells, existingEncounters, classFeatures, players],
@@ -130,6 +167,7 @@ export const EntitySelector = React.memo<EntitySelectorProps>(({
         <div className="max-h-72 overflow-y-auto">
           {entities.map(entity => {
             const isSelected = selectedIds.has(entity.id);
+            const diffStatus = diffByEntityId.get(entity.id);
             return (
               <button
                 key={entity.id}
@@ -144,6 +182,11 @@ export const EntitySelector = React.memo<EntitySelectorProps>(({
                   {isSelected && <Check className="w-3 h-3 text-white" />}
                 </span>
                 <span className="text-sm font-medium flex-1 truncate">{entity.name}</span>
+                {diffStatus && (
+                  <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider', diffStatusStyles[diffStatus])}>
+                    {diffStatus}
+                  </span>
+                )}
                 <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider', entityStyles[entity.type] ?? 'bg-white/5 text-outline')}>
                   {entity.type}
                 </span>
