@@ -1,10 +1,10 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import App from '../App';
 
-const harness = vi.hoisted(() => ({ state: {} as Record<string, any> }));
+const harness = vi.hoisted(() => ({ state: {} as Record<string, any>, preferences: {} as Record<string, any> }));
 vi.mock('../hooks/useAppState', () => ({ useAppState: () => harness.state }));
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: { role: 'admin' }, loading: false }) }));
 vi.mock('../hooks/useHueEffects', () => ({ useHueEffects: () => {} }));
@@ -14,7 +14,13 @@ vi.mock('../hooks/useSoundboard', () => ({ useSoundboard: () => ({ playingIds: n
 vi.mock('../hooks/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
 vi.mock('../api/client', async importOriginal => ({
   ...await importOriginal<typeof import('../api/client')>(),
-  api: { sounds: { list: async () => [] } },
+  api: {
+    sounds: { list: async () => [] },
+    preferences: {
+      get: async () => harness.preferences,
+      save: async (value: Record<string, any>) => { harness.preferences = value; return { ok: true }; },
+    },
+  },
 }));
 vi.mock('../components/Sidebar', () => ({ Sidebar: ({ youtubeId }: { youtubeId?: string }) => youtubeId ? <span>Music launcher</span> : null }));
 vi.mock('../components/ModalsContainer', () => ({ ModalsContainer: () => null }));
@@ -33,20 +39,23 @@ vi.mock('../components/HomeAssistantSettingsPanel', () => ({ HomeAssistantSettin
 
 beforeEach(() => {
   localStorage.clear();
+  harness.preferences = {};
   harness.state = {
     activeTab: 'settings', currentEncounterId: 'a', currentRound: 1,
     currentTurnIndex: 0, combatants: [], monsters: [], spells: [], players: [],
     savedEncounters: [{ id: 'a', name: 'Test', notes: { general: 'Keep these notes', rounds: [] } }],
     activeSoundIds: [], activeYoutubeUrl: 'https://www.youtube.com/watch?v=abcdefghijk', combatLog: [],
     isDbAvailable: false, fetchData: vi.fn(), syncPlayerLog: vi.fn(),
+    masterVolume: 1, setMasterVolume: vi.fn(), isMuted: false, setIsMuted: vi.fn(),
   };
 });
 afterEach(cleanup);
 
 const app = (path = '/settings') => <MemoryRouter initialEntries={[path]}><App /></MemoryRouter>;
 
-it('disables optional widgets and music launch controls, persists preferences, and restores widgets', () => {
+it('disables optional widgets and music launch controls, persists preferences, and restores widgets', async () => {
   const view = render(app());
+  await waitFor(() => expect(harness.preferences.optionalFeatures).toBeDefined());
   expect(screen.getByText('Board widget')).toBeInTheDocument();
   expect(screen.getByText('Music widget')).toBeInTheDocument();
   for (const name of ['Session board', 'DM notes', 'Ambient music']) {
@@ -58,6 +67,7 @@ it('disables optional widgets and music launch controls, persists preferences, a
   expect(screen.queryByText('Music launcher')).not.toBeInTheDocument();
   view.unmount();
   const restored = render(app());
+  await waitFor(() => expect(screen.getByRole('switch', { name: 'Session board' })).not.toBeChecked());
   for (const name of ['Session board', 'DM notes', 'Ambient music']) {
     expect(screen.getByRole('switch', { name })).not.toBeChecked();
     fireEvent.click(screen.getByRole('switch', { name }));
@@ -70,9 +80,10 @@ it('disables optional widgets and music launch controls, persists preferences, a
   expect(screen.getByDisplayValue('Keep these notes')).toBeInTheDocument();
 });
 
-it('does not render disabled DM notes or its reopen button', () => {
-  localStorage.setItem('optionalFeatures', JSON.stringify({ sessionBoard: true, dmNotes: false, ambientMusic: true }));
+it('does not render disabled DM notes or its reopen button', async () => {
+  harness.preferences = { optionalFeatures: { sessionBoard: true, dmNotes: false, ambientMusic: true } };
   render(app('/encounters/a'));
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'DM sticky note' })).not.toBeInTheDocument());
   expect(screen.queryByRole('region', { name: 'DM sticky note' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'DM Note' })).not.toBeInTheDocument();
 });

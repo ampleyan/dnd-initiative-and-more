@@ -8,6 +8,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { insertMonsterIfMissing } from './monster-update-db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -202,16 +203,6 @@ async function main() {
   // Ensure tags column exists
   try { db.exec("ALTER TABLE monsters ADD COLUMN tags TEXT DEFAULT '[]'"); } catch {}
 
-  const upsert = db.prepare(`
-    INSERT INTO monsters (id, name, hp, maxHp, ac, speed, avatar, xp, description, cr, type, source, stats, actions, abilities, spells, tags)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]')
-    ON CONFLICT(id) DO UPDATE SET
-      name=excluded.name, avatar=excluded.avatar, xp=excluded.xp,
-      description=excluded.description, cr=excluded.cr, type=excluded.type,
-      source=excluded.source, stats=excluded.stats,
-      actions=excluded.actions, abilities=excluded.abilities, spells=excluded.spells
-  `);
-
   console.log('Fetching bestiary data...');
   const files = ['bestiary-wbtw.json', 'bestiary-vgm.json', 'bestiary-mtf.json', 'bestiary-mm.json', 'bestiary-xmm.json', 'bestiary-mpmm.json'];
   let allMonsters: any[] = [];
@@ -243,13 +234,13 @@ async function main() {
       try {
         const fluff = fluffMap.get(`${m.name}-${m.source}`);
         const t = transformMonster(m, fluff);
-        upsert.run(
-          t.id, t.name, t.hp, t.maxHp, t.ac, t.speed, t.avatar,
-          t.xp, t.description, t.cr, t.type, t.source,
-          JSON.stringify(t.stats), JSON.stringify(t.actions),
-          JSON.stringify(t.abilities), JSON.stringify(t.spells)
-        );
-        updated++;
+        if (insertMonsterIfMissing(db, {
+          ...t,
+          stats: JSON.stringify(t.stats),
+          actions: JSON.stringify(t.actions),
+          abilities: JSON.stringify(t.abilities),
+          spells: JSON.stringify(t.spells),
+        })) updated++;
       } catch (e: any) {
         console.error(`  Error on ${m.name}: ${e.message}`);
         errors++;

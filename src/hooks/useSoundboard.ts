@@ -31,7 +31,7 @@ export function resolveChannels(panX: number, panZ: number): number[] {
   return [0, 1];
 }
 
-export function useSoundboard(masterVolume: number, isMuted: boolean) {
+export function useSoundboard(masterVolume: number, isMuted: boolean, spatialChannels: 2 | 6) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
   const channelMergerRef = useRef<ChannelMergerNode | null>(null);
@@ -52,8 +52,7 @@ export function useSoundboard(masterVolume: number, isMuted: boolean) {
       const masterGain = ctx.createGain();
       masterGainRef.current = masterGain;
 
-      const storedChannels = parseInt(localStorage.getItem('spatial_channels') || '2');
-      if (ctx.destination.maxChannelCount >= 6 && storedChannels === 6) {
+      if (ctx.destination.maxChannelCount >= 6 && spatialChannels === 6) {
         ctx.destination.channelCount = 6;
         ctx.destination.channelCountMode = 'explicit';
         const merger = ctx.createChannelMerger(6);

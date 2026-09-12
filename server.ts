@@ -10,7 +10,7 @@ import { Server } from 'socket.io';
 
 import { initDatabase } from './db/init.ts';
 import { createMiddleware, isLocalNetwork, lanAuthBypassEnabled } from './routes/middleware.ts';
-import { createSettingsHelpers } from './routes/settings.ts';
+import { createPreferencesRouter, createSettingsHelpers } from './routes/settings.ts';
 import { createSeedFunctions } from './routes/seed.ts';
 import { createAuthRouter } from './routes/auth.ts';
 import { createEncountersRouter } from './routes/encounters.ts';
@@ -96,6 +96,7 @@ async function startServer() {
   app.use('/api', requireAuth);
   app.use('/api', createBackupsRouter(db, dbAvailable, requireAdmin));
   app.use('/api', createFoundryConfigRouter(db, dbAvailable));
+  app.use('/api', createPreferencesRouter(db, dbAvailable));
 
   // Socket.IO — join rooms for per-encounter real-time updates
   io.on('connection', (socket) => {

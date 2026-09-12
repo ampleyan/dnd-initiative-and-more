@@ -35,6 +35,27 @@ describe('GET /api/health', () => {
   });
 });
 
+// ── App preferences ─────────────────────────────────────────────────────────
+describe('App preferences API', () => {
+  it('persists the complete user preference object', async () => {
+    const agent = await loginAdmin();
+    const preferences = {
+      theme: 'light',
+      optionalFeatures: { sessionBoard: false, dmNotes: true },
+      hue: { enabled: true, syncSceneColor: true, effectTargets: { damage: { players: true, monsters: false } } },
+      sound: { masterVolume: 0.65, muted: false, spatialChannels: 6, autoplayEnabled: false },
+      display: { showOrderInName: true, visibleInlineActions: ['attack'] },
+    };
+
+    const save = await agent.put('/api/preferences').send(preferences);
+    expect(save.status).toBe(200);
+
+    const read = await agent.get('/api/preferences');
+    expect(read.status).toBe(200);
+    expect(read.body).toEqual(preferences);
+  });
+});
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 describe('POST /api/auth/login', () => {
   it('returns 200 with user data on valid credentials', async () => {

@@ -78,6 +78,11 @@ export const auth = {
   logout: ()                                   => post<void>('/api/auth/logout', {}),
 };
 
+export const preferences = {
+  get: () => get<Record<string, unknown>>('/api/preferences'),
+  save: (value: unknown) => put<{ ok: boolean }>('/api/preferences', value),
+};
+
 // ── Encounters ────────────────────────────────────────────────────────────────
 
 export const encounters = {
@@ -385,7 +390,7 @@ export const health = {
 // ── Namespace export ──────────────────────────────────────────────────────────
 
 export const api = {
-  auth, encounters, combatants, monsters, players, spells,
+  auth, preferences, encounters, combatants, monsters, players, spells,
   sounds, campaigns, sessions, folderSettings, db, classFeatures,
   dndBeyond, hue, ha, users, adventures, sessionStats, imageProxy, proxy, health, foundry,
   images,

@@ -26,7 +26,7 @@ const SECTIONS: HelpSection[] = [
     items: [
       {
         title: 'Home — live encounter view',
-        body: 'The Home tab (/dashboard) is your DM command center. Add monsters and players, roll initiative, and run fights round by round. Six stat cards show your campaign status at a glance.',
+        body: 'The Home tab (/dashboard) is your DM command center. The Tonight\'s Session panel shows the active campaign, party average level, what\'s up next, the latest prep note, and live sound status. Use Resume to return to the active or most recently played encounter, or Start to create one.',
       },
       {
         title: 'Sidebar navigation',
@@ -163,6 +163,10 @@ const SECTIONS: HelpSection[] = [
       {
         title: 'Import from Foundry VTT',
         body: 'Export your Foundry world as JSON and paste or upload it in Import → Source: Foundry. Monsters, spells, and player characters are extracted and mapped automatically.',
+      },
+      {
+        title: 'Review before importing',
+        body: 'After selecting staged data, choose Review & import. The review labels every item as Create, Update, Skip, Invalid, or needing a choice. Resolve any conflicts, then select Confirm import; nothing is imported until you confirm.',
       },
       {
         title: 'Custom monsters',

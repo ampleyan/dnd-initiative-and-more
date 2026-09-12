@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.11.0';
 
 interface Release {
   version: string;
@@ -10,6 +10,27 @@ interface Release {
 }
 
 const RELEASES: Release[] = [
+  {
+    version: '1.11.0',
+    date: 'September 2026',
+    features: [
+      {
+        icon: '🧭',
+        title: 'Session-Ready Dashboard',
+        description: 'Home now highlights tonight\'s session, the active campaign, party level, upcoming session or encounter, last prep note, and live sound status. Resume the current or latest encounter directly from the dashboard.',
+      },
+      {
+        icon: '🔎',
+        title: 'Review Before Importing',
+        description: 'Imports now stop at a review screen first. See what will be created, updated, skipped, or needs a decision, choose how to handle conflicts, then confirm the import.',
+      },
+      {
+        icon: '🎚️',
+        title: 'Live Sound Progress',
+        description: 'The Soundboard now shows a progress bar and elapsed time for each playing sound, making it easier to manage ambient tracks and effects during play.',
+      },
+    ],
+  },
   {
     version: '1.10.0',
     date: 'September 2026',

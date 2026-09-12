@@ -34,11 +34,11 @@ import { Combatant, Encounter, Player, EncounterNotes } from './types';
 import { api } from './api/client';
 import { SessionBoard } from './components/SessionBoard';
 import { FloatingMusicPlayer } from './components/FloatingMusicPlayer';
-import { useLocalState } from './hooks/useLocalState';
-import { DEFAULT_FEATURES, type OptionalFeatures } from './components/FeaturesSettings';
+import { type OptionalFeatures } from './components/FeaturesSettings';
 import { useRouterSync } from './hooks/useRouterSync';
 import { useActionExecution } from './hooks/useActionExecution';
 import { useToast } from './hooks/useToast';
+import { usePreferences } from './hooks/usePreferences';
 import type { SessionBoardHandle } from './components/SessionBoard';
 
 const HOTKEYS = [
@@ -54,6 +54,7 @@ const HOTKEYS = [
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
+  const { preferences, loaded: preferencesLoaded, updatePreferences } = usePreferences(user);
   const [encounterSubtab, setEncounterSubtab] = React.useState<'saved' | 'recent'>('saved');
 
   const {
@@ -249,7 +250,7 @@ export default function App() {
     getAudioCtx,
     getPlaybackInfo,
     spatialMode,
-  } = useSoundboard(masterVolume, isMuted);
+  } = useSoundboard(masterVolume, isMuted, preferences.sound.spatialChannels);
 
   React.useEffect(() => {
     if (user) {
@@ -290,33 +291,35 @@ export default function App() {
     setSounds(Array.isArray(fresh) ? fresh : []);
   }, []);
 
-  const [theme, setTheme] = React.useState<'light' | 'pink'>(() =>
-    localStorage.getItem('appTheme') === 'light' ? 'light' : 'pink'
-  );
   React.useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle('theme-pink', theme === 'pink');
-    root.classList.toggle('theme-light', theme === 'light');
-    localStorage.setItem('appTheme', theme);
-  }, [theme]);
+    root.classList.toggle('theme-pink', preferences.theme === 'pink');
+    root.classList.toggle('theme-light', preferences.theme === 'light');
+  }, [preferences.theme]);
   const toggleTheme = React.useCallback(() =>
-    setTheme(t => t === 'pink' ? 'light' : 'pink'), []);
+    updatePreferences(current => ({ ...current, theme: current.theme === 'pink' ? 'light' : 'pink' })), [updatePreferences]);
 
-  const [storedFeatures, setStoredFeatures] = useLocalState<Partial<OptionalFeatures>>('optionalFeatures', DEFAULT_FEATURES);
-  const optionalFeatures: OptionalFeatures = {
-    sessionBoard: storedFeatures?.sessionBoard !== false,
-    dmNotes: storedFeatures?.dmNotes !== false,
-    ambientMusic: storedFeatures?.ambientMusic !== false,
-    combatLog: storedFeatures?.combatLog !== false,
-    playerViewTools: storedFeatures?.playerViewTools !== false,
-    soundpad: storedFeatures?.soundpad !== false,
-  };
+  const optionalFeatures: OptionalFeatures = preferences.optionalFeatures;
+  const hueEnabled = preferences.hue.enabled;
+  const haEnabled = preferences.haEnabled;
+  const hueSyncScene = preferences.hue.syncSceneColor;
+  const hueEnabledEffects = preferences.hue.enabledEffects as Partial<Record<HueEffectName, boolean>>;
+  const hueEffectTargets = preferences.hue.effectTargets as Partial<Record<HueEffectName, HueEffectTargets>>;
 
-  const [hueEnabled, setHueEnabled] = React.useState(() => localStorage.getItem('hueEnabled') === 'true');
-  const [haEnabled, setHaEnabled] = React.useState(() => localStorage.getItem('haEnabled') === 'true');
-  const [hueSyncScene, setHueSyncScene] = React.useState(() => localStorage.getItem('hueSyncScene') === 'true');
-  const [hueEnabledEffects, setHueEnabledEffects] = useLocalState<Partial<Record<HueEffectName, boolean>>>('hueEnabledEffects', {});
-  const [hueEffectTargets, setHueEffectTargets] = useLocalState<Partial<Record<HueEffectName, HueEffectTargets>>>('hueEffectTargets', {});
+  React.useEffect(() => {
+    if (!preferencesLoaded) return;
+    setMasterVolume(preferences.sound.masterVolume);
+    setIsMuted(preferences.sound.muted);
+  }, [preferencesLoaded, preferences.sound.masterVolume, preferences.sound.muted, setIsMuted, setMasterVolume]);
+
+  const setPersistedMasterVolume = React.useCallback((value: number) => {
+    setMasterVolume(value);
+    updatePreferences(current => ({ ...current, sound: { ...current.sound, masterVolume: value } }));
+  }, [setMasterVolume, updatePreferences]);
+  const setPersistedMuted = React.useCallback((value: boolean) => {
+    setIsMuted(value);
+    updatePreferences(current => ({ ...current, sound: { ...current.sound, muted: value } }));
+  }, [setIsMuted, updatePreferences]);
 
   const handleSelectCampaign = React.useCallback((id: string) => {
     navigate(`/campaigns/${id}`);
@@ -354,17 +357,16 @@ export default function App() {
     navigate(`/encounters/${enc.id}`);
   }, [navigate]);
 
-  const handleToggleHue = (v: boolean) => { setHueEnabled(v); localStorage.setItem('hueEnabled', String(v)); api.hue.saveConfig({ enabled: v }).catch(() => {}); };
-  const handleToggleHa = React.useCallback((v: boolean) => { setHaEnabled(v); localStorage.setItem('haEnabled', String(v)); }, []);
+  const handleToggleHue = (v: boolean) => { updatePreferences(current => ({ ...current, hue: { ...current.hue, enabled: v } })); api.hue.saveConfig({ enabled: v }).catch(() => {}); };
+  const handleToggleHa = React.useCallback((v: boolean) => { updatePreferences(current => ({ ...current, haEnabled: v })); }, [updatePreferences]);
   const handleToggleHueEffect = (name: HueEffectName, v: boolean) => {
-    setHueEnabledEffects(prev => ({ ...prev, [name]: v }));
+    updatePreferences(current => ({ ...current, hue: { ...current.hue, enabledEffects: { ...current.hue.enabledEffects, [name]: v } } }));
   };
   const handleToggleHueTarget = (name: HueEffectName, target: 'players' | 'monsters', v: boolean) => {
-    setHueEffectTargets(prev => {
-      const current = prev[name] ?? { players: true, monsters: true };
-      const next = { ...prev, [name]: { ...current, [target]: v } };
-      return next;
-    });
+    updatePreferences(current => ({ ...current, hue: {
+      ...current.hue,
+      effectTargets: { ...current.hue.effectTargets, [name]: { ...(current.hue.effectTargets[name] ?? { players: true, monsters: true }), [target]: v } },
+    } }));
   };
 
   useHueEffects(combatLog, { 
@@ -472,7 +474,7 @@ export default function App() {
   const mainContentProps = {
     optionalFeatures,
     onToggleFeature: (feature: keyof OptionalFeatures, enabled: boolean) => {
-      setStoredFeatures(previous => ({ ...previous, [feature]: enabled }));
+      updatePreferences(current => ({ ...current, optionalFeatures: { ...current.optionalFeatures, [feature]: enabled } }));
       if (feature === 'ambientMusic' && enabled) {
         setIsMusicClosed(false);
         setIsMusicPaused(false);
@@ -558,7 +560,7 @@ export default function App() {
     hueEffectTargets,
     onToggleHue: handleToggleHue,
     onToggleHa: handleToggleHa,
-    onToggleHueSyncScene: (v: boolean) => { setHueSyncScene(v); localStorage.setItem('hueSyncScene', String(v)); },
+    onToggleHueSyncScene: (v: boolean) => { updatePreferences(current => ({ ...current, hue: { ...current.hue, syncSceneColor: v } })); },
     onToggleHueEffect: handleToggleHueEffect,
     onToggleHueTarget: handleToggleHueTarget,
     campaigns,
@@ -596,9 +598,9 @@ export default function App() {
     onPatchLive: handlePatchLive,
     onSetVolume: handleSetVolume,
     masterVolume,
-    setMasterVolume,
+    setMasterVolume: setPersistedMasterVolume,
     isMuted,
-    setIsMuted,
+    setIsMuted: setPersistedMuted,
     getAudioCtx,
     spatialMode,
     loadingEncounterId,
@@ -642,7 +644,7 @@ export default function App() {
         onShowHelp={() => setShowHelp(true)}
         showLog={showLog}
         showCombatLog={optionalFeatures.combatLog}
-        theme={theme}
+        theme={preferences.theme}
         onToggleTheme={toggleTheme}
         youtubeId={optionalFeatures.ambientMusic ? youtubeId : null}
         youtubeUrl={activeYoutubeUrl}
@@ -812,7 +814,7 @@ export default function App() {
                     panelOpacity={activePanelOpacity}
                     animationLevel={activeAnimationLevel}
                     displayNames={displayNames}
-                    showOrderInName={localStorage.getItem('showOrderInName') === 'true'}
+                    showOrderInName={preferences.display.showOrderInName}
                     pendingConChecks={pendingConChecks}
                     combatLog={playerLogVisible ? playerLog : undefined}
                   />
