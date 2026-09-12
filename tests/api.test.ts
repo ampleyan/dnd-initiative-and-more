@@ -531,3 +531,73 @@ describe('GET /api/images/search', () => {
     expect(res.body).toMatchObject({ results: [], hasMore: false });
   });
 });
+
+// ── Wave trigger persistence ──────────────────────────────────────────────────
+describe('Encounter wave trigger metadata', () => {
+  it('legacy waves (no trigger) load unchanged via GET /api/encounters/:id', async () => {
+    const agent = await loginAdmin();
+    const id = 'enc-wave-legacy';
+    const waves = [{ id: 'w1', name: 'Guards', revealed: false, revealRound: 2 }];
+    await agent.post('/api/encounters').send({ id, name: 'Legacy waves', waves });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.waves).toEqual(waves);
+  });
+
+  it('trigger metadata survives a POST create round trip', async () => {
+    const agent = await loginAdmin();
+    const id = 'enc-wave-trigger-post';
+    const waves = [
+      { id: 'w1', name: 'Reinforcements', revealed: false, trigger: { kind: 'boss-bloodied' } },
+      { id: 'w2', name: 'Escape route', revealed: false, trigger: { kind: 'combatant-defeated', combatantId: 'c-boss' } },
+    ];
+    await agent.post('/api/encounters').send({ id, name: 'Trigger test', waves });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.waves[0].trigger).toEqual({ kind: 'boss-bloodied' });
+    expect(res.body.waves[1].trigger).toEqual({ kind: 'combatant-defeated', combatantId: 'c-boss' });
+  });
+
+  it('trigger metadata survives a PUT update round trip', async () => {
+    const agent = await loginAdmin();
+    const id = 'enc-wave-trigger-put';
+    await agent.post('/api/encounters').send({ id, name: 'Trigger update test' });
+    const waves = [{ id: 'w1', name: 'Wave A', revealed: false, trigger: { kind: 'manual' } }];
+    await agent.put(`/api/encounters/${id}`).send({ waves });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.waves[0].trigger).toEqual({ kind: 'manual' });
+  });
+
+  it('trigger metadata survives a bulk combatant update round trip', async () => {
+    const agent = await loginAdmin();
+    const id = 'enc-wave-trigger-bulk';
+    const waves = [{ id: 'wb', name: 'Bulk wave', revealed: false, trigger: { kind: 'round' } }];
+    await agent.post('/api/encounters').send({ id, name: 'Bulk trigger test', waves });
+    await agent.put(`/api/encounters/${id}/combatants/bulk`).send({
+      combatants: [],
+      encounter: { name: 'Bulk trigger test', currentRound: 2 },
+    });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.waves[0].trigger).toEqual({ kind: 'round' });
+  });
+
+  it('existing reveal endpoint remains the only mutation path for hidden state', async () => {
+    const agent = await loginAdmin();
+    const id = 'enc-wave-reveal-only';
+    const waves = [{ id: 'wr', name: 'Gate', revealed: false, trigger: { kind: 'manual' } }];
+    await agent.post('/api/encounters').send({ id, name: 'Reveal only test', waves });
+    await agent.post('/api/combatants').send({
+      id: 'cb-gate', encounterId: id, name: 'Guard', type: 'monster',
+      initiative: 10, hp: { current: 10, max: 10 }, ac: 10,
+      hidden: true, waveId: 'wr',
+    });
+    const before = await agent.get(`/api/encounters/${id}/combatants`);
+    expect(before.body.find((c: any) => c.id === 'cb-gate').hidden).toBe(true);
+    const reveal = await agent.post(`/api/encounters/${id}/waves/wr/reveal`);
+    expect(reveal.body.success).toBe(true);
+    const after = await agent.get(`/api/encounters/${id}/combatants`);
+    expect(after.body.find((c: any) => c.id === 'cb-gate').hidden).toBe(false);
+  });
+});

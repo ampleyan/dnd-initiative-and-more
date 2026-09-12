@@ -7,8 +7,8 @@
  * - Add All Players spell slot copy (BUG-13 regression guard)
  */
 import { describe, it, expect } from 'vitest';
-import type { Combatant, SpellSlots } from '../types';
-import { sortWithCompanions, applyDamage, applyTurnStart, shouldTriggerLairAction, deriveTurnReminders } from '../lib/combatantUtils';
+import type { Combatant, EncounterWave, SpellSlots } from '../types';
+import { sortWithCompanions, applyDamage, applyTurnStart, shouldTriggerLairAction, deriveTurnReminders, deriveTurnLedger, evaluateWaveAvailability } from '../lib/combatantUtils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function makeCombatant(overrides: Partial<Combatant>): Combatant {
@@ -348,5 +348,122 @@ describe('deriveTurnReminders', () => {
     expect(deriveTurnReminders(current, [current, next], 0, true)).toEqual([
       'Maintain concentration: Fly', 'Expires at turn end: blinded', 'Legendary actions restored: 3', 'Lair action at initiative 20',
     ]);
+  });
+});
+
+describe('deriveTurnLedger', () => {
+  it('derives current-turn obligations without changing combat state', () => {
+    const current = makeCombatant({
+      id: 'dragon',
+      initiative: 25,
+      concentratingOn: 'Fly',
+      conditions: ['blinded'],
+      conditionTimers: { blinded: 1 },
+      legendaryActions: { max: 3, remaining: 3 },
+      reactionUsed: true,
+    });
+    const next = makeCombatant({ id: 'hero', initiative: 20 });
+    const before = structuredClone(current);
+
+    expect(deriveTurnLedger({ combatants: [current, next], currentTurnIndex: 0, currentRound: 2, lairActionsEnabled: true }))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: 'dragon:concentration', phase: 'current', label: 'Maintain concentration: Fly' }),
+        expect.objectContaining({ id: 'dragon:blinded', phase: 'end', label: 'Expires at turn end: blinded' }),
+        expect.objectContaining({ id: 'dragon:legendary-actions', phase: 'start', label: 'Legendary actions restored: 3' }),
+        expect.objectContaining({ id: 'dragon:reaction', phase: 'current', label: 'Reaction used' }),
+        expect.objectContaining({ id: 'lair:2:0', phase: 'crossing', label: 'Lair action at initiative 20' }),
+      ]));
+    expect(current).toEqual(before);
+  });
+
+  it('returns no ledger items for an ordinary turn', () => {
+    const current = makeCombatant({ initiative: 15 });
+    expect(deriveTurnLedger({ combatants: [current], currentTurnIndex: 0, currentRound: 1 })).toEqual([]);
+  });
+});
+
+// ── evaluateWaveAvailability ──────────────────────────────────────────────────
+
+function makeWave(overrides: Partial<EncounterWave> = {}): EncounterWave {
+  return { id: 'w1', name: 'Wave 1', revealed: false, ...overrides };
+}
+
+describe('evaluateWaveAvailability', () => {
+  it('legacy waves without trigger default to available = true', () => {
+    const waves = [makeWave()];
+    const result = evaluateWaveAvailability(waves, [], 1);
+    expect(result[0].available).toBe(true);
+  });
+
+  it('legacy waves with revealRound become available when round is reached', () => {
+    const waves = [makeWave({ revealRound: 3 })];
+    expect(evaluateWaveAvailability(waves, [], 2)[0].available).toBe(false);
+    expect(evaluateWaveAvailability(waves, [], 3)[0].available).toBe(true);
+    expect(evaluateWaveAvailability(waves, [], 4)[0].available).toBe(true);
+  });
+
+  it('manual trigger is always available', () => {
+    const waves = [makeWave({ trigger: { kind: 'manual' } })];
+    expect(evaluateWaveAvailability(waves, [], 1)[0].available).toBe(true);
+  });
+
+  it('round trigger uses revealRound', () => {
+    const waves = [makeWave({ trigger: { kind: 'round' }, revealRound: 5 })];
+    expect(evaluateWaveAvailability(waves, [], 4)[0].available).toBe(false);
+    expect(evaluateWaveAvailability(waves, [], 5)[0].available).toBe(true);
+  });
+
+  it('boss-bloodied trigger: available when any boss is at or below 50% HP', () => {
+    const boss = makeCombatant({ legendaryActions: { max: 3, remaining: 3 }, hp: { current: 50, max: 100 } });
+    const waves = [makeWave({ trigger: { kind: 'boss-bloodied' } })];
+    expect(evaluateWaveAvailability(waves, [boss], 1)[0].available).toBe(true);
+  });
+
+  it('boss-bloodied trigger: not available when boss is above 50% HP', () => {
+    const boss = makeCombatant({ legendaryActions: { max: 3, remaining: 3 }, hp: { current: 51, max: 100 } });
+    const waves = [makeWave({ trigger: { kind: 'boss-bloodied' } })];
+    expect(evaluateWaveAvailability(waves, [boss], 1)[0].available).toBe(false);
+  });
+
+  it('boss-bloodied trigger with combatantId only checks that specific boss', () => {
+    const bossA = makeCombatant({ id: 'boss-a', legendaryActions: { max: 3, remaining: 3 }, hp: { current: 30, max: 100 } });
+    const bossB = makeCombatant({ id: 'boss-b', legendaryActions: { max: 3, remaining: 3 }, hp: { current: 80, max: 100 } });
+    const waves = [makeWave({ trigger: { kind: 'boss-bloodied', combatantId: 'boss-b' } })];
+    expect(evaluateWaveAvailability(waves, [bossA, bossB], 1)[0].available).toBe(false);
+  });
+
+  it('combatant-defeated trigger: available when target is at 0 HP', () => {
+    const target = makeCombatant({ id: 'goblin-king', hp: { current: 0, max: 30 } });
+    const waves = [makeWave({ trigger: { kind: 'combatant-defeated', combatantId: 'goblin-king' } })];
+    expect(evaluateWaveAvailability(waves, [target], 1)[0].available).toBe(true);
+  });
+
+  it('combatant-defeated trigger: not available when target is still alive', () => {
+    const target = makeCombatant({ id: 'goblin-king', hp: { current: 1, max: 30 } });
+    const waves = [makeWave({ trigger: { kind: 'combatant-defeated', combatantId: 'goblin-king' } })];
+    expect(evaluateWaveAvailability(waves, [target], 1)[0].available).toBe(false);
+  });
+
+  it('combatant-defeated without combatantId: available when any non-player is defeated', () => {
+    const player = makeCombatant({ type: 'player', hp: { current: 0, max: 20 } });
+    const monster = makeCombatant({ type: 'monster', hp: { current: 1, max: 10 } });
+    const waves = [makeWave({ trigger: { kind: 'combatant-defeated' } })];
+    expect(evaluateWaveAvailability(waves, [player, monster], 1)[0].available).toBe(false);
+    const defeatedMonster = makeCombatant({ type: 'monster', hp: { current: 0, max: 10 } });
+    expect(evaluateWaveAvailability(waves, [player, defeatedMonster], 1)[0].available).toBe(true);
+  });
+
+  it('does not mutate the original wave objects', () => {
+    const wave = makeWave({ trigger: { kind: 'manual' } });
+    const before = structuredClone(wave);
+    evaluateWaveAvailability([wave], [], 1);
+    expect(wave).toEqual(before);
+  });
+
+  it('does not change the hidden field — revealed waves remain unchanged', () => {
+    const hiddenWave = makeWave({ trigger: { kind: 'manual' }, revealed: false });
+    const result = evaluateWaveAvailability([hiddenWave], [], 1);
+    expect(result[0].revealed).toBe(false);
+    expect(result[0].available).toBe(true);
   });
 });

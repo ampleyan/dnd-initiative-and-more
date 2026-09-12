@@ -1,4 +1,4 @@
-import { Combatant } from '../types';
+import { Combatant, EncounterWave, TurnLedgerInput, TurnLedgerItem } from '../types';
 
 export function getCombatantLayout(cs: Combatant[]) {
   const mainSorted = cs.filter(c => !c.ownerId).sort((a, b) => b.initiative - a.initiative);
@@ -133,4 +133,68 @@ export function deriveTurnReminders(combatant: Combatant, sorted: Combatant[] = 
   const nextIndex = sorted.length ? (currentIndex + 1) % sorted.length : 0;
   if (lairActionsEnabled && shouldTriggerLairAction(sorted, currentIndex, nextIndex)) reminders.push('Lair action at initiative 20');
   return reminders;
+}
+
+export function evaluateWaveAvailability(
+  waves: EncounterWave[],
+  combatants: Combatant[],
+  round: number,
+): EncounterWave[] {
+  return waves.map(wave => {
+    const kind = wave.trigger?.kind;
+
+    if (!kind || kind === 'round') {
+      const available = wave.revealRound !== undefined ? round >= wave.revealRound : true;
+      return { ...wave, available };
+    }
+
+    if (kind === 'manual') {
+      return { ...wave, available: true };
+    }
+
+    if (kind === 'boss-bloodied') {
+      const targetId = wave.trigger!.combatantId;
+      const bosses = combatants.filter(c => c.legendaryActions && (!targetId || c.id === targetId));
+      const available = bosses.some(c => c.hp.current > 0 && c.hp.current <= c.hp.max / 2);
+      return { ...wave, available };
+    }
+
+    if (kind === 'combatant-defeated') {
+      const targetId = wave.trigger!.combatantId;
+      if (targetId) {
+        const target = combatants.find(c => c.id === targetId);
+        return { ...wave, available: target !== undefined && target.hp.current <= 0 };
+      }
+      const available = combatants.some(c => c.type !== 'player' && c.hp.current <= 0);
+      return { ...wave, available };
+    }
+
+    return { ...wave, available: false };
+  });
+}
+
+export function deriveTurnLedger({ combatants, currentTurnIndex, currentRound, lairActionsEnabled = false }: TurnLedgerInput): TurnLedgerItem[] {
+  const current = combatants[currentTurnIndex];
+  if (!current) return [];
+
+  const items: TurnLedgerItem[] = [];
+  if (current.legendaryActions && current.legendaryActions.remaining === current.legendaryActions.max) {
+    items.push({ id: `${current.id}:legendary-actions`, phase: 'start', severity: 'info', label: `Legendary actions restored: ${current.legendaryActions.remaining}`, combatantId: current.id });
+  }
+  if (current.concentratingOn) {
+    items.push({ id: `${current.id}:concentration`, phase: 'current', severity: 'attention', label: `Maintain concentration: ${current.concentratingOn}`, combatantId: current.id });
+  }
+  if (current.reactionUsed) {
+    items.push({ id: `${current.id}:reaction`, phase: 'current', severity: 'info', label: 'Reaction used', combatantId: current.id });
+  }
+  for (const condition of current.conditions) {
+    if ((current.conditionTimers?.[condition] ?? Infinity) <= 1) {
+      items.push({ id: `${current.id}:${condition}`, phase: 'end', severity: 'attention', label: `Expires at turn end: ${condition}`, combatantId: current.id });
+    }
+  }
+  const nextIndex = combatants.length ? (currentTurnIndex + 1) % combatants.length : 0;
+  if (lairActionsEnabled && shouldTriggerLairAction(combatants, currentTurnIndex, nextIndex)) {
+    items.push({ id: `lair:${currentRound}:${currentTurnIndex}`, phase: 'crossing', severity: 'attention', label: 'Lair action at initiative 20' });
+  }
+  return items;
 }

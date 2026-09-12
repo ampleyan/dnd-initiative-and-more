@@ -34,7 +34,7 @@ import { DraggableSoundpad } from './DraggableSoundpad';
 import { AnimationLevel, Combatant, Encounter, MonsterTemplate, MonsterAction, Spell, Player, LogEntry, Campaign, Session, ClassFeature, EncounterNotes } from '../types';
 import { api, ApiError } from '../api/client';
 import { useToast } from '../hooks/useToast';
-import { getCombatantLayout } from '../lib/combatantUtils';
+import { getCombatantLayout, evaluateWaveAvailability } from '../lib/combatantUtils';
 import { DEFAULT_PLAYER_VIEW_SETTINGS } from '../lib/playerViewSettings';
 
 type NoteToken =
@@ -756,35 +756,44 @@ export const MainContent: React.FC<MainContentProps> = ({
               {combatants.some(c => c.type === 'monster') && (
                 <div className="flex items-center gap-3 flex-wrap rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">NPC waves</span>
-                  {Array.from(new Set(combatants.filter(c => c.type === 'monster').map(c => c.waveId ?? 'default'))).map(waveId => {
-                    const members = combatants.filter(c => c.type === 'monster' && (c.waveId ?? 'default') === waveId);
-                    const hiddenCount = members.filter(c => c.hidden).length;
-                    const livingCount = members.filter(c => c.hp.current > 0).length;
-                    const status = livingCount === 0
-                      ? 'Defeated'
-                      : hiddenCount === members.length
-                        ? 'Hidden'
-                        : hiddenCount === 0
-                          ? 'Revealed'
-                          : 'Partially revealed';
-                    return (
-                      <div key={waveId} className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-on-surface">{waveId} <span className="text-outline">· {status}</span></span>
-                        <button
-                          aria-label={`Reveal ${waveId}`}
-                          disabled={changingWave !== null || hiddenCount === 0}
-                          onClick={() => changeWaveVisibility(waveId, false)}
-                          className="rounded-md bg-amber-400/20 border border-amber-300/30 px-2 py-1 text-xs font-bold text-amber-200 hover:bg-amber-400/30 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >Reveal</button>
-                        <button
-                          aria-label={`Conceal ${waveId}`}
-                          disabled={changingWave !== null || hiddenCount === members.length}
-                          onClick={() => changeWaveVisibility(waveId, true)}
-                          className="rounded-md border border-outline/30 px-2 py-1 text-xs font-bold text-on-surface hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >Conceal</button>
-                      </div>
-                    );
-                  })}
+                  {(() => {
+                    const rawWaves = currentEncounter?.waves ?? [];
+                    const evaluatedWaves = evaluateWaveAvailability(rawWaves, combatants, currentRound);
+                    return Array.from(new Set(combatants.filter(c => c.type === 'monster').map(c => c.waveId ?? 'default'))).map(waveId => {
+                      const members = combatants.filter(c => c.type === 'monster' && (c.waveId ?? 'default') === waveId);
+                      const hiddenCount = members.filter(c => c.hidden).length;
+                      const livingCount = members.filter(c => c.hp.current > 0).length;
+                      const status = livingCount === 0
+                        ? 'Defeated'
+                        : hiddenCount === members.length
+                          ? 'Hidden'
+                          : hiddenCount === 0
+                            ? 'Revealed'
+                            : 'Partially revealed';
+                      const waveData = evaluatedWaves.find(w => w.id === waveId);
+                      const isAvailable = hiddenCount > 0 && waveData?.available === true;
+                      return (
+                        <div key={waveId} className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-on-surface">{waveId} <span className="text-outline">· {status}</span></span>
+                          {isAvailable && (
+                            <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">● Available</span>
+                          )}
+                          <button
+                            aria-label={`Reveal ${waveId}`}
+                            disabled={changingWave !== null || hiddenCount === 0}
+                            onClick={() => changeWaveVisibility(waveId, false)}
+                            className="rounded-md bg-amber-400/20 border border-amber-300/30 px-2 py-1 text-xs font-bold text-amber-200 hover:bg-amber-400/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >Reveal</button>
+                          <button
+                            aria-label={`Conceal ${waveId}`}
+                            disabled={changingWave !== null || hiddenCount === members.length}
+                            onClick={() => changeWaveVisibility(waveId, true)}
+                            className="rounded-md border border-outline/30 px-2 py-1 text-xs font-bold text-on-surface hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >Conceal</button>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               )}
 

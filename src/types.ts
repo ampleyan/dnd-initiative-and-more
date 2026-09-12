@@ -86,11 +86,38 @@ export interface Combatant {
   waveId?: string;
 }
 
+export interface WaveTrigger {
+  kind: 'manual' | 'round' | 'boss-bloodied' | 'combatant-defeated';
+  combatantId?: string;
+}
+
 export interface EncounterWave {
   id: string;
   name: string;
   revealRound?: number;
   revealed: boolean;
+  trigger?: WaveTrigger;
+  available?: boolean;
+}
+
+export type TurnLedgerPhase = 'start' | 'current' | 'crossing' | 'end';
+export type TurnLedgerSeverity = 'info' | 'attention';
+
+export interface TurnLedgerItem {
+  id: string;
+  phase: TurnLedgerPhase;
+  severity: TurnLedgerSeverity;
+  label: string;
+  combatantId?: string;
+  waveId?: string;
+}
+
+export interface TurnLedgerInput {
+  combatants: Combatant[];
+  currentTurnIndex: number;
+  currentRound: number;
+  lairActionsEnabled?: boolean;
+  waves?: EncounterWave[];
 }
 
 export interface MonsterAction {

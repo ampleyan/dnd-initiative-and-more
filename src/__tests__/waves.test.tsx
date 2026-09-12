@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MainContent } from '../components/MainContent';
 import { AddEnemyModal } from '../components/AddEnemyModal';
-import type { Combatant, MonsterTemplate } from '../types';
+import type { Combatant, Encounter, EncounterWave, MonsterTemplate } from '../types';
 
 const requests = vi.hoisted(() => ({ reveal: vi.fn(), conceal: vi.fn(), get: vi.fn(), error: vi.fn() }));
 vi.mock('../api/client', async importOriginal => ({
@@ -25,6 +25,10 @@ function contentProps(overrides = {}) {
     combatants: [combatant('one', 'Gate guards', true), combatant('two', 'Roof archers', false)],
     displayNames: new Map(), handleLoadEncounter: vi.fn(), ...overrides,
   } as unknown as React.ComponentProps<typeof MainContent>;
+}
+
+function makeEncounter(waves: EncounterWave[]): Partial<Encounter> {
+  return { id: 'a', name: 'Encounter A', waves };
 }
 
 beforeEach(() => {
@@ -131,5 +135,64 @@ describe('turn command center', () => {
 
     expect(handlePrevTurn).toHaveBeenCalledOnce();
     expect(handleNextTurn).toHaveBeenCalledOnce();
+  });
+});
+
+describe('event-triggered wave availability', () => {
+  it('shows Available badge for a manual-trigger wave that is still hidden', () => {
+    const waves: EncounterWave[] = [
+      { id: 'Gate guards', name: 'Gate guards', revealed: false, trigger: { kind: 'manual' } },
+    ];
+    render(<MainContent {...contentProps({ savedEncounters: [makeEncounter(waves)] })} />);
+    expect(screen.getByText(/Available/)).toBeInTheDocument();
+  });
+
+  it('does not show Available badge when boss-bloodied trigger is not met', () => {
+    const boss = {
+      id: 'boss', name: 'Boss', waveId: 'Gate guards', hidden: false, type: 'monster' as const,
+      hp: { current: 80, max: 100 }, initiative: 20, conditions: [],
+      legendaryActions: { max: 3, remaining: 3 },
+    } as Combatant;
+    const waves: EncounterWave[] = [
+      { id: 'Gate guards', name: 'Gate guards', revealed: false, trigger: { kind: 'boss-bloodied' } },
+    ];
+    render(<MainContent {...contentProps({
+      combatants: [combatant('one', 'Gate guards', true), boss],
+      savedEncounters: [makeEncounter(waves)],
+    })} />);
+    expect(screen.queryByText(/Available/)).not.toBeInTheDocument();
+  });
+
+  it('shows Available badge when boss-bloodied trigger is met', () => {
+    const boss = {
+      id: 'boss', name: 'Boss', waveId: 'Gate guards', hidden: false, type: 'monster' as const,
+      hp: { current: 40, max: 100 }, initiative: 20, conditions: [],
+      legendaryActions: { max: 3, remaining: 3 },
+    } as Combatant;
+    const waves: EncounterWave[] = [
+      { id: 'Gate guards', name: 'Gate guards', revealed: false, trigger: { kind: 'boss-bloodied' } },
+    ];
+    render(<MainContent {...contentProps({
+      combatants: [combatant('one', 'Gate guards', true), boss],
+      savedEncounters: [makeEncounter(waves)],
+    })} />);
+    expect(screen.getByText(/Available/)).toBeInTheDocument();
+  });
+
+  it('does not show Available badge when all wave members are already revealed', () => {
+    const waves: EncounterWave[] = [
+      { id: 'Roof archers', name: 'Roof archers', revealed: true, trigger: { kind: 'manual' } },
+    ];
+    render(<MainContent {...contentProps({ savedEncounters: [makeEncounter(waves)] })} />);
+    expect(screen.queryByText(/Available/)).not.toBeInTheDocument();
+  });
+
+  it('clicking Reveal on an available wave still calls api.encounters.revealWave', async () => {
+    const waves: EncounterWave[] = [
+      { id: 'Gate guards', name: 'Gate guards', revealed: false, trigger: { kind: 'manual' } },
+    ];
+    render(<MainContent {...contentProps({ savedEncounters: [makeEncounter(waves)] })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal Gate guards' }));
+    await waitFor(() => expect(requests.reveal).toHaveBeenCalledWith('a', 'Gate guards'));
   });
 });
