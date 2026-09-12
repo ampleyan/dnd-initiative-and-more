@@ -372,7 +372,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       {group.entries.map(({ combatants: affectedCombatants, condition, rounds }) => {
                         const isBeneficial = BENEFICIAL_IDS.has(condition!.id);
                         return (
-                          <details key={`${group.label}-${condition!.id}`} className={cn('rounded-lg border px-3 py-2', isBeneficial ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/5')}>
+                          <details key={`${group.label}-${condition!.id}`} open className={cn('rounded-lg border px-3 py-2', isBeneficial ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/5')}>
                             <summary className="flex cursor-pointer list-none items-center gap-2">
                               <span className={cn('h-2 w-2 shrink-0 rounded-full', isBeneficial ? 'bg-emerald-400' : 'bg-red-400')} />
                               <span className={cn('flex-1 font-headline text-xs font-bold', isBeneficial ? 'text-emerald-300' : 'text-red-300')}>{condition!.name}</span>

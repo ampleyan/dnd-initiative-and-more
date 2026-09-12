@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Link2, RefreshCw, Server } from 'lucide-react';
+import { CheckCircle2, Link2, RefreshCw, Server, Radar } from 'lucide-react';
 import { api } from '../api/client';
 
 export const FOUNDRY_SETTINGS_CHANGED = 'foundry-settings-changed';
@@ -11,6 +11,8 @@ export const FoundrySettingsPanel: React.FC = () => {
   const [world, setWorld] = React.useState('');
   const [status, setStatus] = React.useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
   const [error, setError] = React.useState('');
+  const [detecting, setDetecting] = React.useState(false);
+  const [detectResult, setDetectResult] = React.useState<'found' | 'notfound' | null>(null);
   React.useEffect(() => {
     api.foundry.getConfig().then(config => {
       setUrl(config.url);
@@ -42,6 +44,33 @@ export const FoundrySettingsPanel: React.FC = () => {
     }
   };
 
+  const detectFoundry = async () => {
+    setDetecting(true);
+    setDetectResult(null);
+    const hostname = window.location.hostname;
+    const candidates = [...new Set([
+      `http://${hostname}:30000`,
+      'http://localhost:30000',
+      'http://localhost:30001',
+    ])];
+    for (const candidate of candidates) {
+      try {
+        const res = await fetch(`${candidate}/api`, { signal: AbortSignal.timeout(2000) });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (data && typeof data === 'object') {
+            setUrl(candidate);
+            setDetectResult('found');
+            setDetecting(false);
+            return;
+          }
+        }
+      } catch { /* unreachable or CORS */ }
+    }
+    setDetectResult('notfound');
+    setDetecting(false);
+  };
+
   const generateToken = async () => {
     const result = await api.foundry.generateSyncToken();
     setToken(result.token);
@@ -65,11 +94,24 @@ export const FoundrySettingsPanel: React.FC = () => {
         <p className="mt-1 text-xs opacity-90">{connectionStatus.action}</p>
       </div>
       <label className="block space-y-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Foundry URL</span>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Foundry URL</span>
+          <button
+            type="button"
+            onClick={detectFoundry}
+            disabled={detecting}
+            className="flex items-center gap-1 text-[10px] font-bold text-sky-400 hover:text-sky-300 disabled:opacity-50 transition-colors"
+          >
+            <Radar className={`w-3 h-3 ${detecting ? 'animate-pulse' : ''}`} />
+            {detecting ? 'Scanning…' : 'Auto-detect'}
+          </button>
+        </div>
         <div className="flex items-center gap-2 rounded-lg bg-surface-container-high px-3">
           <Link2 className="w-3.5 h-3.5 text-outline shrink-0" />
-          <input value={url} onChange={e => setUrl(e.target.value)} placeholder="http://notmac:3000/" className="w-full bg-transparent py-2 text-xs text-on-surface outline-none" />
+          <input value={url} onChange={e => { setUrl(e.target.value); setDetectResult(null); }} placeholder="http://localhost:30000" className="w-full bg-transparent py-2 text-xs text-on-surface outline-none" />
         </div>
+        {detectResult === 'found' && <p className="text-[10px] text-emerald-400">Foundry instance detected — URL prefilled.</p>}
+        {detectResult === 'notfound' && <p className="text-[10px] text-red-400">No Foundry instance found on ports 30000–30001. Enter the URL manually.</p>}
       </label>
       <label className="block space-y-1">
         <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Live sync token</span>

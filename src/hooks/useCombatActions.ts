@@ -40,6 +40,7 @@ export interface CombatActionsParams {
   setEncounterStats: React.Dispatch<React.SetStateAction<EncounterStats | null>>;
   combatLog: LogEntry[];
   isSyncingRef: React.MutableRefObject<number>;
+  lastWriteEndRef: React.MutableRefObject<number>;
   roundStartTimeRef: React.MutableRefObject<number | null>;
   roundDurationsRef: React.MutableRefObject<number[]>;
   autoEndingRef: React.MutableRefObject<boolean>;
@@ -88,6 +89,7 @@ export function useCombatActions(params: CombatActionsParams) {
     setEncounterStats,
     combatLog,
     isSyncingRef,
+    lastWriteEndRef,
     roundStartTimeRef,
     roundDurationsRef,
     autoEndingRef,
@@ -181,8 +183,8 @@ export function useCombatActions(params: CombatActionsParams) {
               if (isDbAvailable) {
                 isSyncingRef.current++;
                 api.combatants.update(reverted.id, revertedWithEncounter)
-                  .then(() => { isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); })
-                  .catch((e: unknown) => { isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); });
+                  .then(() => { isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now(); })
+                  .catch((e: unknown) => { isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now(); });
 
                 if (reverted.type === 'player' && reverted.playerId) {
                   const prevController = playerPatchControllersRef.current.get(reverted.playerId);
@@ -243,9 +245,9 @@ export function useCombatActions(params: CombatActionsParams) {
     if (isDbAvailable) {
       isSyncingRef.current++;
       api.combatants.update(updated.id, combatantWithEncounter)
-        .then(() => { isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); })
+        .then(() => { isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now(); })
         .catch((e: unknown) => {
-          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1);
+          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now();
           console.error('Failed to persist combatant update', e);
         });
 
@@ -449,13 +451,13 @@ export function useCombatActions(params: CombatActionsParams) {
         { name: encounterName, currentRound: nextRound, currentTurnIndex: nextIndex, isEncounterActive: true, trackingData: combatantTracking }
       )
         .then(() => {
-          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1);
+          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now();
           setSavedEncounters(prev =>
             prev.map(e => e.id === encId ? { ...e, currentRound: nextRound } : e)
           );
         })
         .catch((e: unknown) => {
-          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1);
+          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now();
           console.error('Failed to persist turn change', e);
         });
     }
@@ -499,11 +501,11 @@ export function useCombatActions(params: CombatActionsParams) {
         { name: encounterName, currentRound: prevRound, currentTurnIndex: prevIndex, isEncounterActive: true, trackingData: combatantTracking }
       )
         .then(() => {
-          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1);
+          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now();
           setSavedEncounters(prev => prev.map(e => e.id === encId ? { ...e, currentRound: prevRound } : e));
         })
         .catch((e: unknown) => {
-          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1);
+          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now();
           console.error('Failed to persist prev-turn change', e);
         });
     }
@@ -613,9 +615,9 @@ export function useCombatActions(params: CombatActionsParams) {
           isEncounterActive: true,
           showSummary: false,
         }))
-        .then(() => { isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); })
+        .then(() => { isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now(); })
         .catch((e: unknown) => {
-          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1);
+          isSyncingRef.current = Math.max(0, isSyncingRef.current - 1); if (isSyncingRef.current === 0) lastWriteEndRef.current = Date.now();
           console.error('Failed to sync initiative to DB', e);
         });
     }
@@ -779,3 +781,4 @@ export function useCombatActions(params: CombatActionsParams) {
     handleRevertPolymorph,
   };
 }
+

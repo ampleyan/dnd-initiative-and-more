@@ -100,8 +100,9 @@ export function useAppState() {
   const [playerLog, setPlayerLog] = useState<LogEntry[]>([]);
   const [playerLogVisible, setPlayerLogVisible] = useState(false);
   const socketRef = useRef<Socket | null>(null);
-  const isSyncingRef = useRef(0);  // counter: >0 means a write is in flight
-  const fetchSeqRef = useRef(0);   // monotonic token: discard stale fetch responses
+  const isSyncingRef = useRef(0);       // counter: >0 means a write is in flight
+  const lastWriteEndRef = useRef(0);    // timestamp of last isSyncingRef decrement
+  const fetchSeqRef = useRef(0);        // monotonic token: discard stale fetch responses
   const selectedCombatantIdRef = useRef<string | null>(null);
   const playersRef = useRef<Player[]>([]);
   const combatantsRef = useRef<Combatant[]>([]);
@@ -338,6 +339,8 @@ export function useAppState() {
 
     socket.on('encounter-updated', (data: { encounterId: string }) => {
       if (isSyncingRef.current) return;
+      // Skip socket echoes of our own writes; DM already has optimistic state
+      if (!window.location.pathname.startsWith('/player/') && Date.now() - lastWriteEndRef.current < 300) return;
       const encId = currentEncounterIdRef.current;
       if (data.encounterId === encId) {
         fetchEncounterData(data.encounterId);
@@ -429,6 +432,7 @@ export function useAppState() {
     setEncounterStats,
     combatLog,
     isSyncingRef,
+    lastWriteEndRef,
     roundStartTimeRef,
     roundDurationsRef,
     autoEndingRef,

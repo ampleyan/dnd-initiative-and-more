@@ -29,6 +29,7 @@ interface SidebarProps {
   onShowWhatsNew: () => void;
   onShowSessionStats: () => void;
   onShowHelp: () => void;
+  onShowOnboarding?: () => void;
   showLog?: boolean;
   showCombatLog?: boolean;
   theme?: 'light' | 'pink';
@@ -60,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onShowWhatsNew,
   onShowSessionStats,
   onShowHelp,
+  onShowOnboarding,
   showLog,
   showCombatLog = true,
   theme = 'pink',
@@ -148,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })()}
 
           {/* Encounters — standalone */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1" data-onboarding="nav-encounters">
             <NavLink
               to="/encounters"
               onClick={() => setCurrentEncounterId(null)}
@@ -192,13 +194,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <div className={cn("border-t border-white/10 my-2", collapsed ? "mx-2" : "mx-0")} />
 
-          <SidebarItem
-            icon={BookOpen}
-            label="Library"
-            collapsed={collapsed}
-            iconColor="text-red-400"
-            to="/monsters"
-          />
+          <div data-onboarding="nav-library">
+            <SidebarItem
+              icon={BookOpen}
+              label="Library"
+              collapsed={collapsed}
+              iconColor="text-red-400"
+              to="/monsters"
+            />
+          </div>
 
           {!isBasicMode && (
             <SidebarItem
@@ -216,24 +220,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {!collapsed && (
                 <p className="text-[9px] uppercase tracking-[0.15em] font-bold text-outline/40 px-4 pb-1">Tools</p>
               )}
-              <SidebarItem
-                icon={UploadCloud}
-                label="Import"
-                collapsed={collapsed}
-                iconColor="text-sky-400"
-                to="/import"
-              />
+              <div data-onboarding="nav-import">
+                <SidebarItem
+                  icon={UploadCloud}
+                  label="Import"
+                  collapsed={collapsed}
+                  iconColor="text-sky-400"
+                  to="/import"
+                />
+              </div>
             </>
           )}
 
           {!isBasicMode && (
-            <SidebarItem
-              icon={Settings}
-              label="Settings"
-              collapsed={collapsed}
-              iconColor="text-amber-400"
-              to="/settings"
-            />
+            <div data-onboarding="nav-settings">
+              <SidebarItem
+                icon={Settings}
+                label="Settings"
+                collapsed={collapsed}
+                iconColor="text-amber-400"
+                to="/settings"
+              />
+            </div>
           )}
 
           <div className={cn("border-t border-white/5 my-2", collapsed ? "mx-2" : "mx-0")} />
@@ -352,8 +360,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
         <button
-          onClick={() => { 
-            setCombatants([]); 
+          data-onboarding="new-encounter"
+          onClick={() => {
+            setCombatants([]);
             setIsEncounterActive(false);
             setCurrentRound(1);
             setCurrentEncounterId(null);
@@ -368,6 +377,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           {collapsed ? <Plus className="w-6 h-6" /> : "New Encounter"}
         </button>
+
+        {onShowOnboarding && (
+          <button
+            onClick={onShowOnboarding}
+            title="Take a tour"
+            className={cn(
+              "flex items-center gap-4 rounded-lg transition-all text-outline hover:text-on-surface hover:bg-white/5",
+              collapsed ? "justify-center p-2.5 w-12" : "w-full px-4 py-2.5"
+            )}
+          >
+            <HelpCircle className="w-5 h-5 shrink-0 text-sky-400" />
+            {!collapsed && <span className="font-medium text-sm">Take a tour</span>}
+          </button>
+        )}
 
         {!isEncounterActive && (
           <button
