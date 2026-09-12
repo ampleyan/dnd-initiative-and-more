@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TurnCommandCenter } from '../components/TurnCommandCenter';
-import type { Combatant } from '../types';
+import type { Combatant, TurnLedgerItem } from '../types';
 
 const combatant = (id: string, name: string, hp: number, maxHp: number): Combatant => ({
   id,
@@ -55,5 +55,68 @@ describe('TurnCommandCenter', () => {
     render(<TurnCommandCenter currentRound={1} activeCombatant={active} onPreviousTurn={vi.fn()} onNextTurn={vi.fn()} onUseAction={onUseAction} />);
     fireEvent.click(screen.getByRole('button', { name: 'Bite' }));
     expect(onUseAction).toHaveBeenCalledWith(active, active.actions[0]);
+  });
+});
+
+describe('TurnCommandCenter — ledger items', () => {
+  const item = (id: string, label: string, severity: TurnLedgerItem['severity'] = 'attention'): TurnLedgerItem => ({
+    id, phase: 'current', severity, label, combatantId: 'active',
+  });
+
+  it('shows ledger items passed as props', () => {
+    const active = combatant('active', 'Dragon', 200, 200);
+    render(
+      <TurnCommandCenter
+        currentRound={1}
+        activeCombatant={active}
+        onPreviousTurn={vi.fn()}
+        onNextTurn={vi.fn()}
+        ledgerItems={[item('conc', 'Maintain concentration: Fly'), item('react', 'Reaction used', 'info')]}
+      />,
+    );
+    expect(screen.getByText('Maintain concentration: Fly')).toBeInTheDocument();
+    expect(screen.getByText('Reaction used')).toBeInTheDocument();
+  });
+
+  it('dismissing a ledger item removes it from the display', () => {
+    const active = combatant('active', 'Dragon', 200, 200);
+    render(
+      <TurnCommandCenter
+        currentRound={1}
+        activeCombatant={active}
+        onPreviousTurn={vi.fn()}
+        onNextTurn={vi.fn()}
+        ledgerItems={[item('conc', 'Maintain concentration: Fly')]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss Maintain concentration: Fly' }));
+    expect(screen.queryByText('Maintain concentration: Fly')).not.toBeInTheDocument();
+  });
+
+  it('resets acknowledged items when the active combatant changes', () => {
+    const dragona = combatant('dragon', 'Dragon', 200, 200);
+    const hero = combatant('hero', 'Hero', 20, 20);
+    const { rerender } = render(
+      <TurnCommandCenter
+        currentRound={1}
+        activeCombatant={dragona}
+        onPreviousTurn={vi.fn()}
+        onNextTurn={vi.fn()}
+        ledgerItems={[item('conc', 'Maintain concentration: Fly')]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss Maintain concentration: Fly' }));
+    expect(screen.queryByText('Maintain concentration: Fly')).not.toBeInTheDocument();
+
+    rerender(
+      <TurnCommandCenter
+        currentRound={1}
+        activeCombatant={hero}
+        onPreviousTurn={vi.fn()}
+        onNextTurn={vi.fn()}
+        ledgerItems={[item('conc', 'Maintain concentration: Fly')]}
+      />,
+    );
+    expect(screen.queryByText('Maintain concentration: Fly')).toBeInTheDocument();
   });
 });

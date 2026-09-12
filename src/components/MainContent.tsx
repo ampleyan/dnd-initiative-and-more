@@ -34,7 +34,7 @@ import { DraggableSoundpad } from './DraggableSoundpad';
 import { AnimationLevel, Combatant, Encounter, MonsterTemplate, MonsterAction, Spell, Player, LogEntry, Campaign, Session, ClassFeature, EncounterNotes } from '../types';
 import { api, ApiError } from '../api/client';
 import { useToast } from '../hooks/useToast';
-import { getCombatantLayout, evaluateWaveAvailability } from '../lib/combatantUtils';
+import { getCombatantLayout, evaluateWaveAvailability, deriveTurnLedger } from '../lib/combatantUtils';
 import { DEFAULT_PLAYER_VIEW_SETTINGS } from '../lib/playerViewSettings';
 
 type NoteToken =
@@ -823,6 +823,13 @@ export const MainContent: React.FC<MainContentProps> = ({
               {isEncounterActive && (() => {
                 const active = combatLayout.allSorted[currentTurnIndex];
                 if (!active) return null;
+                const ledgerItems = deriveTurnLedger({
+                  combatants: combatLayout.allSorted,
+                  currentTurnIndex,
+                  currentRound,
+                  lairActionsEnabled: currentEncounter?.lairActionsEnabled,
+                  waves: currentEncounter?.waves,
+                });
                 return (
                   <TurnCommandCenter
                     currentRound={currentRound}
@@ -834,6 +841,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                     sortedCombatants={combatLayout.allSorted}
                     currentTurnIndex={currentTurnIndex}
                     lairActionsEnabled={currentEncounter?.lairActionsEnabled}
+                    ledgerItems={ledgerItems}
                   />
                 );
               })()}
