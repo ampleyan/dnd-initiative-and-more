@@ -374,6 +374,40 @@ describe('Encounter waves', () => {
   });
 });
 
+describe('Player-view settings and spotlight persistence', () => {
+  it('persists playerViewSettings with spotlight through PUT and retrieves on GET', async () => {
+    const agent = await loginAdmin();
+    const id = 'pvs-spotlight-enc';
+    await agent.post('/api/encounters').send({ id, name: id });
+    const playerViewSettings = {
+      party: { showName: true, showAc: true, showConditions: true, hpMode: 'exact' },
+      monsters: { showName: true, showAc: true, showConditions: true, hpMode: 'banded' },
+      bosses: { showName: true, showAc: true, showConditions: true, hpMode: 'banded' },
+      showInitiativeOrder: true, showRoundTurnBanner: true, defeatedCombatants: 'dim',
+      spotlight: { combatantId: 'boss-1', label: 'Ancient Dragon' },
+    };
+    await agent.put(`/api/encounters/${id}`).send({ playerViewSettings });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.body.playerViewSettings.spotlight).toEqual({ combatantId: 'boss-1', label: 'Ancient Dragon' });
+  });
+
+  it('normalizes away invalid spotlight combatantId on round trip', async () => {
+    const agent = await loginAdmin();
+    const id = 'pvs-invalid-spotlight-enc';
+    await agent.post('/api/encounters').send({ id, name: id });
+    const playerViewSettings = {
+      party: { showName: true, showAc: true, showConditions: true, hpMode: 'exact' },
+      monsters: { showName: true, showAc: true, showConditions: true, hpMode: 'banded' },
+      bosses: { showName: true, showAc: true, showConditions: true, hpMode: 'banded' },
+      showInitiativeOrder: true, showRoundTurnBanner: true, defeatedCombatants: 'dim',
+      spotlight: { label: 'no id here' },
+    };
+    await agent.put(`/api/encounters/${id}`).send({ playerViewSettings });
+    const res = await agent.get(`/api/encounters/${id}`);
+    expect(res.body.playerViewSettings.spotlight).toBeUndefined();
+  });
+});
+
 describe('Encounter budget and variants persistence', () => {
   it('persists budget through PUT and retrieves it on GET', async () => {
     const agent = await loginAdmin();
