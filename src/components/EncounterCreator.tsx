@@ -19,11 +19,14 @@ import {
   Zap,
   TrendingUp,
   Shield,
+  Layers,
+  Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, uuid } from '../lib/utils';
 import { ImagePickerModal } from './ImagePickerModal';
-import { AnimationLevel, Combatant, MonsterTemplate, Player, Sound } from '../types';
+import { AnimationLevel, Combatant, EncounterBudget, EncounterVariant, MonsterTemplate, Player, Sound } from '../types';
+import { calculateEncounterBudget } from '../lib/encounterBudget';
 import { CR_TABLE } from '../constants/crTable';
 import { AvatarImg } from './AvatarImg';
 import { CR_XP, THRESHOLDS, crToXP, monsterMultiplier, parseLevel } from '../lib/encounterScaling';
@@ -45,9 +48,12 @@ interface EncounterCreatorProps {
   initialAnimationLevel?: AnimationLevel;
   initialSoundIds?: string[];
   existingFolders?: string[];
+  initialBudget?: EncounterBudget | null;
+  initialVariants?: EncounterVariant[];
   onLaunch: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel) => void;
   onSave: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel) => void;
   onAutoSave?: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel) => void;
+  onSaveMeta?: (budget: EncounterBudget | null, variants: EncounterVariant[]) => void;
 }
 
 function calcDifficulty(monsters: Combatant[], partyPlayers: Player[]): {
@@ -103,9 +109,12 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
   initialAnimationLevel,
   initialSoundIds = [],
   existingFolders = [],
+  initialBudget = null,
+  initialVariants = [],
   onLaunch,
   onSave,
   onAutoSave,
+  onSaveMeta,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('');
@@ -126,6 +135,11 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
   const [folder, setFolder] = useState(initialFolder);
   const [selectedSoundIds, setSelectedSoundIds] = useState<string[]>(initialSoundIds);
   const [scaleModalOpen, setScaleModalOpen] = useState(false);
+  const [budgetDifficulty, setBudgetDifficulty] = useState<EncounterBudget['targetDifficulty']>(initialBudget?.targetDifficulty ?? 'medium');
+  const [budgetDmAdjustment, setBudgetDmAdjustment] = useState<number>(initialBudget?.dmAdjustment ?? 0);
+  const [variants, setVariants] = useState<EncounterVariant[]>(initialVariants);
+  const [variantName, setVariantName] = useState('');
+  const [applyConfirmVariantId, setApplyConfirmVariantId] = useState<string | null>(null);
   const uniqueFolders = Array.from(new Set(existingFolders.filter(Boolean))).sort();
 
   useEffect(() => {
@@ -144,6 +158,11 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
       setLibraryTab('monsters');
       if (initialCombatants.length === 0) setMobileView('library');
       else setMobileView('roster');
+      setBudgetDifficulty(initialBudget?.targetDifficulty ?? 'medium');
+      setBudgetDmAdjustment(initialBudget?.dmAdjustment ?? 0);
+      setVariants(initialVariants);
+      setVariantName('');
+      setApplyConfirmVariantId(null);
     }
   }, [isOpen]);
 
@@ -278,6 +297,41 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
     const monsterCombatants = currentCombatants.filter(c => c.type !== 'player' && !c.isFriendly);
     return calcDifficulty(monsterCombatants, players);
   }, [currentCombatants, players]);
+
+  const currentBudget = useMemo<EncounterBudget | null>(() => {
+    if (players.length === 0) return null;
+    return {
+      partySize: players.length,
+      partyLevels: players.map(p => p.level ?? Math.max(1, parseLevel(p.subtitle ?? ''))),
+      targetDifficulty: budgetDifficulty,
+      dmAdjustment: budgetDmAdjustment || undefined,
+    };
+  }, [players, budgetDifficulty, budgetDmAdjustment]);
+
+  const budgetResult = useMemo(() => {
+    if (!currentBudget) return null;
+    return calculateEncounterBudget(currentBudget, currentCombatants.filter(c => c.type !== 'player' && !c.isFriendly));
+  }, [currentBudget, currentCombatants]);
+
+  const saveVariant = () => {
+    if (!variantName.trim()) return;
+    const variant: EncounterVariant = { id: uuid(), name: variantName.trim(), combatants: currentCombatants, createdAt: new Date().toISOString() };
+    setVariants(prev => [...prev, variant]);
+    setVariantName('');
+    onSaveMeta?.(currentBudget, [...variants, variant]);
+  };
+
+  const applyVariant = (variantId: string) => {
+    const variant = variants.find(v => v.id === variantId);
+    if (variant) setCurrentCombatants(variant.combatants);
+    setApplyConfirmVariantId(null);
+  };
+
+  const deleteVariant = (variantId: string) => {
+    const next = variants.filter(v => v.id !== variantId);
+    setVariants(next);
+    onSaveMeta?.(currentBudget, next);
+  };
 
   const handleScaleApply = (changes: { id: string; hp: number; ac: number }[], difficultyLabel: string) => {
     const newCombatants = currentCombatants.map(c => {
@@ -682,13 +736,13 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
             {/* Launch / Save — mobile only; desktop has these in the right sidebar */}
             <div className="md:hidden flex gap-2">
               <button
-                onClick={() => onSave(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel)}
+                onClick={() => { onSave(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel); onSaveMeta?.(currentBudget, variants); }}
                 className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-xs border border-white/5 transition-all uppercase tracking-wide"
               >
                 Save
               </button>
               <button
-                onClick={() => onLaunch(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel)}
+                onClick={() => { onLaunch(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel); onSaveMeta?.(currentBudget, variants); }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-primary to-blue-600 text-on-primary rounded-xl font-bold text-xs transition-all uppercase tracking-wide"
               >
                 <Zap className="w-3.5 h-3.5" /> Launch
@@ -919,20 +973,144 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
             </section>
             )}
 
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 text-outline">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prep Budget</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline opacity-60 mb-1.5 block">Target Difficulty</label>
+                  <div className="grid grid-cols-4 gap-1">
+                    {(['easy', 'medium', 'hard', 'deadly'] as const).map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setBudgetDifficulty(d)}
+                        className={cn(
+                          'py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-lg transition-all border',
+                          budgetDifficulty === d
+                            ? d === 'easy' ? 'bg-green-500/20 border-green-500/40 text-green-300'
+                              : d === 'medium' ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300'
+                              : d === 'hard' ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
+                              : 'bg-red-500/20 border-red-500/40 text-red-300'
+                            : 'bg-white/5 border-white/5 text-outline hover:text-on-surface'
+                        )}
+                      >
+                        {d.charAt(0).toUpperCase() + d.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline opacity-60 mb-1.5 block">DM Adjustment (XP)</label>
+                  <input
+                    type="number"
+                    value={budgetDmAdjustment || ''}
+                    onChange={e => setBudgetDmAdjustment(Number(e.target.value) || 0)}
+                    placeholder="0"
+                    className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none transition-all"
+                  />
+                </div>
+                {budgetResult && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-outline/60">
+                      Adjusted XP: <span className="text-on-surface font-bold">{budgetResult.adjustedXP.toLocaleString()}</span>
+                      {' '}/ Target: <span className="text-on-surface font-bold">{budgetResult.threshold.toLocaleString()}</span>
+                    </p>
+                    {budgetResult.explanations.map((exp, i) => (
+                      <p key={i} className="text-[10px] text-amber-400/80 leading-tight">{exp}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="flex items-center gap-2 text-outline">
+                <Layers className="w-4 h-4" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Variants</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={variantName}
+                  onChange={e => setVariantName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveVariant()}
+                  placeholder="Variant name…"
+                  className="flex-1 bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={saveVariant}
+                  disabled={!variantName.trim()}
+                  title="Save current roster as a variant"
+                  className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-lg text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+              </div>
+              {variants.length > 0 && (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {variants.map(v => (
+                    <div key={v.id} className="flex items-center gap-2 px-2.5 py-2 bg-white/3 border border-white/5 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-on-surface truncate">{v.name}</p>
+                        <p className="text-[9px] text-outline/50">{v.combatants.length} combatants</p>
+                      </div>
+                      {applyConfirmVariantId === v.id ? (
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => applyVariant(v.id)}
+                            className="px-2 py-1 bg-primary text-on-primary rounded text-[10px] font-bold flex items-center gap-0.5"
+                          >
+                            <Check className="w-3 h-3" /> Apply
+                          </button>
+                          <button
+                            onClick={() => setApplyConfirmVariantId(null)}
+                            className="px-2 py-1 bg-white/10 text-outline rounded text-[10px] font-bold"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => setApplyConfirmVariantId(v.id)}
+                            title="Load this variant into the roster"
+                            className="px-2 py-1 bg-white/5 hover:bg-primary/10 text-outline hover:text-primary border border-white/5 hover:border-primary/20 rounded text-[10px] font-bold transition-all"
+                          >
+                            Load
+                          </button>
+                          <button
+                            onClick={() => deleteVariant(v.id)}
+                            title="Delete variant"
+                            className="p-1 text-outline/40 hover:text-red-400 transition-colors rounded"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
             <div className="space-y-4">
               {!encounterName.trim() && (
                 <p className="text-xs text-amber-400/80 text-center">Enter an encounter name to continue.</p>
               )}
               <button
                 disabled={!encounterName.trim()}
-                onClick={() => onLaunch(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel)}
+                onClick={() => { onLaunch(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel); onSaveMeta?.(currentBudget, variants); }}
                 className="w-full py-4 bg-gradient-to-r from-primary to-blue-600 text-on-primary rounded-xl font-headline font-black text-sm tracking-widest shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all uppercase disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 Launch Encounter
               </button>
               <button
                 disabled={!encounterName.trim()}
-                onClick={() => onSave(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel)}
+                onClick={() => { onSave(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel); onSaveMeta?.(currentBudget, variants); }}
                 className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-headline font-black text-sm tracking-widest border border-white/5 transition-all uppercase disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/5"
               >
                 Save Encounter

@@ -79,6 +79,7 @@ interface EncounterVaultProps {
   onNewEncounter: () => void;
   onUpdateEncounter?: (id: string, updates: Partial<Encounter>) => Promise<void>;
   onDeleteEncounters?: (ids: string[]) => void;
+  onApplyVariant?: (encounterId: string, variantId: string) => void;
   sounds?: Sound[];
   filter?: 'saved' | 'recent';
 }
@@ -149,7 +150,8 @@ const EncounterCard: React.FC<{
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
   onDelete?: (id: string) => void;
-}> = ({ encounter, players, onLoad, loadingEncounterId, onEdit, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite, onDelete }) => {
+  onApplyVariant?: (encounterId: string, variantId: string) => void;
+}> = ({ encounter, players, onLoad, loadingEncounterId, onEdit, folderSettings, selectionMode, selected, onToggleSelect, onToggleFavorite, onDelete, onApplyVariant }) => {
   const combatants = encounter.combatants ?? [];
   const computed = computeDifficulty(combatants, players);
   const diffKey = computed ?? (encounter.difficulty || 'MEDIUM').toUpperCase();
@@ -162,6 +164,9 @@ const EncounterCard: React.FC<{
   const pcs = combatants.filter(c => c.type === 'player');
 
   const [showCombatants, setShowCombatants] = useState(false);
+  const [showVariants, setShowVariants] = useState(false);
+  const [applyConfirmVariantId, setApplyConfirmVariantId] = useState<string | null>(null);
+  const variantList = encounter.variants ?? [];
 
   const mergedLoad = (enc: Encounter) => onLoad({
     ...enc,
@@ -359,6 +364,60 @@ const EncounterCard: React.FC<{
           <CombatantChipSection label="Players" combatants={pcs} variant="player" compact />
         </div>
       )}
+
+      {/* Variants toggle */}
+      {!selectionMode && variantList.length > 0 && (
+        <button
+          onClick={e => { e.stopPropagation(); setShowVariants(v => !v); setApplyConfirmVariantId(null); }}
+          aria-expanded={showVariants}
+          className={cn(
+            "w-full flex items-center justify-center gap-1 px-3 py-1.5 text-[9px] uppercase tracking-widest font-bold border-t transition-colors",
+            showVariants
+              ? "text-primary border-primary/20 bg-primary/5"
+              : "text-outline/50 border-outline-variant/10 hover:text-on-surface hover:bg-white/3"
+          )}
+        >
+          {showVariants ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          {variantList.length} variant{variantList.length !== 1 ? 's' : ''}
+        </button>
+      )}
+
+      {/* Variants panel */}
+      {showVariants && variantList.length > 0 && (
+        <div className="px-3 pb-3 pt-2 border-t border-outline-variant/10 space-y-1.5">
+          {variantList.map(v => (
+            <div key={v.id} className="flex items-center gap-2 px-2.5 py-2 bg-white/3 border border-white/5 rounded-lg">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-on-surface truncate">{v.name}</p>
+                <p className="text-[9px] text-outline/50">{v.combatants.length} combatants</p>
+              </div>
+              {applyConfirmVariantId === v.id ? (
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    onClick={e => { e.stopPropagation(); onApplyVariant?.(encounter.id, v.id); setApplyConfirmVariantId(null); setShowVariants(false); }}
+                    className="px-2 py-1 bg-primary text-on-primary rounded text-[10px] font-bold"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setApplyConfirmVariantId(null); }}
+                    className="px-2 py-1 bg-white/10 text-outline rounded text-[10px] font-bold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={e => { e.stopPropagation(); setApplyConfirmVariantId(v.id); }}
+                  className="px-2 py-1 bg-white/5 hover:bg-primary/10 text-outline hover:text-primary border border-white/5 hover:border-primary/20 rounded text-[10px] font-bold transition-all shrink-0"
+                >
+                  Apply
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -541,7 +600,8 @@ const EncounterDisplay: React.FC<{
   onToggleSelect?: (id: string) => void;
   onToggleFavorite?: (id: string) => void;
   onDelete?: (id: string) => void;
-}> = ({ mode, encounters, players, onLoad, loadingEncounterId, onEdit, folderSettings, selectionMode, selectedIds, onToggleSelect, onToggleFavorite, onDelete }) => {
+  onApplyVariant?: (encounterId: string, variantId: string) => void;
+}> = ({ mode, encounters, players, onLoad, loadingEncounterId, onEdit, folderSettings, selectionMode, selectedIds, onToggleSelect, onToggleFavorite, onDelete, onApplyVariant }) => {
   if (mode === 'list') {
     return (
       <div className="space-y-1">
@@ -554,7 +614,7 @@ const EncounterDisplay: React.FC<{
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {encounters.map(enc => (
-        <EncounterCard key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onEdit={onEdit} onDelete={onDelete} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
+        <EncounterCard key={enc.id} encounter={enc} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onEdit={onEdit} onDelete={onDelete} folderSettings={folderSettings} selectionMode={selectionMode} selected={selectedIds?.has(enc.id)} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} onApplyVariant={onApplyVariant} />
       ))}
     </div>
   );
@@ -649,7 +709,8 @@ const FolderSection: React.FC<{
   onToggleSelect?: (id: string) => void;
   onDeleteGroup?: (ids: string[]) => void;
   onToggleFavorite?: (id: string) => void;
-}> = ({ label, encounters, players, onLoad, loadingEncounterId, onEdit, viewMode, defaultOpen = false, onSettingsClick, folderSettings, selectionMode, selectedIds, onToggleSelect, onDeleteGroup, onToggleFavorite }) => {
+  onApplyVariant?: (encounterId: string, variantId: string) => void;
+}> = ({ label, encounters, players, onLoad, loadingEncounterId, onEdit, viewMode, defaultOpen = false, onSettingsClick, folderSettings, selectionMode, selectedIds, onToggleSelect, onDeleteGroup, onToggleFavorite, onApplyVariant }) => {
   const [open, setOpen] = useState(defaultOpen);
   const hasBg = !!folderSettings?.backgroundImage;
 
@@ -803,7 +864,7 @@ const FolderSection: React.FC<{
 
       {open && (
         <div className="px-4 mt-4">
-          <EncounterDisplay mode={viewMode} encounters={encounters} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onEdit={onEdit} folderSettings={folderSettings} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={encounters} players={players} onLoad={onLoad} loadingEncounterId={loadingEncounterId} onEdit={onEdit} folderSettings={folderSettings} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={onToggleSelect} onToggleFavorite={onToggleFavorite} onApplyVariant={onApplyVariant} />
         </div>
       )}
     </div>
@@ -818,6 +879,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
   onNewEncounter,
   onUpdateEncounter,
   onDeleteEncounters,
+  onApplyVariant,
   sounds,
   filter = 'saved',
 }) => {
@@ -1178,7 +1240,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             Live
           </h3>
-          <EncounterDisplay mode={viewMode} encounters={active} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={active} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} onApplyVariant={onApplyVariant} />
         </section>
       )}
 
@@ -1189,7 +1251,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
             <Star className="w-3 h-3 fill-amber-400" />
             Favorites
           </h3>
-          <EncounterDisplay mode={viewMode} encounters={favorites} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={favorites} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} onApplyVariant={onApplyVariant} />
         </section>
       )}
 
@@ -1249,6 +1311,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
               onToggleSelect={toggleSelect}
               onDeleteGroup={onDeleteEncounters ? (ids) => onDeleteEncounters(ids) : undefined}
               onToggleFavorite={handleToggleFavorite}
+              onApplyVariant={onApplyVariant}
             />
           ))}
         </div>
@@ -1264,7 +1327,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
               <div className="h-px flex-1 bg-outline-variant/10" />
             </div>
           )}
-          <EncounterDisplay mode={viewMode} encounters={ungrouped} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} />
+          <EncounterDisplay mode={viewMode} encounters={ungrouped} players={players} onLoad={onLoadEncounter} loadingEncounterId={loadingEncounterId} onEdit={setEditingEncounter} onDelete={onDeleteEncounters ? id => onDeleteEncounters([id]) : undefined} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleFavorite={handleToggleFavorite} onApplyVariant={onApplyVariant} />
         </section>
       )}
 
