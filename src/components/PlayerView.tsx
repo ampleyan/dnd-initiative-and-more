@@ -700,6 +700,24 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           )}
 
 
+          {/* Spotlight banner */}
+          {playerViewSettings.spotlight && (() => {
+            const spotlighted = combatants.find(c => c.id === playerViewSettings.spotlight!.combatantId);
+            if (!spotlighted) return null;
+            const label = playerViewSettings.spotlight.label;
+            return (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/8 ring-1 ring-amber-500/15 px-4 py-3 flex items-center gap-3 backdrop-blur-sm">
+                <div className="relative shrink-0">
+                  <AvatarImg src={spotlighted.avatar} name={spotlighted.name} className="w-10 h-10 rounded-lg text-sm" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-400/70 mb-0.5">{label ?? 'Spotlight'}</p>
+                  <p className="font-headline font-bold text-sm text-on-surface truncate">{spotlighted.name}</p>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="space-y-2">
             {sorted.map((c, qi) => {
               const isActive = isEncounterActive && !!c.isCurrentTurn;

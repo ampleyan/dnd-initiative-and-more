@@ -35,7 +35,7 @@ import { AnimationLevel, Combatant, Encounter, MonsterTemplate, MonsterAction, S
 import { api, ApiError } from '../api/client';
 import { useToast } from '../hooks/useToast';
 import { getCombatantLayout, evaluateWaveAvailability, deriveTurnLedger } from '../lib/combatantUtils';
-import { DEFAULT_PLAYER_VIEW_SETTINGS } from '../lib/playerViewSettings';
+import { DEFAULT_PLAYER_VIEW_SETTINGS, PLAYER_VIEW_PRESETS, applyPreset, type PlayerViewPreset } from '../lib/playerViewSettings';
 
 type NoteToken =
   | { type: 'text'; text: string }
@@ -860,6 +860,38 @@ export const MainContent: React.FC<MainContentProps> = ({
                   {currentEncounterId && onUpdateEncounter && <details className="relative">
                     <summary className="cursor-pointer rounded-lg border border-outline/25 px-3 py-2 text-xs font-bold text-outline hover:text-on-surface">Player view</summary>
                     <div className="absolute right-0 z-30 mt-1 w-72 space-y-2 rounded-xl border border-outline/20 bg-surface-container-highest p-3 shadow-xl">
+                      {/* Preset buttons */}
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-black uppercase text-outline/60 tracking-wider">Preset</p>
+                        <div className="grid grid-cols-4 gap-1">
+                          {(['tactical', 'cinematic', 'mystery', 'boss'] as PlayerViewPreset[]).map(preset => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => onUpdateEncounter(currentEncounterId, { playerViewSettings: applyPreset(preset, currentEncounter?.playerViewSettings?.spotlight) })}
+                              className="py-1 text-[9px] font-bold uppercase tracking-wide rounded border border-outline/15 bg-surface-container hover:bg-primary/10 hover:border-primary/30 hover:text-primary text-outline transition-all"
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Spotlight */}
+                      <div className="space-y-1 border-t border-outline/10 pt-2">
+                        <p className="text-[10px] font-black uppercase text-outline/60 tracking-wider">Spotlight</p>
+                        <select
+                          value={currentEncounter?.playerViewSettings?.spotlight?.combatantId ?? ''}
+                          onChange={e => {
+                            const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS;
+                            const id = e.target.value;
+                            onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, spotlight: id ? { combatantId: id } : undefined } });
+                          }}
+                          className="w-full rounded bg-surface-container px-2 py-1 text-xs"
+                        >
+                          <option value="">None</option>
+                          {combatants.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
                       {(['party', 'monsters', 'bosses'] as const).map(role => {
                         const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS;
                         const disclosure = settings[role];
@@ -868,6 +900,18 @@ export const MainContent: React.FC<MainContentProps> = ({
                       <div className="flex gap-2 text-[10px]"><label><input type="checkbox" checked={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).showInitiativeOrder} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, showInitiativeOrder: e.target.checked } }); }} /> Initiative</label><label><input type="checkbox" checked={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).showRoundTurnBanner} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, showRoundTurnBanner: e.target.checked } }); }} /> Round banner</label></div>
                       <select value={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).defeatedCombatants} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, defeatedCombatants: e.target.value as 'dim' | 'hide' } }); }} className="w-full rounded bg-surface-container px-2 py-1 text-xs"><option value="dim">Dim defeated</option><option value="hide">Hide defeated</option></select>
                       <select value={currentEncounter?.weather ?? 'none'} onChange={e => onUpdateEncounter(currentEncounterId, { weather: e.target.value as Encounter['weather'] })} className="w-full rounded bg-surface-container px-2 py-1 text-xs"><option value="none">No weather</option><option value="snow">Snow</option><option value="rain">Rain</option><option value="storm">Storm</option><option value="ash">Ash</option><option value="fog">Fog</option><option value="motes">Motes</option><option value="leaves">Leaves</option><option value="sand">Sand</option></select>
+                      {/* Copyable join URL */}
+                      <div className="space-y-1 border-t border-outline/10 pt-2">
+                        <p className="text-[10px] font-black uppercase text-outline/60 tracking-wider">Join URL</p>
+                        <button
+                          type="button"
+                          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/player/${currentEncounterId}`)}
+                          className="w-full truncate text-left text-[10px] text-outline/70 hover:text-primary bg-surface-container rounded px-2 py-1.5 transition-colors font-mono"
+                          title="Click to copy player view URL"
+                        >
+                          /player/{currentEncounterId}
+                        </button>
+                      </div>
                     </div>
                   </details>}
                   {isEncounterActive && (handleUndo || handleRedo) && (
