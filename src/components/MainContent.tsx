@@ -1398,33 +1398,27 @@ export const MainContent: React.FC<MainContentProps> = ({
 
           {activeTab === 'settings' && (
             <div className="@container/settings mx-auto max-w-7xl space-y-8 px-1 py-3 sm:px-4 sm:py-6">
-              <header className="border-b border-outline-variant/20 pb-6">
-                <h2 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Settings</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-outline">Set up the tools around your table, then connect the services that make the room feel alive.</p>
+              <header className="border-b border-outline-variant/20 pb-5">
+                <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Settings</h2>
               </header>
 
-              <section className="space-y-4" aria-labelledby="table-settings-heading">
-                <div>
-                  <h3 id="table-settings-heading" className="font-headline text-lg font-bold text-on-surface">Your table</h3>
-                  <p className="mt-1 text-sm text-outline">Choose the controls you use during a session and manage access to this tracker.</p>
-                </div>
-                <div className="grid grid-cols-1 gap-5 @[66rem]/settings:grid-cols-[minmax(20rem,0.8fr)_minmax(0,1.2fr)]">
+              <section className="space-y-3" aria-labelledby="table-settings-heading">
+                <h3 id="table-settings-heading" className="text-[10px] font-black uppercase tracking-widest text-outline">Your table</h3>
+                <div className="space-y-3">
                   {onToggleFeature && <FeaturesSettings features={optionalFeatures} onChange={onToggleFeature} />}
                   {currentUser && onLogout && <UsersSettings currentUser={currentUser} onLogout={onLogout} />}
                 </div>
               </section>
 
-              <section className="space-y-4" aria-labelledby="connections-heading">
-                <div className="flex flex-wrap items-end justify-between gap-2 border-b border-outline-variant/20 pb-3">
-                  <div>
-                    <h3 id="connections-heading" className="font-headline text-lg font-bold text-on-surface">Connections</h3>
-                    <p className="mt-1 text-sm text-outline">Link the tools that extend the table into your room and virtual tabletop.</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 items-start gap-5 [&>*]:min-w-0">
-                  <details className="rounded-2xl border border-amber-400/20 bg-surface-container-low p-4 shadow-[inset_3px_0_0_0_rgba(251,191,36,0.65)]">
-                    <summary className="cursor-pointer text-sm font-bold text-on-surface">Philips Hue</summary>
-                    <div className="pt-4">
+              <section className="space-y-3" aria-labelledby="connections-heading">
+                <h3 id="connections-heading" className="text-[10px] font-black uppercase tracking-widest text-outline">Connections</h3>
+                <div className="space-y-3">
+                  <details className="rounded-2xl border border-amber-400/20 bg-surface-container-low overflow-hidden shadow-[inset_3px_0_0_0_rgba(251,191,36,0.65)]">
+                    <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-3 px-5 py-4">
+                      <span className="text-sm font-bold text-on-surface">Philips Hue</span>
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${hueEnabled ? 'bg-emerald-400' : 'bg-outline/30'}`} />
+                    </summary>
+                    <div className="border-t border-amber-400/10 p-4">
                       <HueSettingsPanel
                         enabled={hueEnabled ?? false}
                         onToggleEnabled={onToggleHue ?? (() => {})}
@@ -1437,17 +1431,21 @@ export const MainContent: React.FC<MainContentProps> = ({
                       />
                     </div>
                   </details>
-                  <FoundrySettingsPanel />
+                  <details className="rounded-2xl border border-outline-variant/20 bg-surface-container-low overflow-hidden">
+                    <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-3 px-5 py-4">
+                      <span className="text-sm font-bold text-on-surface">Foundry VTT</span>
+                    </summary>
+                    <div className="border-t border-outline-variant/10 p-4">
+                      <FoundrySettingsPanel />
+                    </div>
+                  </details>
                   <HomeAssistantSettingsPanel enabled={haEnabled ?? false} onToggleEnabled={onToggleHa ?? (() => {})} />
                 </div>
               </section>
 
-              <section className="space-y-4" aria-labelledby="system-heading">
-                <div className="border-b border-outline-variant/20 pb-3">
-                  <h3 id="system-heading" className="font-headline text-lg font-bold text-on-surface">System</h3>
-                  <p className="mt-1 text-sm text-outline">Adjust audio output and perform maintenance tasks.</p>
-                </div>
-                <div className="grid grid-cols-1 items-start gap-5 @[54rem]/settings:grid-cols-2 [&>*]:min-w-0">
+              <section className="space-y-3" aria-labelledby="system-heading">
+                <h3 id="system-heading" className="text-[10px] font-black uppercase tracking-widest text-outline">System</h3>
+                <div className="grid grid-cols-1 items-start gap-3 @[54rem]/settings:grid-cols-2 [&>*]:min-w-0">
                   <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
                     <SpatialSettingsPanel
                       audioCtx={getAudioCtx ? getAudioCtx() : null}
@@ -1457,11 +1455,11 @@ export const MainContent: React.FC<MainContentProps> = ({
                     />
                   </div>
                   <BackupPanel />
-                  <details className="rounded-2xl border border-red-500/30 bg-red-500/[0.03] p-4">
-                    <summary className="cursor-pointer text-sm font-bold text-red-400">Danger Zone</summary>
-                    <div className="pt-4"><ResetDbPanel /></div>
-                  </details>
                 </div>
+                <details className="rounded-2xl border border-red-500/30 bg-red-500/[0.03] overflow-hidden">
+                  <summary className="cursor-pointer select-none px-4 py-3 text-sm font-bold text-red-400">Danger Zone</summary>
+                  <div className="border-t border-red-500/15 p-4"><ResetDbPanel /></div>
+                </details>
               </section>
             </div>
           )}

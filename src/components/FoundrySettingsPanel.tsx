@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Link2, RefreshCw, Server, Radar } from 'lucide-react';
+import { Link2, RefreshCw, Radar } from 'lucide-react';
 import { api } from '../api/client';
 
 export const FOUNDRY_SETTINGS_CHANGED = 'foundry-settings-changed';
@@ -77,12 +77,7 @@ export const FoundrySettingsPanel: React.FC = () => {
   };
 
   return (
-    <section className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-5 space-y-4">
-      <div className="flex items-center gap-2">
-        <Server className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-bold text-on-surface">Foundry VTT</h3>
-        {status === 'connected' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-      </div>
+    <section className="space-y-4">
       <p className="text-xs text-outline leading-relaxed">
         Configure the Foundry world used for character and spell-slot imports. The data folder is read by this app's server.
       </p>
