@@ -2,18 +2,21 @@ import React from 'react';
 import { CheckCircle2, Link2, RefreshCw, Server } from 'lucide-react';
 import { api } from '../api/client';
 
-const DATA_PATH_KEY = 'foundry_data_path';
-const URL_KEY = 'foundry_url';
-const TOKEN_KEY = 'foundry_sync_token';
 export const FOUNDRY_SETTINGS_CHANGED = 'foundry-settings-changed';
 
 export const FoundrySettingsPanel: React.FC = () => {
-  const [url, setUrl] = React.useState(() => localStorage.getItem(URL_KEY) ?? '');
-  const [dataPath, setDataPath] = React.useState(() => localStorage.getItem(DATA_PATH_KEY) ?? '');
-  const [token, setToken] = React.useState(() => localStorage.getItem(TOKEN_KEY) ?? '');
+  const [url, setUrl] = React.useState('');
+  const [dataPath, setDataPath] = React.useState('');
+  const [token, setToken] = React.useState('');
   const [world, setWorld] = React.useState('');
   const [status, setStatus] = React.useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
   const [error, setError] = React.useState('');
+  React.useEffect(() => {
+    api.foundry.getConfig().then(config => {
+      setUrl(config.url);
+      setDataPath(config.dataPath);
+    }).catch(() => {});
+  }, []);
   const isConfigured = Boolean(dataPath.trim());
   const connectionStatus = status === 'connected'
     ? { label: 'Connected', action: 'Choose a world when you are ready to import.', className: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300' }
@@ -24,12 +27,10 @@ export const FoundrySettingsPanel: React.FC = () => {
   const save = async () => {
     setStatus('checking');
     setError('');
-    localStorage.setItem(URL_KEY, url.trim());
-    localStorage.setItem(DATA_PATH_KEY, dataPath.trim());
     try {
+      await api.foundry.saveConfig({ url: url.trim(), dataPath: dataPath.trim() });
       if (token.trim()) {
         await api.foundry.saveSyncToken(token.trim());
-        localStorage.setItem(TOKEN_KEY, token.trim());
       }
       window.dispatchEvent(new Event(FOUNDRY_SETTINGS_CHANGED));
       const worlds = await api.foundry.worlds(dataPath.trim() || undefined);
@@ -44,7 +45,6 @@ export const FoundrySettingsPanel: React.FC = () => {
   const generateToken = async () => {
     const result = await api.foundry.generateSyncToken();
     setToken(result.token);
-    localStorage.setItem(TOKEN_KEY, result.token);
   };
 
   return (

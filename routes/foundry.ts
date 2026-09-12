@@ -1043,6 +1043,23 @@ export function createFoundryRouter(portraitsDir: string = '') {
 
 export function createFoundryConfigRouter(db: any, dbAvailable: boolean) {
   const router = Router();
+  router.get('/foundry/config', (_req, res) => {
+    if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+    const url = (db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_url') as { value?: string } | undefined)?.value ?? '';
+    const dataPath = (db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_data_path') as { value?: string } | undefined)?.value ?? '';
+    return res.json({ url, dataPath, configured: Boolean(dataPath) });
+  });
+  router.put('/foundry/config', (req, res) => {
+    if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
+    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+    const dataPath = typeof req.body?.dataPath === 'string' ? req.body.dataPath.trim() : '';
+    if (url && !/^https?:\/\//i.test(url)) return res.status(400).json({ error: 'Foundry URL must use HTTP or HTTPS' });
+    if (url.length > 2_000 || dataPath.length > 4_000) return res.status(413).json({ error: 'Foundry configuration is too large' });
+    const save = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+    save.run('foundry_url', url);
+    save.run('foundry_data_path', dataPath);
+    return res.json({ ok: true });
+  });
   router.get('/foundry/sync-config', (_req, res) => {
     const configured = dbAvailable && !!db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_sync_token');
     res.json({ configured });

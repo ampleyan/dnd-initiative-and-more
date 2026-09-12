@@ -35,6 +35,7 @@ import { AnimationLevel, Combatant, Encounter, MonsterTemplate, MonsterAction, S
 import { api, ApiError } from '../api/client';
 import { useToast } from '../hooks/useToast';
 import { getCombatantLayout } from '../lib/combatantUtils';
+import { DEFAULT_PLAYER_VIEW_SETTINGS } from '../lib/playerViewSettings';
 
 type NoteToken =
   | { type: 'text'; text: string }
@@ -282,6 +283,10 @@ interface MainContentProps {
   setIsMuted?: (v: boolean) => void;
   spatialMode?: import('../hooks/useSoundboard').SpatialMode;
   getAudioCtx?: () => AudioContext;
+  spatialChannels?: 2 | 6;
+  onSpatialChannelsChange?: (count: 2 | 6) => void;
+  displayPreferences?: { showOrderInName: boolean; visibleInlineActions: string[] };
+  onDisplayPreferencesChange?: (preferences: { showOrderInName: boolean; visibleInlineActions: string[] }) => void;
   onImportScene?: (scene: { name: string; backgroundImg: string }) => void;
   encounterNotes?: EncounterNotes;
   onUpdateNotes?: (notes: EncounterNotes) => void;
@@ -417,6 +422,10 @@ export const MainContent: React.FC<MainContentProps> = ({
   setIsMuted,
   spatialMode,
   getAudioCtx,
+  spatialChannels = 2,
+  onSpatialChannelsChange,
+  displayPreferences,
+  onDisplayPreferencesChange,
   onImportScene,
   encounterNotes,
   onUpdateNotes,
@@ -464,13 +473,11 @@ export const MainContent: React.FC<MainContentProps> = ({
   const [isEndConfirmOpen, setIsEndConfirmOpen] = React.useState(false);
   const [isSoundpadOpen, setIsSoundpadOpen] = React.useState(false);
 
-  const [showOrderInName, setShowOrderInName] = React.useState(() =>
-    localStorage.getItem('showOrderInName') === 'true'
-  );
+  const [showOrderInName, setShowOrderInName] = React.useState(() => displayPreferences?.showOrderInName ?? false);
 
   const toggleOrderInName = (v: boolean) => {
     setShowOrderInName(v);
-    localStorage.setItem('showOrderInName', String(v));
+    onDisplayPreferencesChange?.({ showOrderInName: v, visibleInlineActions: displayPreferences?.visibleInlineActions ?? [] });
   };
 
   const [multiSelectMode, setMultiSelectMode] = React.useState(false);
@@ -504,19 +511,21 @@ export const MainContent: React.FC<MainContentProps> = ({
   const ALL_INLINE_ACTIONS = ['companion', 'moveUp', 'moveDown', 'edit', 'conditions', 'damage', 'heal'] as const;
   type InlineAction = typeof ALL_INLINE_ACTIONS[number];
 
-  const [visibleInlineActions, setVisibleInlineActions] = React.useState<Set<InlineAction>>(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('visibleInlineActions') ?? 'null');
-      if (Array.isArray(saved)) return new Set(saved as InlineAction[]);
-    } catch {}
-    return new Set(ALL_INLINE_ACTIONS);
-  });
+  const [visibleInlineActions, setVisibleInlineActions] = React.useState<Set<InlineAction>>(() =>
+    new Set((displayPreferences?.visibleInlineActions.length ? displayPreferences.visibleInlineActions : ALL_INLINE_ACTIONS) as InlineAction[])
+  );
+
+  React.useEffect(() => {
+    if (!displayPreferences) return;
+    setShowOrderInName(displayPreferences.showOrderInName);
+    setVisibleInlineActions(new Set((displayPreferences.visibleInlineActions.length ? displayPreferences.visibleInlineActions : ALL_INLINE_ACTIONS) as InlineAction[]));
+  }, [displayPreferences]);
 
   const toggleInlineAction = (action: InlineAction) => {
     setVisibleInlineActions(prev => {
       const next = new Set(prev);
       next.has(action) ? next.delete(action) : next.add(action);
-      localStorage.setItem('visibleInlineActions', JSON.stringify([...next]));
+      onDisplayPreferencesChange?.({ showOrderInName, visibleInlineActions: [...next] });
       return next;
     });
   };
@@ -812,6 +821,10 @@ export const MainContent: React.FC<MainContentProps> = ({
                     nextCombatant={combatLayout.allSorted[(currentTurnIndex + 1) % combatLayout.allSorted.length]}
                     onPreviousTurn={handlePrevTurn}
                     onNextTurn={handleNextTurn}
+                    onUseAction={onUseSpellFromLibrary}
+                    sortedCombatants={combatLayout.allSorted}
+                    currentTurnIndex={currentTurnIndex}
+                    lairActionsEnabled={currentEncounter?.lairActionsEnabled}
                   />
                 );
               })()}
@@ -827,6 +840,19 @@ export const MainContent: React.FC<MainContentProps> = ({
                       ? preset => onUpdateEncounter(currentEncounterId, { huePreset: preset })
                       : undefined}
                   />}
+                  {currentEncounterId && onUpdateEncounter && <details className="relative">
+                    <summary className="cursor-pointer rounded-lg border border-outline/25 px-3 py-2 text-xs font-bold text-outline hover:text-on-surface">Player view</summary>
+                    <div className="absolute right-0 z-30 mt-1 w-72 space-y-2 rounded-xl border border-outline/20 bg-surface-container-highest p-3 shadow-xl">
+                      {(['party', 'monsters', 'bosses'] as const).map(role => {
+                        const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS;
+                        const disclosure = settings[role];
+                        return <div key={role} className="space-y-1 border-b border-outline/10 pb-2 last:border-0"><p className="text-[10px] font-black uppercase text-primary">{role}</p><div className="flex gap-2 text-[10px]">{(['showName', 'showAc', 'showConditions'] as const).map(key => <label key={key}><input type="checkbox" checked={disclosure[key]} onChange={e => onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, [role]: { ...disclosure, [key]: e.target.checked } } })} /> {key.replace('show', '')}</label>)}</div><select value={disclosure.hpMode} onChange={e => onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, [role]: { ...disclosure, hpMode: e.target.value as typeof disclosure.hpMode } } })} className="w-full rounded bg-surface-container px-2 py-1 text-xs"><option value="hidden">HP hidden</option><option value="banded">HP banded</option><option value="exact">HP exact</option></select></div>;
+                      })}
+                      <div className="flex gap-2 text-[10px]"><label><input type="checkbox" checked={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).showInitiativeOrder} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, showInitiativeOrder: e.target.checked } }); }} /> Initiative</label><label><input type="checkbox" checked={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).showRoundTurnBanner} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, showRoundTurnBanner: e.target.checked } }); }} /> Round banner</label></div>
+                      <select value={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).defeatedCombatants} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, defeatedCombatants: e.target.value as 'dim' | 'hide' } }); }} className="w-full rounded bg-surface-container px-2 py-1 text-xs"><option value="dim">Dim defeated</option><option value="hide">Hide defeated</option></select>
+                      <select value={currentEncounter?.weather ?? 'none'} onChange={e => onUpdateEncounter(currentEncounterId, { weather: e.target.value as Encounter['weather'] })} className="w-full rounded bg-surface-container px-2 py-1 text-xs"><option value="none">No weather</option><option value="snow">Snow</option><option value="rain">Rain</option><option value="storm">Storm</option><option value="ash">Ash</option><option value="fog">Fog</option><option value="motes">Motes</option><option value="leaves">Leaves</option><option value="sand">Sand</option></select>
+                    </div>
+                  </details>}
                   {isEncounterActive && (handleUndo || handleRedo) && (
                     <div className="flex items-center gap-1">
                       <button
@@ -1307,6 +1333,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                     <SpatialSettingsPanel
                       audioCtx={getAudioCtx ? getAudioCtx() : null}
                       spatialMode={spatialMode ?? 'stereo'}
+                      channelCount={spatialChannels}
+                      onChannelCountChange={onSpatialChannelsChange ?? (() => {})}
                     />
                   </div>
                   <details className="rounded-2xl border border-red-500/30 bg-red-500/[0.03] p-4">

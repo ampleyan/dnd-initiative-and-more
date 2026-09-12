@@ -603,6 +603,10 @@ export default function App() {
     setIsMuted: setPersistedMuted,
     getAudioCtx,
     spatialMode,
+    spatialChannels: preferences.sound.spatialChannels,
+    onSpatialChannelsChange: (spatialChannels: 2 | 6) => updatePreferences(current => ({ ...current, sound: { ...current.sound, spatialChannels } })),
+    displayPreferences: preferences.display,
+    onDisplayPreferencesChange: (display: { showOrderInName: boolean; visibleInlineActions: string[] }) => updatePreferences(current => ({ ...current, display })),
     loadingEncounterId,
     isSaving,
     handleUndo,
@@ -817,6 +821,8 @@ export default function App() {
                     showOrderInName={preferences.display.showOrderInName}
                     pendingConChecks={pendingConChecks}
                     combatLog={playerLogVisible ? playerLog : undefined}
+                    playerViewSettings={currentEncounter?.playerViewSettings}
+                    weather={currentEncounter?.weather}
                   />
                 } />
               </Routes>
@@ -1002,6 +1008,8 @@ export default function App() {
         sounds={sounds}
         onTogglePlay={handleTogglePlay}
         playingIds={activePlayingIds}
+        autoplayEnabled={preferences.sound.autoplayEnabled}
+        onAutoplayEnabledChange={(autoplayEnabled) => updatePreferences(current => ({ ...current, sound: { ...current.sound, autoplayEnabled } }))}
       />
 
       {/* What's New Modal */}

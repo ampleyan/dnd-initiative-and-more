@@ -23,10 +23,11 @@ const CHANNELS: SpeakerChannel[] = [
 interface SpatialSettingsPanelProps {
   audioCtx: AudioContext | null;
   spatialMode: SpatialMode;
+  channelCount: 2 | 6;
+  onChannelCountChange: (count: 2 | 6) => void;
 }
 
-export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audioCtx, spatialMode }) => {
-  const [channelCount, setChannelCount] = useState(() => parseInt(localStorage.getItem('spatial_channels') || '2'));
+export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audioCtx, spatialMode, channelCount, onChannelCountChange }) => {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [osWarning, setOsWarning] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -39,9 +40,8 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
     }
   }, [audioCtx, channelCount]);
 
-  const handleChannelCountChange = (count: number) => {
-    setChannelCount(count);
-    localStorage.setItem('spatial_channels', String(count));
+  const handleChannelCountChange = (count: 2 | 6) => {
+    onChannelCountChange(count);
     window.location.reload();
   };
 
@@ -107,7 +107,7 @@ export const SpatialSettingsPanel: React.FC<SpatialSettingsPanelProps> = ({ audi
               {spatialMode === '5.1' ? '5.1 Active' : 'Stereo (HRTF)'}
             </div>
             <div className="flex bg-surface-container-high rounded-lg p-1 border border-white/5">
-              {[2, 6].map(count => (
+              {([2, 6] as const).map(count => (
                 <button
                   key={count}
                   onClick={() => handleChannelCountChange(count)}

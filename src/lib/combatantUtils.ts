@@ -123,3 +123,14 @@ export function shouldTriggerLairAction(
   const nextInit = sorted[nextIndex]?.initiative ?? 0;
   return endingInit > 20 && nextInit <= 20;
 }
+
+export function deriveTurnReminders(combatant: Combatant, sorted: Combatant[] = [], currentIndex = 0, lairActionsEnabled = false): string[] {
+  const reminders: string[] = [];
+  if (combatant.concentratingOn) reminders.push(`Maintain concentration: ${combatant.concentratingOn}`);
+  const expiring = combatant.conditions.filter(condition => (combatant.conditionTimers?.[condition] ?? Infinity) <= 1);
+  if (expiring.length) reminders.push(`Expires at turn end: ${expiring.join(', ')}`);
+  if (combatant.legendaryActions && combatant.legendaryActions.remaining === combatant.legendaryActions.max) reminders.push(`Legendary actions restored: ${combatant.legendaryActions.remaining}`);
+  const nextIndex = sorted.length ? (currentIndex + 1) % sorted.length : 0;
+  if (lairActionsEnabled && shouldTriggerLairAction(sorted, currentIndex, nextIndex)) reminders.push('Lair action at initiative 20');
+  return reminders;
+}

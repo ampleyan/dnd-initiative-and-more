@@ -1,7 +1,9 @@
+import React from 'react';
 import { ChevronLeft, ChevronRight, Heart, Shield } from 'lucide-react';
-import type { Combatant } from '../types';
+import type { Combatant, MonsterAction } from '../types';
 import { CONDITIONS } from '../constants';
 import { AvatarImg } from './AvatarImg';
+import { deriveTurnReminders } from '../lib/combatantUtils';
 
 interface TurnCommandCenterProps {
   currentRound: number;
@@ -9,6 +11,10 @@ interface TurnCommandCenterProps {
   nextCombatant?: Combatant;
   onPreviousTurn: () => void;
   onNextTurn: () => void;
+  onUseAction?: (actor: Combatant, action: MonsterAction) => void;
+  sortedCombatants?: Combatant[];
+  currentTurnIndex?: number;
+  lairActionsEnabled?: boolean;
 }
 
 export function TurnCommandCenter({
@@ -17,10 +23,17 @@ export function TurnCommandCenter({
   nextCombatant,
   onPreviousTurn,
   onNextTurn,
+  onUseAction,
+  sortedCombatants,
+  currentTurnIndex,
+  lairActionsEnabled,
 }: TurnCommandCenterProps) {
   const conditionNames = activeCombatant.conditions.map(conditionId =>
     CONDITIONS.find(condition => condition.id === conditionId)?.name ?? conditionId,
   );
+  const actions = [...(activeCombatant.actions ?? []), ...(activeCombatant.abilities ?? []), ...(activeCombatant.spells ?? [])];
+  const [showMore, setShowMore] = React.useState(false);
+  const reminders = deriveTurnReminders(activeCombatant, sortedCombatants, currentTurnIndex, lairActionsEnabled);
 
   return (
     <section aria-label="Turn command center" className="mb-3 rounded-2xl border border-primary/30 bg-surface-container-low p-3 shadow-lg shadow-primary/5">
@@ -61,6 +74,11 @@ export function TurnCommandCenter({
           </button>
         </div>
       </div>
+      {(actions.length > 0 || reminders.length > 0) && <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-outline/15 pt-2">
+        {reminders.map(reminder => <span key={reminder} className="rounded bg-amber-400/10 px-2 py-1 text-[10px] font-bold text-amber-200">{reminder}</span>)}
+        {actions.slice(0, showMore ? actions.length : 4).map((action, index) => <button key={`${action.name}-${index}`} type="button" onClick={() => onUseAction?.(activeCombatant, action)} className="rounded-lg border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/20">{action.name}</button>)}
+        {actions.length > 4 && !showMore && <button type="button" onClick={() => setShowMore(true)} className="rounded-lg px-2 py-1 text-[10px] font-bold text-outline hover:text-on-surface">More actions</button>}
+      </div>}
       <p className="mt-2 text-right text-[10px] text-outline">Space next · Shift+Space previous</p>
     </section>
   );

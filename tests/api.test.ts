@@ -56,6 +56,20 @@ describe('App preferences API', () => {
   });
 });
 
+describe('Foundry configuration API', () => {
+  it('persists the server-side Foundry URL and data path', async () => {
+    const agent = await loginAdmin();
+    const config = { url: 'http://foundry.local:30000', dataPath: 'E:\\DnD\\FoundryData' };
+
+    const save = await agent.put('/api/foundry/config').send(config);
+    expect(save.status).toBe(200);
+
+    const read = await agent.get('/api/foundry/config');
+    expect(read.status).toBe(200);
+    expect(read.body).toEqual({ ...config, configured: true });
+  });
+});
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 describe('POST /api/auth/login', () => {
   it('returns 200 with user data on valid credentials', async () => {

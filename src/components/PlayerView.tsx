@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Activity, ChevronDown, ChevronUp, Clock, Heart, Shield, Skull, Sparkles, Swords, Users, Wand2, Zap } from 'lucide-react';
-import { AnimationLevel, Combatant, LogEntry } from '../types';
+import { AnimationLevel, Combatant, LogEntry, PlayerViewSettings, PlayerViewWeather } from '../types';
 import { DAMAGE_COLORS, DamageType } from '../lib/damageTypes';
 import { AvatarImg } from './AvatarImg';
 import { cn } from '../lib/utils';
 import { sortWithCompanions } from '../lib/combatantUtils';
 import { CONDITIONS, INITIATIVE_COLORS } from '../constants';
+import { DEFAULT_PLAYER_VIEW_SETTINGS } from '../lib/playerViewSettings';
+import { getPlayerViewDisclosure } from '../lib/playerViewSettings';
 
 function initiativeColor(initiative: number): string {
   const idx = Math.min(Math.max(Math.floor(initiative), 1), 20) - 1;
@@ -115,6 +117,8 @@ interface PlayerViewProps {
   showOrderInName?: boolean;
   pendingConChecks?: Record<string, number>;
   combatLog?: LogEntry[];
+  playerViewSettings?: PlayerViewSettings;
+  weather?: PlayerViewWeather;
 }
 
 const STATUS = {
@@ -151,7 +155,7 @@ function healthColor(c: Combatant): string {
 }
 
 export const PlayerView: React.FC<PlayerViewProps> = ({
-  combatants, isEncounterActive, currentRound, backgroundImage, backgroundOpacity = 0.22, panelOpacity = 0.92, animationLevel = 'minimal', displayNames, showOrderInName, pendingConChecks, combatLog,
+  combatants, isEncounterActive, currentRound, backgroundImage, backgroundOpacity = 0.22, panelOpacity = 0.92, animationLevel = 'minimal', displayNames, showOrderInName, pendingConChecks, combatLog, playerViewSettings = DEFAULT_PLAYER_VIEW_SETTINGS, weather = 'none',
 }) => {
   const panelBg = `rgba(18,22,28,${panelOpacity})`;
   const activeBg = `rgba(40,48,58,${Math.min(1, panelOpacity + 0.03)})`;
@@ -208,7 +212,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
     return () => timers.forEach(clearTimeout);
   }, [combatants, combatLog, animationLevel]);
 
-  const sorted = useMemo(() => sortWithCompanions(combatants), [combatants]);
+  const sorted = useMemo(() => sortWithCompanions(combatants).filter(c => playerViewSettings.defeatedCombatants !== 'hide' || c.hp.current > 0), [combatants, playerViewSettings.defeatedCombatants]);
 
   const activeIdx = sorted.findIndex(c => c.isCurrentTurn);
   const nextIdx = isEncounterActive && sorted.length > 1
@@ -301,8 +305,9 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         100% { transform: scale(1); opacity: 1; }
       }
       .turn-cue-enter { animation: turnCue .7s ease-out; }
+      @keyframes weatherDrift { to { background-position: 0 260px; } }
       @media (prefers-reduced-motion: reduce) {
-        .turn-cue-enter { animation: none; }
+        .turn-cue-enter, [data-testid="weather-overlay"] { animation: none !important; }
       }
     `}</style>
     <div className="fixed inset-0 z-50 bg-surface-container-lowest overflow-y-auto overflow-x-hidden">
@@ -325,6 +330,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         <div className="absolute top-[-10%] left-[15%] w-[700px] h-[700px] rounded-full bg-indigo-950/40 blur-[140px]" />
         <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[400px] rounded-full bg-blue-950/30 blur-[120px]" />
         <div className="absolute top-[40%] left-[40%] w-[600px] h-[200px] rounded-full bg-primary/5 blur-[100px]" />
+        {weather !== 'none' && animationLevel !== 'none' && <div data-testid="weather-overlay" className={`absolute inset-0 weather-${weather}`} style={{ backgroundImage: weather === 'fog' ? 'radial-gradient(ellipse, rgba(230,235,240,.18), transparent 65%)' : 'radial-gradient(circle, rgba(255,255,255,.65) 1px, transparent 1.5px)', backgroundSize: '28px 28px', animation: 'weatherDrift 8s linear infinite' }} />}
       </div>
 
       {/* Encounter Ended Banner */}
@@ -700,6 +706,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               const s = status(c);
               const accentColor = initiativeColor(c.initiative);
               const isPlayer = c.type === 'player';
+              const disclosure = getPlayerViewDisclosure(c, playerViewSettings);
               const queueIndex = qi + 1;
 
               const evt = dmgEvents.find(e => e.combatantId === c.id);
@@ -777,7 +784,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                               {showOrderInName && (
                                 <span className="font-headline font-black mr-2" style={{ color: accentColor }}>#{queueIndex}</span>
                               )}
-                              {displayNames?.get(c.id) ?? c.name}
+                              {disclosure.showName ? displayNames?.get(c.id) ?? c.name : 'Unknown creature'}
                             </h3>
                             {c.polymorphForm && (
                               <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-500/20 border border-violet-500/30 w-fit mt-1">
@@ -862,7 +869,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         </div>
                       </div>
 
-                      {(c.conditions.length > 0 || Object.keys(c.customTagDescriptions ?? {}).filter(t => c.tags.includes(t)).length > 0) && (
+                      {disclosure.showConditions && (c.conditions.length > 0 || Object.keys(c.customTagDescriptions ?? {}).filter(t => c.tags.includes(t)).length > 0) && (
                         <div className="flex flex-col gap-1.5 shrink-0">
                           {c.conditions.map(condId => {
                             const isBen = BENEFICIAL_IDS.has(condId);
@@ -926,7 +933,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     /* Collapsed downed enemy strip */
                     <div className="flex-1 flex items-center justify-between min-w-0">
                       <h4 className="font-headline text-xs text-on-surface-variant/60 truncate line-through">
-                        {displayNames?.get(c.id) ?? c.name}
+                        {disclosure.showName ? displayNames?.get(c.id) ?? c.name : 'Unknown creature'}
                       </h4>
                       <span className="text-[8px] font-black uppercase tracking-widest text-red-500/60 shrink-0 ml-2">Down</span>
                     </div>
@@ -958,7 +965,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     {isPlayer && c.deathSaves && c.hp.current <= 0 && (
                       <DeathSavesView ds={c.deathSaves} />
                     )}
-                    {(c.polymorphForm || c.conditions.length > 0 || c.tags.some(t => c.customTagDescriptions?.[t]) || (isPlayer && c.concentratingOn)) && (
+                    {disclosure.showConditions && (c.polymorphForm || c.conditions.length > 0 || c.tags.some(t => c.customTagDescriptions?.[t]) || (isPlayer && c.concentratingOn)) && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {c.polymorphForm && (
                           <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-[8px] font-bold rounded uppercase tracking-tight bg-violet-500/20 border border-violet-500/30 text-violet-400">

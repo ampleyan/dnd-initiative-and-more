@@ -188,6 +188,8 @@ interface ActionExecutionModalProps {
   sounds?: Sound[];
   onTogglePlay?: (sound: Sound) => void;
   playingIds?: Set<string>;
+  autoplayEnabled?: boolean;
+  onAutoplayEnabledChange?: (enabled: boolean) => void;
   onPolymorph?: (targetId: string, monster: MonsterTemplate) => void;
   onApply: (params: {
     targetIds: string[];
@@ -204,7 +206,7 @@ interface ActionExecutionModalProps {
 }
 
 export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
-  isOpen, onClose, actor, action, combatants, monsters = [], spellData, sounds = [], onTogglePlay, playingIds, onPolymorph, onApply,
+  isOpen, onClose, actor, action, combatants, monsters = [], spellData, sounds = [], onTogglePlay, playingIds, autoplayEnabled = true, onAutoplayEnabledChange, onPolymorph, onApply,
 }) => {
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
   const [effect, setEffect] = useState<'damage' | 'heal'>('damage');
@@ -213,7 +215,6 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
   const [amountsPerTarget, setAmountsPerTarget] = useState<Record<string, string>>({});
   const [checkedConditions, setCheckedConditions] = useState<Set<string>>(new Set());
   const [durationRounds, setDurationRounds] = useState('');
-  const [isAutoplayEnabled, setIsAutoplayEnabled] = useState(() => localStorage.getItem('sound_autoplay_enabled') !== 'false');
   const [polymorphMonster, setPolymorphMonster] = useState<MonsterTemplate | null>(null);
   const [showPolymorphPicker, setShowPolymorphPicker] = useState(false);
 
@@ -325,7 +326,7 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
       return;
     }
 
-    if (isAutoplayEnabled && linkedSound && onTogglePlay) {
+    if (autoplayEnabled && linkedSound && onTogglePlay) {
       if (!playingIds?.has(linkedSound.id)) {
         onTogglePlay(linkedSound);
       }
@@ -491,13 +492,11 @@ export const ActionExecutionModal: React.FC<ActionExecutionModalProps> = ({
                             <label className="text-[8px] font-black uppercase tracking-wider text-outline/60">Autoplay on Apply</label>
                             <button
                               onClick={() => {
-                                const next = !isAutoplayEnabled;
-                                setIsAutoplayEnabled(next);
-                                localStorage.setItem('sound_autoplay_enabled', String(next));
+                                onAutoplayEnabledChange?.(!autoplayEnabled);
                               }}
-                              className={`w-7 h-4 rounded-full relative transition-colors ${isAutoplayEnabled ? 'bg-pink-500' : 'bg-white/10'}`}
+                              className={`w-7 h-4 rounded-full relative transition-colors ${autoplayEnabled ? 'bg-pink-500' : 'bg-white/10'}`}
                             >
-                              <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isAutoplayEnabled ? 'left-3.5' : 'left-0.5'}`} />
+                              <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${autoplayEnabled ? 'left-3.5' : 'left-0.5'}`} />
                             </button>
                           </div>
                         </div>

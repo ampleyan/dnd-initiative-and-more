@@ -48,4 +48,12 @@ describe('TurnCommandCenter', () => {
     expect(onPreviousTurn).toHaveBeenCalledOnce();
     expect(onNextTurn).toHaveBeenCalledOnce();
   });
+
+  it('launches an active combatant action through the supplied action flow', () => {
+    const onUseAction = vi.fn();
+    const active = { ...combatant('active', 'Aura Rose', 12, 20), actions: [{ name: 'Bite', description: 'Attack' }] };
+    render(<TurnCommandCenter currentRound={1} activeCombatant={active} onPreviousTurn={vi.fn()} onNextTurn={vi.fn()} onUseAction={onUseAction} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bite' }));
+    expect(onUseAction).toHaveBeenCalledWith(active, active.actions[0]);
+  });
 });

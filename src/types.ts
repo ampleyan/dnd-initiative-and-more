@@ -11,6 +11,7 @@ export type FeatureUses = Record<string, {  // key = featureId
 }>;
 
 export type AnimationLevel = 'none' | 'minimal' | 'typed' | 'full';
+export type { PlayerViewSettings, PlayerViewWeather } from './lib/playerViewSettings';
 
 export interface Condition {
   id: string;
@@ -284,7 +285,10 @@ export interface Encounter {
   huePreset?: string;
   notes?: EncounterNotes;
   favorite?: boolean;
+  lairActionsEnabled?: boolean;
   waves?: EncounterWave[];
+  playerViewSettings?: import('./lib/playerViewSettings').PlayerViewSettings;
+  weather?: import('./lib/playerViewSettings').PlayerViewWeather;
 }
 
 export interface Sound {

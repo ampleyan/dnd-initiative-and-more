@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { Combatant, SpellSlots } from '../types';
-import { sortWithCompanions, applyDamage, applyTurnStart, shouldTriggerLairAction } from '../lib/combatantUtils';
+import { sortWithCompanions, applyDamage, applyTurnStart, shouldTriggerLairAction, deriveTurnReminders } from '../lib/combatantUtils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function makeCombatant(overrides: Partial<Combatant>): Combatant {
@@ -338,5 +338,15 @@ describe('shouldTriggerLairAction', () => {
   it('does not trigger on round wrap when all combatants are above 20', () => {
     const sorted = [makeCombatantForLairAction(25), makeCombatantForLairAction(22)];
     expect(shouldTriggerLairAction(sorted, 1, 0)).toBe(false);
+  });
+});
+
+describe('deriveTurnReminders', () => {
+  it('derives concentration, expiry, legendary, and lair reminders without writing state', () => {
+    const current = makeCombatant({ initiative: 25, concentratingOn: 'Fly', conditions: ['blinded'], conditionTimers: { blinded: 1 }, legendaryActions: { max: 3, remaining: 3 } });
+    const next = makeCombatant({ initiative: 20 });
+    expect(deriveTurnReminders(current, [current, next], 0, true)).toEqual([
+      'Maintain concentration: Fly', 'Expires at turn end: blinded', 'Legendary actions restored: 3', 'Lair action at initiative 20',
+    ]);
   });
 });

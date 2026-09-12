@@ -713,7 +713,8 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
               <button
                 onClick={e => { e.stopPropagation(); togglePlayerVisibility(); }}
                 title={combatant.hidden ? 'Reveal to players' : 'Hide from players / assign wave'}
-                className={cn('hidden p-1.5 hover:bg-surface-container-highest rounded-lg transition-colors', combatant.hidden ? 'text-amber-300' : 'text-outline hover:text-amber-300')}
+                aria-label={combatant.hidden ? 'Reveal to players' : 'Hide from players'}
+                className={cn(groupActive ? 'p-1.5' : 'hidden', 'hover:bg-surface-container-highest rounded-lg transition-colors', combatant.hidden ? 'text-amber-300' : 'text-outline hover:text-amber-300')}
               >
                 <EyeOff className="w-3.5 h-3.5" />
               </button>

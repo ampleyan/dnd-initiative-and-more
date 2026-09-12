@@ -20,7 +20,11 @@ vi.mock('../hooks/useSoundboard', () => ({ useSoundboard: () => ({ playingIds: n
 vi.mock('../hooks/useToast', () => ({ useToast: () => ({ showError: harness.showError }) }));
 vi.mock('../api/client', async importOriginal => ({
   ...await importOriginal<typeof import('../api/client')>(),
-  api: { encounters: { update: (...args: unknown[]) => harness.update(...args) }, sounds: { list: async () => [] } },
+  api: {
+    encounters: { update: (...args: unknown[]) => harness.update(...args) },
+    sounds: { list: async () => [] },
+    preferences: { get: async () => ({}), save: async () => ({ ok: true }) },
+  },
 }));
 vi.mock('../components/Sidebar', () => ({ Sidebar: () => null }));
 vi.mock('../components/MainContent', () => ({ MainContent: () => null }));
@@ -48,6 +52,7 @@ beforeEach(() => {
     currentTurnIndex: 0, combatants: [], monsters: [], spells: [], players: [],
     savedEncounters: [], activeSoundIds: [], activeYoutubeUrl: '', combatLog: [],
     isDbAvailable: true, fetchData: vi.fn(), syncPlayerLog: vi.fn(),
+    masterVolume: 1, setMasterVolume: vi.fn(), isMuted: false, setIsMuted: vi.fn(),
     setSavedEncounters: (update: any) => {
       harness.state.savedEncounters = update(harness.state.savedEncounters);
     },

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { Server } from 'socket.io';
+import { normalizePlayerViewSettings, normalizeWeather } from '../src/lib/playerViewSettings.ts';
 
 export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server) {
   const router = Router();
@@ -19,6 +20,8 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       soundIds: encounter.soundIds ? JSON.parse(encounter.soundIds) : [],
       notes: encounter.notes ? JSON.parse(encounter.notes) : { general: '', rounds: [] },
       waves: encounter.waves ? JSON.parse(encounter.waves) : [],
+      playerViewSettings: normalizePlayerViewSettings(encounter.playerViewSettings),
+      weather: normalizeWeather(encounter.weather),
     };
 
     return view === 'list' ? collection : {
@@ -168,9 +171,9 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
 
   router.post('/encounters', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ success: false, message: 'DB not available' });
-    const { id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, huePreset, animationLevel, waves } = req.body;
-    db.prepare('INSERT INTO encounters (id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, huePreset, animationLevel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, name, currentRound || 1, isEncounterActive ? 1 : 0, showSummary ? 1 : 0, backgroundImage || '', youtubeUrl || '', musicUrl || '', folder || '', difficulty || '', backgroundOpacity ?? 0.22, panelOpacity ?? 0.92, sessionId || null, soundIds ? JSON.stringify(soundIds) : null, huePreset || '', animationLevel ?? 'minimal');
+    const { id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, huePreset, animationLevel, waves, playerViewSettings, weather } = req.body;
+    db.prepare('INSERT INTO encounters (id, name, currentRound, isEncounterActive, showSummary, backgroundImage, youtubeUrl, musicUrl, folder, difficulty, backgroundOpacity, panelOpacity, sessionId, soundIds, huePreset, animationLevel, playerViewSettings, weather) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, name, currentRound || 1, isEncounterActive ? 1 : 0, showSummary ? 1 : 0, backgroundImage || '', youtubeUrl || '', musicUrl || '', folder || '', difficulty || '', backgroundOpacity ?? 0.22, panelOpacity ?? 0.92, sessionId || null, soundIds ? JSON.stringify(soundIds) : null, huePreset || '', animationLevel ?? 'minimal', JSON.stringify(normalizePlayerViewSettings(playerViewSettings)), normalizeWeather(weather));
     io.emit('encounter-updated', { encounterId: id });
     if (waves) db.prepare('UPDATE encounters SET waves = ? WHERE id = ?').run(JSON.stringify(waves), id);
     res.status(201).json({ id, name });
@@ -194,26 +197,29 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
       lairActionsEnabled = existing.lairActionsEnabled ?? 0,
       notes = undefined,
       waves = undefined,
+      playerViewSettings = undefined,
+      weather = existing.weather ?? 'none',
     } = req.body;
     const statsJson = typeof encounterStats === 'string' ? encounterStats : (encounterStats ? JSON.stringify(encounterStats) : existing.encounterStats);
     const soundIdsJson = soundIds !== undefined ? JSON.stringify(soundIds) : existing.soundIds;
     const trackingJson = trackingData !== undefined ? (typeof trackingData === 'string' ? trackingData : JSON.stringify(trackingData)) : existing.trackingData;
     const notesJson = notes !== undefined ? JSON.stringify(notes) : existing.notes;
     const wavesJson = waves !== undefined ? JSON.stringify(waves) : existing.waves;
+    const playerViewSettingsJson = playerViewSettings !== undefined ? JSON.stringify(normalizePlayerViewSettings(playerViewSettings)) : existing.playerViewSettings;
     db.prepare(`
       UPDATE encounters
       SET name = ?, currentRound = ?, currentTurnIndex = ?, isEncounterActive = ?,
           showSummary = ?, backgroundImage = ?, youtubeUrl = ?, musicUrl = ?,
           encounterStats = ?, folder = ?, completedAt = ?, difficulty = ?,
           backgroundOpacity = ?, panelOpacity = ?, soundIds = ?, huePreset = ?, animationLevel = ?,
-          trackingData = ?, favorite = ?, lairActionsEnabled = ?, notes = ?, waves = ?
+          trackingData = ?, favorite = ?, lairActionsEnabled = ?, notes = ?, waves = ?, playerViewSettings = ?, weather = ?
       WHERE id = ?
     `).run(
       name, currentRound, currentTurnIndex, isEncounterActive ? 1 : 0,
       showSummary ? 1 : 0, backgroundImage, youtubeUrl, musicUrl,
       statsJson, folder, completedAt, difficulty,
       backgroundOpacity, panelOpacity, soundIdsJson, huePreset, animationLevel,
-      trackingJson, favorite ? 1 : 0, lairActionsEnabled ? 1 : 0, notesJson, wavesJson, req.params.id
+      trackingJson, favorite ? 1 : 0, lairActionsEnabled ? 1 : 0, notesJson, wavesJson, playerViewSettingsJson, normalizeWeather(weather), req.params.id
     );
     io.to(`encounter:${req.params.id}`).emit('encounter-updated', { encounterId: req.params.id });
     res.json({ success: true });
@@ -346,24 +352,26 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
             backgroundOpacity = existing.backgroundOpacity, panelOpacity = existing.panelOpacity,
             soundIds = undefined, trackingData = undefined,
             lairActionsEnabled = existing.lairActionsEnabled,
+            playerViewSettings = undefined, weather = existing.weather ?? 'none',
           } = encounter;
           const statsJson = typeof encounterStats === 'string' ? encounterStats : (encounterStats ? JSON.stringify(encounterStats) : existing.encounterStats);
           const soundIdsJson = soundIds !== undefined ? JSON.stringify(soundIds) : existing.soundIds;
           const trackingJson = trackingData !== undefined ? (typeof trackingData === 'string' ? trackingData : JSON.stringify(trackingData)) : existing.trackingData;
+          const playerViewSettingsJson = playerViewSettings !== undefined ? JSON.stringify(normalizePlayerViewSettings(playerViewSettings)) : existing.playerViewSettings;
           db.prepare(`
             UPDATE encounters
             SET name = ?, currentRound = ?, currentTurnIndex = ?, isEncounterActive = ?,
                 showSummary = ?, backgroundImage = ?, youtubeUrl = ?, musicUrl = ?,
                 encounterStats = ?, folder = ?, completedAt = ?, difficulty = ?,
                 backgroundOpacity = ?, panelOpacity = ?, soundIds = ?, trackingData = ?,
-                lairActionsEnabled = ?
+                lairActionsEnabled = ?, playerViewSettings = ?, weather = ?
             WHERE id = ?
           `).run(
             name, currentRound, currentTurnIndex, isEncounterActive ? 1 : 0,
             showSummary ? 1 : 0, backgroundImage, youtubeUrl, musicUrl,
             statsJson, folder, completedAt, difficulty,
             backgroundOpacity, panelOpacity, soundIdsJson, trackingJson,
-            lairActionsEnabled ? 1 : 0, encounterId
+            lairActionsEnabled ? 1 : 0, playerViewSettingsJson, normalizeWeather(weather), encounterId
           );
         }
       }
