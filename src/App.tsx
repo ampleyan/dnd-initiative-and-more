@@ -20,6 +20,7 @@ import { PlayerView } from './components/PlayerView';
 import { ModalsContainer } from './components/ModalsContainer';
 import { ActionExecutionModal } from './components/ActionExecutionModal';
 import { WhatsNewModal, hasSeenWhatsNew } from './components/WhatsNewModal';
+import { OnboardingModal, hasCompletedOnboarding } from './components/OnboardingModal';
 import { AddEnemyModal } from './components/AddEnemyModal';
 import { SessionStatsModal } from './components/SessionStatsModal';
 import { HelpModal } from './components/HelpModal';
@@ -175,6 +176,7 @@ export default function App() {
   const [showLog, setShowLog] = React.useState(false);
   const [showLogToPlayers, setShowLogToPlayers] = React.useState(false);
   const [showWhatsNew, setShowWhatsNew] = React.useState(() => !hasSeenWhatsNew());
+  const [showOnboarding, setShowOnboarding] = React.useState(() => !hasCompletedOnboarding() && hasSeenWhatsNew());
   const [showSessionStats, setShowSessionStats] = React.useState(false);
   const [showHelp, setShowHelp] = React.useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
@@ -1014,7 +1016,8 @@ export default function App() {
 
       {/* What's New Modal */}
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
-      <WhatsNewModal isOpen={showWhatsNew} onClose={() => setShowWhatsNew(false)} />
+      <WhatsNewModal isOpen={showWhatsNew} onClose={() => { setShowWhatsNew(false); if (!hasCompletedOnboarding()) setShowOnboarding(true); }} />
+      <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
 
       <AddEnemyModal
         isOpen={isAddEnemyModalOpen}

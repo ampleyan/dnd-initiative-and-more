@@ -1414,22 +1414,22 @@ export const MainContent: React.FC<MainContentProps> = ({
                     <p className="mt-1 text-sm text-outline">Link the tools that extend the table into your room and virtual tabletop.</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 items-start gap-5 @[54rem]/settings:grid-cols-2 [&>*]:min-w-0">
+                <div className="grid grid-cols-1 items-start gap-5 [&>*]:min-w-0">
                   <details className="rounded-2xl border border-amber-400/20 bg-surface-container-low p-4 shadow-[inset_3px_0_0_0_rgba(251,191,36,0.65)]">
-                  <summary className="cursor-pointer text-sm font-bold text-on-surface">Philips Hue</summary>
-                  <div className="pt-4">
-                    <HueSettingsPanel
-                      enabled={hueEnabled ?? false}
-                      onToggleEnabled={onToggleHue ?? (() => {})}
-                      syncSceneColorEnabled={hueSyncScene ?? false}
-                      onToggleSyncScene={onToggleHueSyncScene ?? (() => {})}
-                      enabledEffects={hueEnabledEffects ?? {}}
-                      onToggleEffect={onToggleHueEffect ?? (() => {})}
-                      effectTargets={hueEffectTargets ?? {}}
-                      onToggleTarget={onToggleHueTarget ?? (() => {})}
-                    />
-                  </div>
-                </details>
+                    <summary className="cursor-pointer text-sm font-bold text-on-surface">Philips Hue</summary>
+                    <div className="pt-4">
+                      <HueSettingsPanel
+                        enabled={hueEnabled ?? false}
+                        onToggleEnabled={onToggleHue ?? (() => {})}
+                        syncSceneColorEnabled={hueSyncScene ?? false}
+                        onToggleSyncScene={onToggleHueSyncScene ?? (() => {})}
+                        enabledEffects={hueEnabledEffects ?? {}}
+                        onToggleEffect={onToggleHueEffect ?? (() => {})}
+                        effectTargets={hueEffectTargets ?? {}}
+                        onToggleTarget={onToggleHueTarget ?? (() => {})}
+                      />
+                    </div>
+                  </details>
                   <FoundrySettingsPanel />
                   <HomeAssistantSettingsPanel enabled={haEnabled ?? false} onToggleEnabled={onToggleHa ?? (() => {})} />
                 </div>

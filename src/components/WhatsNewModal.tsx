@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 
-const APP_VERSION = '1.11.0';
+const APP_VERSION = '1.12.0';
 
 interface Release {
   version: string;
@@ -10,6 +10,42 @@ interface Release {
 }
 
 const RELEASES: Release[] = [
+  {
+    version: '1.12.0',
+    date: 'September 2026',
+    features: [
+      {
+        icon: '📜',
+        title: 'Combat Turn Ledger',
+        description: 'A running log of every turn in the current combat — who acted, when, and in what order. Keyboard shortcuts (Space/Shift+Space for next/prev, D/H/T/C during combat) give your hands free from the mouse mid-fight.',
+      },
+      {
+        icon: '⚔️',
+        title: 'Encounter Budget Calculator',
+        description: 'Set party size, levels, and target difficulty in the Encounter Creator. The budget engine computes adjusted XP with multipliers, flags solo-monster swinginess, mixed-CR spread, and hidden-wave pressure in plain English.',
+      },
+      {
+        icon: '🗂️',
+        title: 'Named Encounter Variants',
+        description: 'Save any combatant configuration as a named variant — Day 1, Ambush Version, Boss Phase 2. Load a variant into any encounter with a two-step confirm to protect against accidental overwrites.',
+      },
+      {
+        icon: '🎬',
+        title: 'Player-View Presets & Spotlight',
+        description: 'Switch the player screen between four presets — Tactical (full stats), Cinematic (narrative, no numbers), Mystery (hidden monster names), and Boss (big portrait + banded HP). Pin any combatant into a spotlight banner players see front and centre.',
+      },
+      {
+        icon: '🔍',
+        title: 'Import Diff Preview',
+        description: 'Before confirming an import the entity list now shows a New / Update / Unchanged badge for every item so you know exactly what will change. Each saved monster and player record is now stamped with its import timestamp and source.',
+      },
+      {
+        icon: '🎬',
+        title: 'Scene Start Auto-Apply',
+        description: 'Configure which settings (background, music, Hue preset, player-view, weather) activate automatically the moment you press Start on an encounter. Set it once in the Scene Start toolbar panel; the engine applies it on every run.',
+      },
+    ],
+  },
   {
     version: '1.11.0',
     date: 'September 2026',
