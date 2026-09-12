@@ -20,6 +20,7 @@ import { HomeAssistantSettingsPanel } from './HomeAssistantSettingsPanel';
 import { FoundrySettingsPanel } from './FoundrySettingsPanel';
 import { SpatialSettingsPanel } from './SpatialSettingsPanel';
 import { UsersSettings } from './UsersSettings';
+import { BackupPanel } from './BackupPanel';
 import { AuthUser } from '../hooks/useAuth';
 import { HueEffectName, HueEffectTargets } from '../lib/hueEffects';
 import { CampaignView } from './CampaignView';
@@ -443,6 +444,11 @@ export const MainContent: React.FC<MainContentProps> = ({
   const [changingWave, setChangingWave] = React.useState<string | null>(null);
   const waveEncounterRef = React.useRef(currentEncounterId);
   React.useEffect(() => { waveEncounterRef.current = currentEncounterId; }, [currentEncounterId]);
+
+  const [turnStartedAt, setTurnStartedAt] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    setTurnStartedAt(Date.now());
+  }, [currentTurnIndex]);
 
   const prevActiveRef = React.useRef(isEncounterActive);
   React.useEffect(() => {
@@ -1169,6 +1175,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                                 isSelected={selectedCombatantIds.has(combatant.id)}
                                 onToggleSelect={() => toggleCombatantSelect(combatant.id)}
                                 dragControls={dragControls}
+                                turnStartedAt={isActive ? turnStartedAt : undefined}
                               />
                             )}
                           </DraggableCombatantRow>
@@ -1449,6 +1456,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                       onChannelCountChange={onSpatialChannelsChange ?? (() => {})}
                     />
                   </div>
+                  <BackupPanel />
                   <details className="rounded-2xl border border-red-500/30 bg-red-500/[0.03] p-4">
                     <summary className="cursor-pointer text-sm font-bold text-red-400">Danger Zone</summary>
                     <div className="pt-4"><ResetDbPanel /></div>
