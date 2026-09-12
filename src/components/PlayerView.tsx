@@ -770,9 +770,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                           animate={{ width: `${pct * 100}%` }} transition={{ duration: 0.5, ease: 'easeOut' }} />
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: barColor }} />
-                      <span className="text-[9px] font-black uppercase whitespace-nowrap" style={{ color: barColor }}>{s.label}</span>
+                    <div className="shrink-0">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${barColor}25`, color: barColor }}>{s.label}</span>
                     </div>
                     {animationLevel === 'full' && <ParticleBurst particles={particles} combatantId={c.id} />}
                   </div>
@@ -824,8 +823,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         <div className="space-y-1">
                           <div className="flex justify-between text-[11px] font-headline">
                             <div className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: healthColor(c) }} />
-                              <span className="font-black" style={{ color: healthColor(c) }}>{s.label}</span>
+                              <span className="px-2 py-0.5 rounded text-xs font-black uppercase" style={{ backgroundColor: `${healthColor(c)}30`, color: healthColor(c) }}>{s.label}</span>
                             </div>
                             {isPlayer && (
                               <span className="text-white/50 flex items-center gap-1.5">
@@ -1054,9 +1052,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         <div className="font-headline font-bold text-sm" style={{ color: accentColor }}>{queueIndex}</div>
                       </div>
                     )}
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: healthColor(c) }} />
-                      <span className="text-[9px] font-black uppercase whitespace-nowrap" style={{ color: healthColor(c) }}>
+                    <div>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${healthColor(c)}25`, color: healthColor(c) }}>
                         {s.label}
                       </span>
                     </div>
