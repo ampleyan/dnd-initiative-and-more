@@ -27,6 +27,7 @@ COPY --from=build /app/tsconfig.json ./
 COPY --from=build /app/db ./db
 COPY --from=build /app/routes ./routes
 COPY --from=build /app/src/lib/playerLog.ts ./src/lib/playerLog.ts
+COPY --from=build /app/src/lib/playerViewSettings.ts ./src/lib/playerViewSettings.ts
 COPY --from=build /app/scripts/update-monsters.ts ./scripts/update-monsters.ts
 
 # Expose the application port
