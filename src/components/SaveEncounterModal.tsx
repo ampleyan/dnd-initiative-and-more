@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Save, Zap, Loader2 } from 'lucide-react';
 import { Modal } from './Modal';
 import { Sound } from '../types';
+import { api } from '../api/client';
+import { DEFAULT_HUE_SCENES, HueScene, normalizeHueScenes } from '../lib/hueScenes';
 
 interface SaveEncounterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, folder: string, backgroundImage?: string, youtubeUrl?: string, soundIds?: string[]) => void;
+  onSave: (name: string, folder: string, backgroundImage?: string, youtubeUrl?: string, soundIds?: string[], huePreset?: string) => void;
   isSaving?: boolean;
   initialName?: string;
   initialFolder?: string;
   initialBackgroundImage?: string;
   initialYoutubeUrl?: string;
   initialSoundIds?: string[];
+  initialHuePreset?: string;
   existingFolders?: string[];
   sounds?: Sound[];
   title?: string;
@@ -28,6 +31,7 @@ export const SaveEncounterModal: React.FC<SaveEncounterModalProps> = ({
   initialBackgroundImage = '',
   initialYoutubeUrl = '',
   initialSoundIds = [],
+  initialHuePreset = '',
   existingFolders = [],
   sounds = [],
   title = 'Save Encounter',
@@ -37,6 +41,8 @@ export const SaveEncounterModal: React.FC<SaveEncounterModalProps> = ({
   const [backgroundImage, setBackgroundImage] = useState(initialBackgroundImage);
   const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl);
   const [selectedSoundIds, setSelectedSoundIds] = useState<string[]>(initialSoundIds);
+  const [hueScenes, setHueScenes] = useState<HueScene[]>(DEFAULT_HUE_SCENES);
+  const [huePreset, setHuePreset] = useState(initialHuePreset);
 
   useEffect(() => {
     setName(initialName);
@@ -44,9 +50,16 @@ export const SaveEncounterModal: React.FC<SaveEncounterModalProps> = ({
     setBackgroundImage(initialBackgroundImage);
     setYoutubeUrl(initialYoutubeUrl);
     setSelectedSoundIds(initialSoundIds);
-  }, [initialName, initialFolder, initialBackgroundImage, initialYoutubeUrl, isOpen]);
+    setHuePreset(initialHuePreset);
+  }, [initialName, initialFolder, initialBackgroundImage, initialYoutubeUrl, initialHuePreset, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    api.hue.getConfig().then(config => setHueScenes(normalizeHueScenes(config.scenes))).catch(() => setHueScenes(DEFAULT_HUE_SCENES));
+  }, [isOpen]);
 
   const uniqueFolders = Array.from(new Set(existingFolders.filter(Boolean))).sort();
+  const selectedHueScene = hueScenes.find(scene => scene.id === huePreset);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
@@ -116,6 +129,37 @@ export const SaveEncounterModal: React.FC<SaveEncounterModalProps> = ({
           />
         </div>
 
+        <div className="space-y-1">
+          <label htmlFor="encounter-hue-preset" className="text-[10px] uppercase font-bold text-outline">Hue Color Preset</label>
+          <select
+            id="encounter-hue-preset"
+            aria-label="Hue preset"
+            value={huePreset}
+            onChange={e => setHuePreset(e.target.value)}
+            className="w-full bg-surface-container-high border-none rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary"
+          >
+            <option value="">None</option>
+            {hueScenes.map(scene => <option key={scene.id} value={scene.id}>{scene.label}</option>)}
+          </select>
+          {selectedHueScene && (
+            <div
+              data-testid="hue-preset-colors"
+              aria-label={`${selectedHueScene.label} colors`}
+              className="flex gap-1.5 rounded-lg bg-surface-container-high p-1.5"
+            >
+              {selectedHueScene.colors.map((color, index) => (
+                <span
+                  key={`${selectedHueScene.id}-${index}`}
+                  data-testid={`hue-preset-color-${index}`}
+                  className="h-5 flex-1 rounded border border-white/15"
+                  style={{ backgroundColor: color }}
+                  title={color}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
         {sounds.length > 0 && (
           <div className="space-y-2">
             <label className="text-[10px] uppercase font-bold text-outline flex items-center gap-1.5">
@@ -144,7 +188,7 @@ export const SaveEncounterModal: React.FC<SaveEncounterModalProps> = ({
         )}
 
         <button
-          onClick={() => { if (!isSaving) { onSave(name, folder, backgroundImage, youtubeUrl, selectedSoundIds); onClose(); } }}
+          onClick={() => { if (!isSaving) { onSave(name, folder, backgroundImage, youtubeUrl, selectedSoundIds, huePreset); onClose(); } }}
           disabled={isSaving}
           className="w-full bg-primary text-on-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed"
         >

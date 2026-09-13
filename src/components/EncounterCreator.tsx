@@ -31,6 +31,8 @@ import { CR_TABLE } from '../constants/crTable';
 import { AvatarImg } from './AvatarImg';
 import { CR_XP, THRESHOLDS, crToXP, monsterMultiplier, parseLevel } from '../lib/encounterScaling';
 import { ScaleEncounterModal } from './ScaleEncounterModal';
+import { api } from '../api/client';
+import { DEFAULT_HUE_SCENES, HueScene, normalizeHueScenes } from '../lib/hueScenes';
 
 interface EncounterCreatorProps {
   isOpen: boolean;
@@ -47,12 +49,13 @@ interface EncounterCreatorProps {
   initialPanelOpacity?: number;
   initialAnimationLevel?: AnimationLevel;
   initialSoundIds?: string[];
+  initialHuePreset?: string;
   existingFolders?: string[];
   initialBudget?: EncounterBudget | null;
   initialVariants?: EncounterVariant[];
-  onLaunch: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel) => void;
-  onSave: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel) => void;
-  onAutoSave?: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel) => void;
+  onLaunch: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel, huePreset?: string) => void;
+  onSave: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel, huePreset?: string) => void;
+  onAutoSave?: (combatants: Combatant[], name: string, backgroundImage: string, youtubeUrl: string, folder: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel, huePreset?: string) => void;
   onSaveMeta?: (budget: EncounterBudget | null, variants: EncounterVariant[]) => void;
 }
 
@@ -108,6 +111,7 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
   initialPanelOpacity = 0.92,
   initialAnimationLevel,
   initialSoundIds = [],
+  initialHuePreset = '',
   existingFolders = [],
   initialBudget = null,
   initialVariants = [],
@@ -134,6 +138,8 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
   const [animationLevel, setAnimationLevel] = useState<AnimationLevel>(initialAnimationLevel ?? 'minimal');
   const [folder, setFolder] = useState(initialFolder);
   const [selectedSoundIds, setSelectedSoundIds] = useState<string[]>(initialSoundIds);
+  const [hueScenes, setHueScenes] = useState<HueScene[]>(DEFAULT_HUE_SCENES);
+  const [huePreset, setHuePreset] = useState(initialHuePreset);
   const [scaleModalOpen, setScaleModalOpen] = useState(false);
   const [budgetDifficulty, setBudgetDifficulty] = useState<EncounterBudget['targetDifficulty']>(initialBudget?.targetDifficulty ?? 'medium');
   const [budgetDmAdjustment, setBudgetDmAdjustment] = useState<number>(initialBudget?.dmAdjustment ?? 0);
@@ -152,6 +158,7 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
       setBackgroundOpacity(initialBackgroundOpacity);
       setPanelOpacity(initialPanelOpacity);
       setSelectedSoundIds(initialSoundIds);
+      setHuePreset(initialHuePreset);
       setSearchQuery('');
       setSourceFilter('');
       setVisibleCount(30);
@@ -164,6 +171,11 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
       setVariantName('');
       setApplyConfirmVariantId(null);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    api.hue.getConfig().then(config => setHueScenes(normalizeHueScenes(config.scenes))).catch(() => setHueScenes(DEFAULT_HUE_SCENES));
   }, [isOpen]);
 
 
@@ -341,7 +353,7 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
     });
     setCurrentCombatants(newCombatants);
     setScaleModalOpen(false);
-    onAutoSave?.(newCombatants, encounterName, backgroundImageUrl ?? '', youtubeUrl ?? '', folder ?? '', difficultyLabel, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel);
+    onAutoSave?.(newCombatants, encounterName, backgroundImageUrl ?? '', youtubeUrl ?? '', folder ?? '', difficultyLabel, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset);
   };
 
   const youtubeId = parseYoutubeId(youtubeUrl);
@@ -736,13 +748,13 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
             {/* Launch / Save — mobile only; desktop has these in the right sidebar */}
             <div className="md:hidden flex gap-2">
               <button
-                onClick={() => { onSave(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel); onSaveMeta?.(currentBudget, variants); }}
+                onClick={() => { onSave(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
                 className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-xs border border-white/5 transition-all uppercase tracking-wide"
               >
                 Save
               </button>
               <button
-                onClick={() => { onLaunch(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel); onSaveMeta?.(currentBudget, variants); }}
+                onClick={() => { onLaunch(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-primary to-blue-600 text-on-primary rounded-xl font-bold text-xs transition-all uppercase tracking-wide"
               >
                 <Zap className="w-3.5 h-3.5" /> Launch
@@ -912,6 +924,29 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="encounter-creator-hue-preset" className="text-[10px] font-black uppercase tracking-[0.2em] text-outline opacity-60 mb-2 block">Hue Color Preset</label>
+                <select
+                  id="encounter-creator-hue-preset"
+                  aria-label="Hue preset"
+                  value={huePreset}
+                  onChange={e => setHuePreset(e.target.value)}
+                  className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none transition-all"
+                >
+                  <option value="">No Hue scene</option>
+                  {hueScenes.map(scene => (
+                    <option key={scene.id} value={scene.id}>{scene.label}</option>
+                  ))}
+                </select>
+                {huePreset && (
+                  <div className="flex gap-1.5 mt-2" aria-label="Selected Hue scene colors">
+                    {hueScenes.find(scene => scene.id === huePreset)?.colors.map(color => (
+                      <span key={color} className="w-5 h-5 rounded-full border border-white/20" style={{ backgroundColor: color }} />
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
 
@@ -1103,14 +1138,14 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
               )}
               <button
                 disabled={!encounterName.trim()}
-                onClick={() => { onLaunch(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel); onSaveMeta?.(currentBudget, variants); }}
+                onClick={() => { onLaunch(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
                 className="w-full py-4 bg-gradient-to-r from-primary to-blue-600 text-on-primary rounded-xl font-headline font-black text-sm tracking-widest shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all uppercase disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 Launch Encounter
               </button>
               <button
                 disabled={!encounterName.trim()}
-                onClick={() => { onSave(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel); onSaveMeta?.(currentBudget, variants); }}
+                onClick={() => { onSave(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
                 className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-headline font-black text-sm tracking-widest border border-white/5 transition-all uppercase disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/5"
               >
                 Save Encounter

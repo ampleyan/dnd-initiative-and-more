@@ -26,6 +26,11 @@ function mergePlayerSpellSlots(rosterSlots: SpellSlots | undefined, combatantSlo
   ]));
 }
 
+export function selectPersistedActiveEncounter(encounters: Encounter[], currentEncounterId: string | null): Encounter | null {
+  if (currentEncounterId) return null;
+  return encounters.find(encounter => encounter.isEncounterActive) ?? null;
+}
+
 export function useAppState() {
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | null>(null);
 
@@ -158,6 +163,12 @@ export function useAppState() {
       setMonsters(MONSTER_LIBRARY);
     }
   }, [showError]);
+
+  useEffect(() => {
+    if (location.pathname !== '/dashboard') return;
+    const activeEncounter = selectPersistedActiveEncounter(savedEncounters, currentEncounterId);
+    if (activeEncounter) setCurrentEncounterId(activeEncounter.id);
+  }, [savedEncounters, currentEncounterId, location.pathname]);
 
   const fetchEncounterData = useCallback(async (encounterId: string) => {
     const seq = ++fetchSeqRef.current;

@@ -35,7 +35,7 @@ interface ModalsContainerProps {
 
   isSaveEncounterModalOpen: boolean;
   setIsSaveEncounterModalOpen: (open: boolean) => void;
-  handleSaveEncounter: (name: string, overrideCombatants?: Combatant[], backgroundImage?: string, youtubeUrl?: string, folder?: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[]) => void;
+  handleSaveEncounter: (name: string, overrideCombatants?: Combatant[], backgroundImage?: string, youtubeUrl?: string, folder?: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: import('../types').AnimationLevel, huePreset?: string) => void;
   isSaving?: boolean;
   encounterName: string;
   currentEncounterId: string | null;
@@ -136,13 +136,14 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
       <SaveEncounterModal
         isOpen={isSaveEncounterModalOpen}
         onClose={() => setIsSaveEncounterModalOpen(false)}
-        onSave={(name, folder, bg, yt, soundIds) => handleSaveEncounter(name, undefined, bg, yt, folder, undefined, undefined, undefined, soundIds)}
+        onSave={(name, folder, bg, yt, soundIds, huePreset) => handleSaveEncounter(name, undefined, bg, yt, folder, undefined, undefined, undefined, soundIds, undefined, huePreset)}
         isSaving={isSaving}
         initialName={encounterName}
         initialFolder={savedEncounters.find(e => e.id === currentEncounterId)?.folder ?? ''}
         initialBackgroundImage={savedEncounters.find(e => e.id === currentEncounterId)?.backgroundImage ?? ''}
         initialYoutubeUrl={savedEncounters.find(e => e.id === currentEncounterId)?.youtubeUrl ?? ''}
         initialSoundIds={savedEncounters.find(e => e.id === currentEncounterId)?.soundIds ?? []}
+        initialHuePreset={savedEncounters.find(e => e.id === currentEncounterId)?.huePreset}
         existingFolders={savedEncounters.map(e => e.folder ?? '').filter(Boolean)}
         sounds={sounds}
         title={currentEncounterId ? "Save Encounter" : "New Encounter"}

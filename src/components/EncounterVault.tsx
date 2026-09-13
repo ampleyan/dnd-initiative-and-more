@@ -1345,8 +1345,8 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
         <SaveEncounterModal
           isOpen={!!editingEncounter}
           onClose={() => setEditingEncounter(null)}
-          onSave={(name, folder, backgroundImage, youtubeUrl, soundIds) => {
-            onUpdateEncounter?.(editingEncounter.id, { name, folder, backgroundImage, youtubeUrl, soundIds });
+          onSave={(name, folder, backgroundImage, youtubeUrl, soundIds, huePreset) => {
+            onUpdateEncounter?.(editingEncounter.id, { name, folder, backgroundImage, youtubeUrl, soundIds, huePreset });
             setEditingEncounter(null);
           }}
           initialName={editingEncounter.name}
@@ -1354,6 +1354,7 @@ export const EncounterVault: React.FC<EncounterVaultProps> = ({
           initialBackgroundImage={editingEncounter.backgroundImage}
           initialYoutubeUrl={editingEncounter.youtubeUrl}
           initialSoundIds={editingEncounter.soundIds}
+          initialHuePreset={editingEncounter.huePreset}
           existingFolders={encounters.map(e => e.folder).filter((f): f is string => !!f)}
           sounds={sounds}
           title="Edit Encounter"

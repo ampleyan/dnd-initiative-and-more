@@ -78,7 +78,7 @@ export function useEncounterManagement(params: EncounterManagementParams) {
     navigate('/');
   };
 
-  const handleSaveEncounter = async (name: string, overrideCombatants?: Combatant[], backgroundImage?: string, youtubeUrl?: string, folder?: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel) => {
+  const handleSaveEncounter = async (name: string, overrideCombatants?: Combatant[], backgroundImage?: string, youtubeUrl?: string, folder?: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel, huePreset?: string) => {
     if (isSaving) return;
     const id = currentEncounterId || uuid();
     const combatantsToSave = overrideCombatants || combatants;
@@ -103,6 +103,7 @@ export function useEncounterManagement(params: EncounterManagementParams) {
       panelOpacity: panelOpacity ?? existing.panelOpacity ?? 0.92,
       animationLevel: animationLevel ?? existing.animationLevel ?? 'minimal',
       soundIds: soundIds ?? existing.soundIds ?? [],
+      huePreset: huePreset ?? existing.huePreset ?? '',
     };
 
     if (isDbAvailable) {

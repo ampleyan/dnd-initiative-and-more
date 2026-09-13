@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import type { DragControls } from 'motion/react';
-import { Users, Save, Square, Monitor, ChevronLeft, ChevronRight, ExternalLink, ArrowLeft, Play, Edit2, Heart, UserPlus, Swords, Sparkles, AlertTriangle, Plus, Trash2, Music, Undo2, Redo2, MoreHorizontal, Coffee } from 'lucide-react';
+import { Users, Save, Square, Monitor, ChevronLeft, ChevronRight, ExternalLink, ArrowLeft, Play, Edit2, Heart, UserPlus, Swords, Sparkles, AlertTriangle, Plus, Trash2, Music, Undo2, Redo2, MoreHorizontal, Coffee, CloudRain } from 'lucide-react';
 import { TurnCommandCenter } from './TurnCommandCenter';
 import { CombatantRow } from './CombatantRow';
 import { ParticipantControls } from './ParticipantControls';
@@ -914,6 +914,26 @@ export const MainContent: React.FC<MainContentProps> = ({
                       })}
                     </div>
                   </details>}
+                  {currentEncounterId && onUpdateEncounter && currentEncounter && <label className="flex items-center gap-2 rounded-lg border border-outline/25 px-3 py-2 text-xs font-bold text-outline hover:text-on-surface">
+                    <CloudRain className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Weather</span>
+                    <select
+                      aria-label="Weather"
+                      value={currentEncounter.weather ?? 'none'}
+                      onChange={e => onUpdateEncounter(currentEncounterId, { weather: e.target.value as Encounter['weather'] })}
+                      className="max-w-24 bg-transparent text-xs font-bold text-on-surface outline-none"
+                    >
+                      <option value="none">None</option>
+                      <option value="snow">Snow</option>
+                      <option value="rain">Rain</option>
+                      <option value="storm">Storm</option>
+                      <option value="ash">Ash</option>
+                      <option value="fog">Fog</option>
+                      <option value="motes">Motes</option>
+                      <option value="leaves">Leaves</option>
+                      <option value="sand">Sand</option>
+                    </select>
+                  </label>}
                   {currentEncounterId && onUpdateEncounter && <details className="relative">
                     <summary className="cursor-pointer rounded-lg border border-outline/25 px-3 py-2 text-xs font-bold text-outline hover:text-on-surface">Player view</summary>
                     <div className="absolute right-0 z-30 mt-1 w-72 space-y-2 rounded-xl border border-outline/20 bg-surface-container-highest p-3 shadow-xl">
@@ -956,7 +976,6 @@ export const MainContent: React.FC<MainContentProps> = ({
                       })}
                       <div className="flex gap-2 text-[10px]"><label><input type="checkbox" checked={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).showInitiativeOrder} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, showInitiativeOrder: e.target.checked } }); }} /> Initiative</label><label><input type="checkbox" checked={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).showRoundTurnBanner} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, showRoundTurnBanner: e.target.checked } }); }} /> Round banner</label></div>
                       <select value={(currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS).defeatedCombatants} onChange={e => { const settings = currentEncounter?.playerViewSettings ?? DEFAULT_PLAYER_VIEW_SETTINGS; onUpdateEncounter(currentEncounterId, { playerViewSettings: { ...settings, defeatedCombatants: e.target.value as 'dim' | 'hide' } }); }} className="w-full rounded bg-surface-container px-2 py-1 text-xs"><option value="dim">Dim defeated</option><option value="hide">Hide defeated</option></select>
-                      <select value={currentEncounter?.weather ?? 'none'} onChange={e => onUpdateEncounter(currentEncounterId, { weather: e.target.value as Encounter['weather'] })} className="w-full rounded bg-surface-container px-2 py-1 text-xs"><option value="none">No weather</option><option value="snow">Snow</option><option value="rain">Rain</option><option value="storm">Storm</option><option value="ash">Ash</option><option value="fog">Fog</option><option value="motes">Motes</option><option value="leaves">Leaves</option><option value="sand">Sand</option></select>
                       {/* Copyable join URL */}
                       <div className="space-y-1 border-t border-outline/10 pt-2">
                         <p className="text-[10px] font-black uppercase text-outline/60 tracking-wider">Join URL</p>

@@ -18,7 +18,7 @@ export function AppShell({
   afterMain,
 }: AppShellProps) {
   return (
-    <div className="flex min-h-screen bg-background text-on-background">
+    <div className="flex h-screen overflow-hidden bg-background text-on-background">
       {sidebar}
       {main}
       {afterMain}
