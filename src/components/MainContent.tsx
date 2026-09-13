@@ -226,7 +226,7 @@ interface MainContentProps {
   onDeleteCampaign?: (id: string) => Promise<void>;
   onCreateSession?: (name: string, date: string, notes: string) => Promise<void>;
   onDeleteSession?: (id: string) => Promise<void>;
-  onUpdateSession?: (id: string, updates: { notes?: string }) => Promise<void>;
+  onUpdateSession?: (id: string, updates: Partial<Pick<Session, 'name' | 'date' | 'notes'>>) => Promise<void>;
   onAssignEncounter?: (encounterId: string, sessionId: string | null) => Promise<void>;
   onLoadSessions?: (campaignId: string) => Promise<void>;
   onOpenEncounter?: (enc: Encounter) => void;
@@ -1304,6 +1304,7 @@ export const MainContent: React.FC<MainContentProps> = ({
               setIsEncounterCreatorOpen={setIsEncounterCreatorOpen}
               onSelectCampaign={onSelectCampaign}
               handleLoadEncounter={handleLoadEncounter}
+              onUpdateSession={onUpdateSession}
             />
           )}
 

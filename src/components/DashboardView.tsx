@@ -1,5 +1,5 @@
-import React from 'react';
-import { Swords, BookOpen, Shield, Sparkles, Clock, Map as MapIcon, UploadCloud, ChevronRight, MapPin, Users, Play, Radio, ScrollText } from 'lucide-react';
+import React, { useState } from 'react';
+import { Swords, BookOpen, Shield, Sparkles, Clock, Map as MapIcon, UploadCloud, ChevronRight, MapPin, Users, Play, Radio, ScrollText, Pencil, Check, X, ClipboardCheck } from 'lucide-react';
 import { Combatant, Encounter, MonsterTemplate, Player, Spell, Campaign, Session } from '../types';
 
 type ActiveTab = 'dashboard' | 'monsters' | 'players' | 'encounters' | 'spells' | 'archive' | 'settings' | 'import' | 'campaigns' | 'abilities' | 'soundboard';
@@ -24,6 +24,7 @@ interface DashboardViewProps {
   setIsEncounterCreatorOpen: (v: boolean) => void;
   onSelectCampaign?: (id: string) => void;
   handleLoadEncounter: (enc: Encounter) => void;
+  onUpdateSession?: (id: string, updates: Partial<Pick<Session, 'name' | 'date' | 'notes'>>) => Promise<void>;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -46,7 +47,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setIsEncounterCreatorOpen,
   onSelectCampaign,
   handleLoadEncounter,
+  onUpdateSession,
 }) => {
+  const [prepExpanded, setPrepExpanded] = useState(false);
+  const [editingNextSession, setEditingNextSession] = useState(false);
+  const [nextSessionDraft, setNextSessionDraft] = useState('');
   const campaignList = campaigns ?? [];
   const activeCampaign = campaignList.find(campaign => campaign.id === activeCampaignId)
     ?? [...campaignList].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
@@ -65,6 +70,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const lastPrepNote = currentEncounter?.notes?.general || latestEncounter?.notes?.general || lastSession?.notes;
   const nextEncounter = isEncounterActive ? encounterName : upcomingSession?.name || latestEncounter?.name;
   const musicStatus = hasAmbientMusic && !isMusicPaused ? 'Ambient music playing' : activeSoundCount > 0 ? `${activeSoundCount} sound${activeSoundCount === 1 ? '' : 's'} playing` : 'Music idle';
+  const readiness = [
+    { label: 'Campaign selected', ready: Boolean(activeCampaign) },
+    { label: 'Party loaded', ready: players.length > 0 },
+    { label: 'Encounter prepared', ready: Boolean(currentEncounter || upcomingSession || savedEncounters.length) },
+    { label: 'Atmosphere ready', ready: Boolean(activeSoundCount || hasAmbientMusic) },
+  ];
+  const saveNextSession = async () => {
+    if (!upcomingSession || !nextSessionDraft.trim() || !onUpdateSession) return;
+    await onUpdateSession(upcomingSession.id, { name: nextSessionDraft.trim() });
+    setEditingNextSession(false);
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -82,11 +98,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
           <div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Party average</p><p className="font-bold mt-1">Level {averagePartyLevel}</p></div>
-          <div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Next location</p><p className="font-bold mt-1 truncate">{upcomingSession?.name ?? 'Not set'}</p></div>
+          <div className="rounded-xl bg-black/15 p-3">
+            <p className="text-[10px] uppercase tracking-widest text-outline">Next session</p>
+            {editingNextSession ? (
+              <div className="flex items-center gap-1 mt-1">
+                <input value={nextSessionDraft} onChange={e => setNextSessionDraft(e.target.value)} autoFocus className="min-w-0 w-full bg-surface-container-high rounded px-2 py-1 text-xs" />
+                <button onClick={saveNextSession} aria-label="Save next session name" className="text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setEditingNextSession(false)} aria-label="Cancel editing next session" className="text-outline"><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 mt-1">
+                <p className="font-bold truncate flex-1">{upcomingSession?.name ?? 'Not set'}</p>
+                {upcomingSession && onUpdateSession && <button onClick={() => { setNextSessionDraft(upcomingSession.name); setEditingNextSession(true); }} aria-label="Edit next session name" className="text-outline hover:text-primary"><Pencil className="w-3 h-3" /></button>}
+              </div>
+            )}
+          </div>
           <div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Up next</p><p className="font-bold mt-1 truncate">{nextEncounter ?? 'Not set'}</p></div>
           <div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Campaign</p><p className="font-bold mt-1 truncate">{activeCampaign?.name ?? 'Not selected'}</p></div>
         </div>
-        {lastPrepNote && <div className="flex gap-3 rounded-xl border border-white/5 bg-black/10 p-3"><ScrollText className="w-4 h-4 text-primary shrink-0 mt-0.5" /><div className="min-w-0"><p className="text-[10px] uppercase tracking-widest text-outline">Last prep note</p><p className="text-sm text-on-surface/80 mt-1 line-clamp-2">{lastPrepNote}</p></div></div>}
+        {lastPrepNote && <div className="flex gap-3 rounded-xl border border-white/5 bg-black/10 p-3"><ScrollText className="w-4 h-4 text-primary shrink-0 mt-0.5" /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="text-[10px] uppercase tracking-widest text-outline">Last prep note</p><button onClick={() => setPrepExpanded(value => !value)} className="text-[10px] text-primary hover:underline">{prepExpanded ? 'Collapse' : 'Read more'}</button></div><p className={`text-sm text-on-surface/80 mt-1 ${prepExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>{lastPrepNote}</p></div></div>}
       </section>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs text-outline" aria-label="Shared DM context">
@@ -95,6 +125,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <span className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-emerald-400" />{players.length} party member{players.length === 1 ? '' : 's'}</span>
         <span className="inline-flex items-center gap-1.5"><Radio className="w-3.5 h-3.5 text-pink-400" />{musicStatus}</span>
       </div>
+
+      <section className="rounded-2xl border border-white/5 bg-surface-container-low p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-primary" /><h3 className="text-xs uppercase tracking-widest font-bold text-outline">Session readiness</h3></div>
+          <span className="text-[10px] text-outline">{readiness.filter(item => item.ready).length}/{readiness.length} ready</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          {readiness.map(item => <div key={item.label} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${item.ready ? 'bg-emerald-400/10 text-emerald-300' : 'bg-white/5 text-outline'}`}><span>{item.ready ? '✓' : '○'}</span>{item.label}</div>)}
+        </div>
+      </section>
 
       {isEncounterActive && currentEncounterId && (
         <div
@@ -223,7 +263,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              <div className="bg-surface-container-low border border-white/5 rounded-xl p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Next location</p><p className="font-medium mt-1 truncate">{upcomingSession?.name ?? 'Not set'}</p></div>
+              <div className="bg-surface-container-low border border-white/5 rounded-xl p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Next session</p><p className="font-medium mt-1 truncate">{upcomingSession?.name ?? 'Not set'}</p></div>
               <div className="bg-surface-container-low border border-white/5 rounded-xl p-3"><p className="text-[10px] uppercase tracking-widest text-outline">Next encounter</p><p className="font-medium mt-1 truncate">{nextEncounter ?? 'Not set'}</p></div>
             </div>
 
@@ -252,8 +292,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {[...savedEncounters]
               .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
               .slice(0, 5)
-              .map(enc => (
-                <button
+              .map(enc => {
+                const status = enc.id === currentEncounterId && isEncounterActive ? 'Active' : enc.completedAt ? 'Completed' : enc.sessionId ? 'Scheduled' : 'Draft';
+                const statusClass = status === 'Active' ? 'text-primary bg-primary/10' : status === 'Completed' ? 'text-emerald-400 bg-emerald-400/10' : status === 'Scheduled' ? 'text-sky-400 bg-sky-400/10' : 'text-outline bg-white/5';
+                return <button
                   key={enc.id}
                   onClick={() => handleLoadEncounter(enc)}
                   className="w-full flex items-center gap-4 bg-surface-container-low border border-white/5 rounded-xl px-5 py-4 text-left hover:border-primary/30 hover:bg-primary/5 transition-colors group"
@@ -263,9 +305,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <p className="font-medium text-sm truncate">{enc.name}</p>
                     <p className="text-[10px] text-outline">{enc.combatants?.length ?? 0} combatants · {new Date(enc.lastModified).toLocaleDateString()}</p>
                   </div>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider rounded px-2 py-1 shrink-0 ${statusClass}`}>{status}</span>
                   <ChevronRight className="w-4 h-4 text-outline/40 group-hover:text-primary transition-colors shrink-0" />
-                </button>
-              ))}
+                </button>;
+              })}
           </div>
         </div>
       )}
