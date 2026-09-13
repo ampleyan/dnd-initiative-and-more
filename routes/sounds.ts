@@ -6,6 +6,7 @@ import { Readable } from 'stream';
 import { spawn } from 'child_process';
 import * as yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
+import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,14 @@ type SoundImport = {
   fileSize?: number;
   checksum?: string;
   license?: string;
+};
+
+type FoundrySound = {
+  id: string;
+  name: string;
+  path: string;
+  volume?: number;
+  playlist?: string;
 };
 
 export function insertSounds(db: any, sounds: SoundImport[]) {
@@ -147,11 +156,13 @@ export function createSoundsRouter(
   dbAvailable: boolean,
   localAudioDir: string,
   ambiencesDir: string,
+  soundsUploadDirOverride?: string,
+  getFoundryRoot: () => string = () => '',
+  getFoundrySounds: (world: string) => Promise<FoundrySound[]> = async () => [],
 ) {
   const router = Router();
 
-  // Multer setup
-  const soundsUploadDir = path.join(__dirname, '..', 'uploads', 'sounds');
+  const soundsUploadDir = soundsUploadDirOverride ?? path.join(__dirname, '..', 'uploads', 'sounds');
   if (!fs.existsSync(soundsUploadDir)) fs.mkdirSync(soundsUploadDir, { recursive: true });
   const soundStorage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, soundsUploadDir),
@@ -188,7 +199,7 @@ export function createSoundsRouter(
     try {
       const library = await fetchTabletopAudioLibrary();
       if (req.body.ids !== undefined && !Array.isArray(req.body.ids)) return res.status(400).json({ error: 'ids must be an array' });
-      const ids: string[] | undefined = Array.isArray(req.body.ids) ? [...new Set(req.body.ids.filter((id: unknown): id is string => typeof id === 'string'))] : undefined;
+      const ids = (Array.isArray(req.body.ids) ? [...new Set(req.body.ids.filter((id: unknown): id is string => typeof id === 'string'))] : undefined) as string[] | undefined;
       const toImport = ids ? library.filter(s => ids.includes(s.id)) : library;
       res.json({ ...insertSounds(db, toImport), invalid: ids ? ids.length - toImport.length : 0 });
     } catch (e: any) {
@@ -224,7 +235,7 @@ export function createSoundsRouter(
     if (!dbAvailable) return res.status(503).json({ error: 'DB not available' });
     if (!fs.existsSync(localAudioDir)) return res.status(404).json({ error: 'Local audio folder not found' });
     if (req.body.ids !== undefined && !Array.isArray(req.body.ids)) return res.status(400).json({ error: 'ids must be an array' });
-    const ids: string[] | undefined = Array.isArray(req.body.ids) ? [...new Set(req.body.ids.filter((id: unknown): id is string => typeof id === 'string'))] : undefined;
+    const ids = (Array.isArray(req.body.ids) ? [...new Set(req.body.ids.filter((id: unknown): id is string => typeof id === 'string'))] : undefined) as string[] | undefined;
     const toInsert: SoundImport[] = [];
     for (const folder of fs.readdirSync(localAudioDir)) {
       if (folder.startsWith('.')) continue;
@@ -285,6 +296,57 @@ export function createSoundsRouter(
       return [{ id: item.id, name: source.name, url: item.url, category: AMBIENCE_GENRE_TO_CATEGORY[source.genre] ?? 'ambient', tags: [source.genre.toLowerCase()], volume: 0.8 }];
     });
     res.json({ ...insertSounds(db, sounds), invalid: items.length - sounds.length });
+  });
+
+  router.post('/sounds/foundry/import', async (req, res) => {
+    if (!dbAvailable) return res.status(503).json({ error: 'DB not available' });
+    const world = typeof req.body?.world === 'string' ? req.body.world.trim() : '';
+    const ids = Array.isArray(req.body?.ids) ? [...new Set(req.body.ids.filter((id: unknown): id is string => typeof id === 'string'))] : null;
+    if (!world || !ids) return res.status(400).json({ error: 'world and ids are required' });
+    const createdPaths: string[] = [];
+    try {
+      const catalog = await getFoundrySounds(world);
+      const selected = catalog.filter(sound => ids.includes(sound.id));
+      const invalid = ids.length - selected.length;
+      let unavailable = 0;
+      const imports: SoundImport[] = [];
+      for (const sound of selected) {
+        const id = `foundry-${world}-${sound.id}`;
+        if (db.prepare('SELECT 1 FROM sounds WHERE id = ?').get(id)) continue;
+        const rootValue = getFoundryRoot();
+        if (!rootValue) { unavailable++; continue; }
+        const root = path.resolve(rootValue);
+        const sourcePath = path.resolve(path.join(root, sound.path));
+        if (!sourcePath.startsWith(root + path.sep) || !fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) { unavailable++; continue; }
+        const realSourcePath = fs.realpathSync(sourcePath);
+        if (!realSourcePath.startsWith(root + path.sep)) { unavailable++; continue; }
+        const filename = `${crypto.randomBytes(8).toString('hex')}-${path.basename(sound.path).replace(/[^a-z0-9._-]/gi, '_')}`;
+        const destination = path.join(soundsUploadDir, filename);
+        fs.copyFileSync(realSourcePath, destination);
+        createdPaths.push(destination);
+        const fileSize = fs.statSync(destination).size;
+        const checksum = crypto.createHash('sha256').update(fs.readFileSync(destination)).digest('hex');
+        imports.push({
+          id,
+          name: sound.name,
+          url: `/uploads/sounds/${filename}`,
+          category: 'ambient',
+          tags: ['foundry', ...(sound.playlist ? [sound.playlist.toLowerCase()] : [])],
+          volume: sound.volume ?? 0.5,
+          sourceType: 'foundry',
+          sourceReference: sound.path,
+          storageType: 'managed-file',
+          filePath: destination,
+          fileSize,
+          checksum,
+        });
+      }
+      const result = insertSounds(db, imports);
+      res.json({ ...result, invalid: invalid + unavailable });
+    } catch (e: any) {
+      for (const createdPath of createdPaths) fs.rmSync(createdPath, { force: true });
+      res.status(500).json({ error: e.message ?? 'Foundry import failed' });
+    }
   });
 
   // ── YouTube / yt-dlp import ────────────────────────────────────────────────

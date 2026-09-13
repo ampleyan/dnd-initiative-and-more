@@ -148,6 +148,8 @@ export const spells = {
 
 // ── Sounds ────────────────────────────────────────────────────────────────────
 
+export type BulkImportResult = { inserted: number; skipped: number; invalid: number };
+
 export const sounds = {
   list:   () => get<Sound[]>('/api/sounds'),
   create: (data: Partial<Sound>) => post<Sound>('/api/sounds', data),
@@ -161,10 +163,12 @@ export const sounds = {
   library:   () => get<unknown[]>('/api/sounds/library'),
   local:     () => get<unknown[]>('/api/sounds/local'),
   ambiences: () => get<unknown[]>('/api/sounds/ambiences'),
-  importAmbiences:   (items: unknown[]) => post<{ success: boolean }>('/api/sounds/ambiences/import', { items }),
+  importAmbiences:   (items: unknown[]) => post<BulkImportResult>('/api/sounds/ambiences/import', { items }),
   importSfxItem:     (data: unknown)    => post<{ success: boolean }>('/api/sounds/sfx/import', data),
   importBulkVisible: (endpoint: string, ids: string[]) =>
-    post<{ success: boolean }>(endpoint, { ids }),
+    post<BulkImportResult>(endpoint, { ids }),
+  importFoundry: (world: string, ids: string[]) =>
+    post<BulkImportResult>('/api/sounds/foundry/import', { world, ids }),
   youtubeMeta:     (url: string) => get<{ title: string }>(`/api/sounds/youtube/meta?url=${encodeURIComponent(url)}`),
   youtubeSearch:   (q: string) => get<any[]>(`/api/sounds/youtube/search?q=${encodeURIComponent(q)}`),
   youtubeDownload: (data: { url: string; name?: string; category?: string; volume?: number }) =>

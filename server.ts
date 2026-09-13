@@ -19,7 +19,7 @@ import { createMonstersRouter } from './routes/monsters.ts';
 import { createSoundsRouter } from './routes/sounds.ts';
 import { createLightsRouter } from './routes/lights.ts';
 import { createDndBeyondRouter } from './routes/dnd-beyond.ts';
-import { createFoundryRouter, createFoundryConfigRouter, createFoundryLiveRouter } from './routes/foundry.ts';
+import { createFoundryRouter, createFoundryConfigRouter, createFoundryLiveRouter, readFoundryPlaylistSounds } from './routes/foundry.ts';
 import { createImagesRouter } from './routes/images.ts';
 import { createBackupsRouter } from './routes/backups.ts';
 import { toPlayerLog } from './src/lib/playerLog.ts';
@@ -115,11 +115,12 @@ async function startServer() {
   app.use('/api', createEncountersRouter(db, dbAvailable, io));
   app.use('/api', createCampaignsRouter(db, dbAvailable));
   app.use('/api', createMonstersRouter(db, dbAvailable, requireAdmin, repairMonsterTraits));
-  const { router: soundsRouter } = createSoundsRouter(db, dbAvailable, localAudioDir, ambiencesDir);
+  const approvedFoundryRoot = () => getSetting('foundry_data_path') || process.env.FOUNDRY_DATA_PATH || path.join(process.cwd(), 'foundry');
+  const { router: soundsRouter } = createSoundsRouter(db, dbAvailable, localAudioDir, ambiencesDir, soundsUploadDir, approvedFoundryRoot, world => readFoundryPlaylistSounds(world, approvedFoundryRoot()));
   app.use('/api', soundsRouter);
   app.use('/api', createLightsRouter(getSetting, setSetting, db));
   app.use('/api', createDndBeyondRouter(db, dbAvailable, ensureMonstersInDb));
-  app.use('/api', createFoundryRouter(portraitsUploadDir));
+  app.use('/api', createFoundryRouter(portraitsUploadDir, approvedFoundryRoot));
   app.use('/api', createImagesRouter());
 
   // Frontend (Vite dev or static production build)

@@ -104,10 +104,11 @@ function refreshDbCache(originalPath: string): string {
 const FOUNDRY_DATA_PATH = process.env.FOUNDRY_DATA_PATH || path.join(process.cwd(), 'foundry');
 let PORTRAITS_DIR = '';
 
-function resolveFoundryPath(p: string | undefined): string {
+function resolveFoundryPath(p: string | undefined, dataPathOverride?: string): string {
   if (!p) return '';
   if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:')) return p;
-  return `/api/foundry/file?p=${encodeURIComponent(p)}`;
+  const dataPath = dataPathOverride ? `&dataPath=${encodeURIComponent(dataPathOverride)}` : '';
+  return `/api/foundry/file?p=${encodeURIComponent(p)}${dataPath}`;
 }
 
 /** Copy a Foundry portrait to the local uploads/portraits dir and return its stable URL. */
@@ -134,7 +135,7 @@ function copyFoundryPortrait(imgPath: string | undefined, dataPathOverride: stri
   }
 }
 
-async function readScenes(dbPath: string): Promise<any[]> {
+async function readScenes(dbPath: string, dataPathOverride?: string): Promise<any[]> {
   const db = await openLevel(dbPath);
   try {
     const scenes: any[] = [];
@@ -146,8 +147,8 @@ async function readScenes(dbPath: string): Promise<any[]> {
         id: v._id,
         name: v.name,
         active: v.active ?? false,
-        backgroundImg: resolveFoundryPath(v.background?.src ?? v.img ?? ''),
-        playlistSound: v.playlist?.sound?.path ? resolveFoundryPath(v.playlist.sound.path) : null,
+        backgroundImg: resolveFoundryPath(v.background?.src ?? v.img ?? '', dataPathOverride),
+        playlistSound: v.playlist?.sound?.path ? resolveFoundryPath(v.playlist.sound.path, dataPathOverride) : null,
         width: v.width,
         height: v.height,
       });
@@ -160,7 +161,7 @@ async function readScenes(dbPath: string): Promise<any[]> {
   }
 }
 
-async function readPlaylists(dbPath: string): Promise<any[]> {
+async function readPlaylists(dbPath: string, dataPathOverride?: string): Promise<any[]> {
   const db = await openLevel(dbPath);
   try {
     const playlists: any[] = [];
@@ -188,7 +189,7 @@ async function readPlaylists(dbPath: string): Promise<any[]> {
           id: s._id,
           name: s.name,
           path: s.path,
-          url: resolveFoundryPath(s.path),
+          url: resolveFoundryPath(s.path, dataPathOverride),
           volume: s.volume ?? 0.5,
           repeat: s.repeat ?? false
         });
@@ -204,6 +205,20 @@ async function readPlaylists(dbPath: string): Promise<any[]> {
     try { await db.close(); } catch {}
     throw e;
   }
+}
+
+export async function readFoundryPlaylistSounds(world: string, approvedRoot: string): Promise<Array<{ id: string; name: string; path: string; volume: number; playlist: string }>> {
+  const root = path.resolve(approvedRoot);
+  const worldPath = path.resolve(path.join(root, 'worlds', world));
+  if (!worldPath.startsWith(root + path.sep)) return [];
+  const playlists = await readPlaylists(path.join(worldPath, 'data', 'playlists'), root);
+  return playlists.flatMap(playlist => playlist.sounds.map((sound: any) => ({
+    id: sound.id,
+    name: sound.name,
+    path: sound.path,
+    volume: sound.volume ?? 0.5,
+    playlist: playlist.name,
+  })));
 }
 
 const SIZE_MAP: Record<string, string> = {
@@ -959,20 +974,23 @@ async function readActorsForRequest(query: FoundryActorQuery, actorType?: 'chara
   return readActorsAll(query.world, query.dataPath, options);
 }
 
-export function createFoundryRouter(portraitsDir: string = '') {
+export function createFoundryRouter(portraitsDir: string = '', getApprovedRoot: () => string = () => FOUNDRY_DATA_PATH) {
   PORTRAITS_DIR = portraitsDir;
   const router = Router();
 
   router.get('/foundry/file', (req, res) => {
     const { p } = req.query as { p?: string };
     if (!p) return res.status(400).send('Missing path');
-    const basePath = FOUNDRY_DATA_PATH;
+    const basePath = getApprovedRoot();
     const normalized = path.resolve(path.join(basePath, p));
-    if (!normalized.startsWith(path.resolve(basePath) + path.sep)) {
+    const approvedRoot = path.resolve(basePath);
+    if (!normalized.startsWith(approvedRoot + path.sep)) {
       return res.status(403).send('Forbidden');
     }
     if (!fs.existsSync(normalized)) return res.status(404).send('Not found');
-    res.sendFile(normalized);
+    const realPath = fs.realpathSync(normalized);
+    if (!realPath.startsWith(approvedRoot + path.sep)) return res.status(403).send('Forbidden');
+    res.sendFile(realPath);
   });
 
   router.get('/foundry/scenes', async (req, res) => {
@@ -981,7 +999,7 @@ export function createFoundryRouter(portraitsDir: string = '') {
     const dbPath = path.join(getWorldsDir(dataPath), world, 'data', 'scenes');
     if (!fs.existsSync(dbPath)) return res.status(404).json({ error: 'Scenes DB not found' });
     try {
-      const scenes = await readScenes(dbPath);
+      const scenes = await readScenes(dbPath, dataPath);
       res.json(scenes);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -994,7 +1012,7 @@ export function createFoundryRouter(portraitsDir: string = '') {
     const dbPath = path.join(getWorldsDir(dataPath), world, 'data', 'playlists');
     if (!fs.existsSync(dbPath)) return res.status(404).json({ error: 'Playlist database not found' });
     try {
-      const playlists = await readPlaylists(dbPath);
+      const playlists = await readPlaylists(dbPath, dataPath);
       res.json(playlists);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
