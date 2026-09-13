@@ -41,6 +41,7 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
   const [libCategory, setLibCategory] = useState('all');
   const [libSearch, setLibSearch] = useState('');
   const [previewingId, setPreviewingId] = useState<string | null>(null);
@@ -133,6 +134,7 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
     if (show) {
       setSelectedIds(new Set());
       setSelectedVariants({});
+      setImportStatus(null);
       setLibSource('ambiences');
       setLibCategory('all');
       setLibSearch('');
@@ -227,76 +229,71 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
   const handleImport = useCallback(async () => {
     if (selectedIds.size === 0) return;
     setImporting(true);
-    if (libSource === 'ambiences') {
-      const items = Array.from(selectedIds).map(id => {
-        const track = ambienceLibrary.find(t => t.id === id)!;
-        const url = selectedVariants[id] ?? track.defaultUrl;
-        return { id, name: track.name, url, genre: track.genre };
-      });
-      await api.sounds.importAmbiences(items);
-    } else {
-      const endpoint = libSource === 'local' ? '/api/sounds/local/import' : '/api/sounds/library/import';
-      await api.sounds.importBulkVisible(endpoint, Array.from(selectedIds));
+    try {
+      if (libSource === 'ambiences') {
+        const items = Array.from(selectedIds).map(id => {
+          const track = ambienceLibrary.find(t => t.id === id)!;
+          const url = selectedVariants[id] ?? track.defaultUrl;
+          return { id, name: track.name, url, genre: track.genre };
+        });
+        await api.sounds.importAmbiences(items);
+      } else {
+        const endpoint = libSource === 'local' ? '/api/sounds/local/import' : '/api/sounds/library/import';
+        await api.sounds.importBulkVisible(endpoint, Array.from(selectedIds));
+      }
+      await onRefresh();
+      onClose();
+    } catch (e: any) {
+      alert(e.message || 'Import failed');
+    } finally {
+      setImporting(false);
     }
-    await onRefresh();
-    onClose();
-    setImporting(false);
   }, [selectedIds, libSource, ambienceLibrary, selectedVariants, onRefresh, onClose]);
 
   const handleFoundryImport = useCallback(async () => {
     if (selectedIds.size === 0) return;
     setImporting(true);
     try {
-      const toImport: any[] = [];
-      for (const pl of playlists) {
-        for (const s of pl.sounds) {
-          if (selectedIds.has(s.id)) {
-            toImport.push({
-              id: `foundry-${selectedWorld}-${s.id}`,
-              name: s.name,
-              url: s.url,
-              category: 'ambient',
-              tags: JSON.stringify(['foundry', pl.name.toLowerCase()]),
-              volume: s.volume
-            });
-          }
-        }
-      }
-      for (const s of toImport) {
-        await api.sounds.create(s);
+      const result = await api.sounds.importFoundry(selectedWorld, Array.from(selectedIds));
+      await onRefresh();
+      setSelectedIds(new Set());
+      setImportStatus(`Imported ${result.inserted}; skipped ${result.skipped}; unavailable ${result.invalid}.`);
+    } catch (e: any) {
+      setImportStatus(e.message || 'Foundry import failed');
+    } finally {
+      setImporting(false);
+    }
+  }, [selectedIds, selectedWorld, onRefresh]);
+
+  const handleImportAll = useCallback(async () => {
+    setImporting(true);
+    try {
+      const q = libSearch.toLowerCase();
+      if (libSource === 'ambiences') {
+        const visible = ambienceLibrary.filter(t =>
+          (!q || t.name.toLowerCase().includes(q) || t.genre.toLowerCase().includes(q)) &&
+          !sounds.some(s => s.id === t.id)
+        );
+        const items = visible.map(t => ({
+          id: t.id, name: t.name, url: selectedVariants[t.id] ?? t.defaultUrl, genre: t.genre,
+        }));
+        await api.sounds.importAmbiences(items);
+      } else {
+        const activeLib = libSource === 'local' ? localLibrary : library;
+        const endpoint = libSource === 'local' ? '/api/sounds/local/import' : '/api/sounds/library/import';
+        const visible = activeLib.filter(s =>
+          (libCategory === 'all' || s.category === libCategory) &&
+          (!q || s.name.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q)) || (s.pack && s.pack.toLowerCase().includes(q)))
+        );
+        await api.sounds.importBulkVisible(endpoint, visible.map(s => s.id));
       }
       await onRefresh();
       onClose();
     } catch (e: any) {
-      alert(e.message || 'Foundry import failed');
+      alert(e.message || 'Import failed');
+    } finally {
+      setImporting(false);
     }
-    setImporting(false);
-  }, [selectedIds, playlists, selectedWorld, onRefresh, onClose]);
-
-  const handleImportAll = useCallback(async () => {
-    setImporting(true);
-    const q = libSearch.toLowerCase();
-    if (libSource === 'ambiences') {
-      const visible = ambienceLibrary.filter(t =>
-        (!q || t.name.toLowerCase().includes(q) || t.genre.toLowerCase().includes(q)) &&
-        !sounds.some(s => s.id === t.id)
-      );
-      const items = visible.map(t => ({
-        id: t.id, name: t.name, url: selectedVariants[t.id] ?? t.defaultUrl, genre: t.genre,
-      }));
-      await api.sounds.importAmbiences(items);
-    } else {
-      const activeLib = libSource === 'local' ? localLibrary : library;
-      const endpoint = libSource === 'local' ? '/api/sounds/local/import' : '/api/sounds/library/import';
-      const visible = activeLib.filter(s =>
-        (libCategory === 'all' || s.category === libCategory) &&
-        (!q || s.name.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q)) || (s.pack && s.pack.toLowerCase().includes(q)))
-      );
-      await api.sounds.importBulkVisible(endpoint, visible.map(s => s.id));
-    }
-    await onRefresh();
-    onClose();
-    setImporting(false);
   }, [libSource, library, localLibrary, ambienceLibrary, libSearch, libCategory, selectedVariants, sounds, onRefresh, onClose]);
 
   if (!show) return null;
@@ -340,6 +337,7 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
               onClick={async () => {
                 setLibSource(src);
                 setSelectedIds(new Set());
+                setImportStatus(null);
                 setLibCategory('all');
                 previewAudioRef.current?.pause();
                 setPreviewingId(null);
@@ -912,6 +910,7 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
             )}
           </div>
           <div className="flex items-center gap-2">
+            {importStatus && <span className="text-[10px] text-outline max-w-[220px] text-right">{importStatus}</span>}
             <button onClick={onClose} className="px-4 py-2 text-sm text-outline hover:text-on-surface transition-colors">
               {libSource === 'youtube' || libSource === 'foundry' ? 'Close' : 'Cancel'}
             </button>
