@@ -164,6 +164,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [portraitsOpen, setPortraitsOpen] = useState(true);
   const [logOpen, setLogOpen] = useState(false);
   const [expandedAbilities, setExpandedAbilities] = useState<Set<string>>(new Set());
+  const [expandedSlots, setExpandedSlots] = useState<Set<string>>(new Set());
+  const toggleSlots = (id: string) => setExpandedSlots(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const previousActiveCombatantId = useRef<string | null>(null);
   const [turnCueActive, setTurnCueActive] = useState(false);
 
@@ -305,9 +307,19 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         100% { transform: scale(1); opacity: 1; }
       }
       .turn-cue-enter { animation: turnCue .7s ease-out; }
-      @keyframes weatherDrift { to { background-position: 0 260px; } }
+      @keyframes wxSnow    { to { background-position: 12px 200px; } }
+      @keyframes wxSnow2   { to { background-position: -8px 180px; } }
+      @keyframes wxRain    { to { background-position: -40px 120px; } }
+      @keyframes wxStorm   { to { background-position: -60px 100px; } }
+      @keyframes wxAsh     { to { background-position: 20px 240px; } }
+      @keyframes wxAsh2    { to { background-position: -14px 200px; } }
+      @keyframes wxFog     { 0%  { background-position: 0% 50%; } 100% { background-position: 120% 50%; } }
+      @keyframes wxFog2    { 0%  { background-position: 100% 50%; } 100% { background-position: -20% 50%; } }
+      @keyframes wxMotes   { 0%  { background-position: 0 0; opacity: .5; } 50% { opacity: 1; } 100% { background-position: -10px -180px; opacity: .5; } }
+      @keyframes wxLeaves  { 0%  { background-position: 0 0; } 100% { background-position: 60px 220px; } }
+      @keyframes wxSand    { to { background-position: 300px 30px; } }
       @media (prefers-reduced-motion: reduce) {
-        .turn-cue-enter, [data-testid="weather-overlay"] { animation: none !important; }
+        .turn-cue-enter, [data-testid="weather-overlay"], [data-testid="weather-overlay2"] { animation: none !important; }
       }
     `}</style>
     <div className="fixed inset-0 z-50 bg-surface-container-lowest overflow-y-auto overflow-x-hidden">
@@ -330,7 +342,45 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         <div className="absolute top-[-10%] left-[15%] w-[700px] h-[700px] rounded-full bg-indigo-950/40 blur-[140px]" />
         <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[400px] rounded-full bg-blue-950/30 blur-[120px]" />
         <div className="absolute top-[40%] left-[40%] w-[600px] h-[200px] rounded-full bg-primary/5 blur-[100px]" />
-        {weather !== 'none' && animationLevel !== 'none' && <div data-testid="weather-overlay" className={`absolute inset-0 weather-${weather}`} style={{ backgroundImage: weather === 'fog' ? 'radial-gradient(ellipse, rgba(230,235,240,.18), transparent 65%)' : 'radial-gradient(circle, rgba(255,255,255,.65) 1px, transparent 1.5px)', backgroundSize: '28px 28px', animation: 'weatherDrift 8s linear infinite' }} />}
+        {weather !== 'none' && animationLevel !== 'none' && (() => {
+          const base = 'absolute inset-0 pointer-events-none';
+          if (weather === 'snow') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,.7) 1px, transparent 1.5px)', backgroundSize: '32px 32px', animation: 'wxSnow 10s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,.4) 1px, transparent 1px)', backgroundSize: '18px 18px', animation: 'wxSnow2 14s linear infinite' }} />
+          </>;
+          if (weather === 'rain') return <>
+            <div data-testid="weather-overlay" className={base} style={{ backgroundImage: 'linear-gradient(170deg, rgba(180,210,255,.55) 1px, transparent 1px)', backgroundSize: '14px 18px', animation: 'wxRain 0.55s linear infinite' }} />
+          </>;
+          if (weather === 'storm') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'linear-gradient(168deg, rgba(180,215,255,.65) 1px, transparent 1px)', backgroundSize: '10px 14px', animation: 'wxStorm 0.3s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'linear-gradient(168deg, rgba(200,225,255,.35) 1px, transparent 1px)', backgroundSize: '20px 22px', animation: 'wxStorm 0.45s linear infinite', opacity: 0.7 }} />
+            <div className={base} style={{ background: 'rgba(100,140,200,.04)' }} />
+          </>;
+          if (weather === 'ash') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(180,175,170,.6) 1px, transparent 1.5px)', backgroundSize: '26px 26px', animation: 'wxAsh 16s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(160,155,150,.35) 1px, transparent 1px)', backgroundSize: '14px 14px', animation: 'wxAsh2 22s linear infinite' }} />
+            <div className={base} style={{ background: 'rgba(80,70,60,.07)' }} />
+          </>;
+          if (weather === 'fog') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(ellipse 80% 40% at 50% 50%, rgba(220,228,235,.22), transparent)', backgroundSize: '200% 100%', animation: 'wxFog 18s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(ellipse 60% 30% at 50% 50%, rgba(210,220,230,.15), transparent)', backgroundSize: '200% 100%', animation: 'wxFog2 24s linear infinite' }} />
+            <div className={base} style={{ background: 'rgba(200,210,220,.05)' }} />
+          </>;
+          if (weather === 'motes') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(180,160,255,.8) 1px, transparent 1.5px)', backgroundSize: '40px 40px', animation: 'wxMotes 8s ease-in-out infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(220,200,255,.5) 1px, transparent 1px)', backgroundSize: '22px 22px', animation: 'wxMotes 12s ease-in-out infinite reverse' }} />
+          </>;
+          if (weather === 'leaves') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(ellipse 3px 2px, rgba(120,180,60,.7), transparent)', backgroundSize: '48px 38px', animation: 'wxLeaves 7s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(ellipse 2px 3px, rgba(180,130,40,.55), transparent)', backgroundSize: '34px 52px', animation: 'wxLeaves 10s linear infinite reverse' }} />
+          </>;
+          if (weather === 'sand') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(210,180,100,.55) 1px, transparent 1px)', backgroundSize: '8px 12px', animation: 'wxSand 1.2s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(190,155,80,.35) 1px, transparent 1px)', backgroundSize: '14px 18px', animation: 'wxSand 2s linear infinite', opacity: 0.6 }} />
+            <div className={base} style={{ background: 'rgba(150,110,40,.06)' }} />
+          </>;
+          return null;
+        })()}
       </div>
 
       {/* Encounter Ended Banner */}
@@ -561,29 +611,29 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   const cimm = activeMonster.conditionImmunities ?? [];
                   if (!vuln.length && !res.length && !dimm.length && !cimm.length) return null;
                   return (
-                    <div className="border-t border-white/8 px-3 py-2 flex flex-col gap-1">
+                    <div className="border-t border-white/8 px-3 py-2.5 flex flex-col gap-1.5">
                       {vuln.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-rose-500/10">
-                          <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wide w-20 shrink-0">V</span>
-                          <div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-rose-200 bg-rose-500/20 capitalize">{v}</span>)}</div>
+                        <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-rose-500/12 border border-rose-500/20">
+                          <span className="text-[10px] font-black text-rose-300 uppercase tracking-widest w-24 shrink-0 pt-px">Vulnerable</span>
+                          <div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-rose-100 bg-rose-500/30 border border-rose-400/30 capitalize">{v}</span>)}</div>
                         </div>
                       )}
                       {res.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-sky-500/10">
-                          <span className="text-[10px] font-bold text-sky-300 uppercase tracking-wide w-20 shrink-0">R</span>
-                          <div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-sky-200 bg-sky-500/20 capitalize">{r}</span>)}</div>
+                        <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-sky-500/12 border border-sky-500/20">
+                          <span className="text-[10px] font-black text-sky-300 uppercase tracking-widest w-24 shrink-0 pt-px">Resistant</span>
+                          <div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-sky-100 bg-sky-500/30 border border-sky-400/30 capitalize">{r}</span>)}</div>
                         </div>
                       )}
                       {dimm.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-purple-500/10">
-                          <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide w-20 shrink-0">I</span>
-                          <div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-purple-200 bg-purple-500/20 capitalize">{i}</span>)}</div>
+                        <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-purple-500/12 border border-purple-500/20">
+                          <span className="text-[10px] font-black text-purple-300 uppercase tracking-widest w-24 shrink-0 pt-px">Immune</span>
+                          <div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-purple-100 bg-purple-500/30 border border-purple-400/30 capitalize">{i}</span>)}</div>
                         </div>
                       )}
                       {cimm.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-amber-500/10">
-                          <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wide w-20 shrink-0">C</span>
-                          <div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-amber-200 bg-amber-500/20 capitalize">{i}</span>)}</div>
+                        <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-amber-500/12 border border-amber-500/20">
+                          <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest w-24 shrink-0 pt-px">Cond. Immune</span>
+                          <div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-100 bg-amber-500/30 border border-amber-400/30 capitalize">{i}</span>)}</div>
                         </div>
                       )}
                     </div>
@@ -771,7 +821,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       </div>
                     </div>
                     <div className="shrink-0">
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${barColor}25`, color: barColor }}>{s.label}</span>
+                      <span className="px-1.5 py-0.5 rounded text-[16px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${barColor}25`, color: barColor }}>{s.label}</span>
                     </div>
                     {animationLevel === 'full' && <ParticleBurst particles={particles} combatantId={c.id} />}
                   </div>
@@ -851,6 +901,31 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                               <span className="text-[10px] text-violet-300 font-bold">{c.concentratingOn}</span>
                             </div>
                           )}
+                          {isPlayer && c.spellSlots && Object.keys(c.spellSlots).length > 0 && (
+                            <div className="mt-1.5">
+                              <button onClick={() => toggleSlots(c.id)} className="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest text-violet-400/60 hover:text-violet-400/90 transition-colors">
+                                <span>Spell Slots</span>
+                                {expandedSlots.has(c.id) ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                              </button>
+                              {expandedSlots.has(c.id) && (
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                  {(Object.entries(c.spellSlots) as [string, { total: number; used: number }][])
+                                    .sort(([a], [b]) => Number(a) - Number(b))
+                                    .map(([level, slot]) => {
+                                      const available = slot.total - slot.used;
+                                      return (
+                                        <div key={level} className="flex items-center gap-1">
+                                          <span className="text-[8px] font-black text-violet-400/70 tabular-nums w-2.5">{level}</span>
+                                          {Array.from({ length: slot.total }, (_, i) => (
+                                            <span key={i} className={cn('w-2 h-2 rounded-full', i < available ? 'bg-violet-400' : 'bg-violet-400/15 border border-violet-400/30')} />
+                                          ))}
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {(() => {
                             const disadvNames = c.conditions
                               .filter(id => ATTACK_DISADVANTAGE_CONDITIONS.has(id))
@@ -907,19 +982,19 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         </div>
                       )}
                     </div>
-                    {/* Hunter's Mark reveals traits */}
-                    {!isPlayer && c.conditions.includes('hunters-mark') && (() => {
+                    {/* Combat traits on active monster card */}
+                    {!isPlayer && (() => {
                       const vuln = c.vulnerabilities ?? [];
                       const res  = c.resistances ?? [];
                       const dimm = c.damageImmunities ?? [];
                       const cimm = c.conditionImmunities ?? [];
                       if (!vuln.length && !res.length && !dimm.length && !cimm.length) return null;
                       return (
-                        <div className="border-t border-white/8 px-4 py-2 flex flex-col gap-1">
-                          {vuln.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-rose-500/10"><span className="text-[9px] font-bold text-rose-300 uppercase tracking-wide w-20 shrink-0">V</span><div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-rose-200 bg-rose-500/20 capitalize">{v}</span>)}</div></div>}
-                          {res.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-sky-500/10"><span className="text-[9px] font-bold text-sky-300 uppercase tracking-wide w-20 shrink-0">R</span><div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-sky-200 bg-sky-500/20 capitalize">{r}</span>)}</div></div>}
-                          {dimm.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-purple-500/10"><span className="text-[9px] font-bold text-purple-300 uppercase tracking-wide w-20 shrink-0">I</span><div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-purple-200 bg-purple-500/20 capitalize">{i}</span>)}</div></div>}
-                          {cimm.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-amber-500/10"><span className="text-[9px] font-bold text-amber-300 uppercase tracking-wide w-20 shrink-0">C</span><div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-200 bg-amber-500/20 capitalize">{i}</span>)}</div></div>}
+                        <div className="border-t border-white/8 px-4 py-2.5 flex flex-col gap-1.5">
+                          {vuln.length > 0 && <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-rose-500/12 border border-rose-500/20"><span className="text-[10px] font-black text-rose-300 uppercase tracking-widest w-24 shrink-0 pt-px">Vulnerable</span><div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-rose-100 bg-rose-500/30 border border-rose-400/30 capitalize">{v}</span>)}</div></div>}
+                          {res.length > 0 && <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-sky-500/12 border border-sky-500/20"><span className="text-[10px] font-black text-sky-300 uppercase tracking-widest w-24 shrink-0 pt-px">Resistant</span><div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-sky-100 bg-sky-500/30 border border-sky-400/30 capitalize">{r}</span>)}</div></div>}
+                          {dimm.length > 0 && <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-purple-500/12 border border-purple-500/20"><span className="text-[10px] font-black text-purple-300 uppercase tracking-widest w-24 shrink-0 pt-px">Immune</span><div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-purple-100 bg-purple-500/30 border border-purple-400/30 capitalize">{i}</span>)}</div></div>}
+                          {cimm.length > 0 && <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-amber-500/12 border border-amber-500/20"><span className="text-[10px] font-black text-amber-300 uppercase tracking-widest w-24 shrink-0 pt-px">Cond. Immune</span><div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-100 bg-amber-500/30 border border-amber-400/30 capitalize">{i}</span>)}</div></div>}
                         </div>
                       );
                     })()}
@@ -978,6 +1053,31 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         />
                       </div>
                     )}
+                    {isPlayer && c.spellSlots && Object.keys(c.spellSlots).length > 0 && (
+                      <div className="mt-1">
+                        <button onClick={() => toggleSlots(c.id)} className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-widest text-violet-400/50 hover:text-violet-400/80 transition-colors">
+                          <span>Slots</span>
+                          {expandedSlots.has(c.id) ? <ChevronUp className="w-2 h-2" /> : <ChevronDown className="w-2 h-2" />}
+                        </button>
+                        {expandedSlots.has(c.id) && (
+                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                            {(Object.entries(c.spellSlots) as [string, { total: number; used: number }][])
+                              .sort(([a], [b]) => Number(a) - Number(b))
+                              .map(([level, slot]) => {
+                                const available = slot.total - slot.used;
+                                return (
+                                  <div key={level} className="flex items-center gap-0.5">
+                                    <span className="text-[7px] font-black text-violet-400/60 tabular-nums w-2">{level}</span>
+                                    {Array.from({ length: slot.total }, (_, i) => (
+                                      <span key={i} className={cn('w-1.5 h-1.5 rounded-full', i < available ? 'bg-violet-400' : 'bg-violet-400/15 border border-violet-400/25')} />
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {isPlayer && c.deathSaves && c.hp.current <= 0 && (
                       <DeathSavesView ds={c.deathSaves} />
                     )}
@@ -1027,19 +1127,39 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         </div>
                       </motion.div>
                     )}
-                    {/* Hunter's Mark reveals traits on inactive row */}
-                    {!isPlayer && c.conditions.includes('hunters-mark') && (() => {
+                    {/* Combat traits on inactive monster row */}
+                    {!isPlayer && (() => {
                       const vuln = c.vulnerabilities ?? [];
                       const res  = c.resistances ?? [];
                       const dimm = c.damageImmunities ?? [];
                       const cimm = c.conditionImmunities ?? [];
                       if (!vuln.length && !res.length && !dimm.length && !cimm.length) return null;
                       return (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-rose-300 bg-rose-500/20 capitalize">V {v}</span>)}
-                          {res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-sky-300 bg-sky-500/20 capitalize">R {r}</span>)}
-                          {dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-purple-300 bg-purple-500/20 capitalize">I {i}</span>)}
-                          {cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-amber-300 bg-amber-500/20 capitalize">C {i}</span>)}
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                          {vuln.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Vuln</span>
+                              <div className="flex flex-wrap gap-0.5">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-rose-200 bg-rose-500/25 border border-rose-500/30 capitalize">{v}</span>)}</div>
+                            </div>
+                          )}
+                          {res.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-black text-sky-400 uppercase tracking-wider">Resist</span>
+                              <div className="flex flex-wrap gap-0.5">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-sky-200 bg-sky-500/25 border border-sky-500/30 capitalize">{r}</span>)}</div>
+                            </div>
+                          )}
+                          {dimm.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-black text-purple-400 uppercase tracking-wider">Immune</span>
+                              <div className="flex flex-wrap gap-0.5">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-purple-200 bg-purple-500/25 border border-purple-500/30 capitalize">{i}</span>)}</div>
+                            </div>
+                          )}
+                          {cimm.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider">Cond. Immune</span>
+                              <div className="flex flex-wrap gap-0.5">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-amber-200 bg-amber-500/25 border border-amber-500/30 capitalize">{i}</span>)}</div>
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
@@ -1053,7 +1173,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       </div>
                     )}
                     <div>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${healthColor(c)}25`, color: healthColor(c) }}>
+                      <span className="px-1.5 py-0.5 rounded text-[16px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${healthColor(c)}25`, color: healthColor(c) }}>
                         {s.label}
                       </span>
                     </div>

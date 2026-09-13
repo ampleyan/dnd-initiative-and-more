@@ -76,16 +76,88 @@ function conditionData(actor) {
 }
 
 function tokenConditionData(token) {
-  const statuses = token?.document?.statuses instanceof Set
-    ? [...token.document.statuses]
-    : token?.statuses instanceof Set ? [...token.statuses] : [];
+  const raw = token?.document?.statuses ?? token?.statuses;
+  const statuses = raw == null ? [] : Array.isArray(raw) ? raw : [...raw];
   return statuses.map(status => String(status).toLowerCase().split('.').pop()).filter(Boolean);
+}
+
+function itemData(actor) {
+  const actions = [];
+  const abilities = [];
+  const spells = [];
+  for (const item of actor.items ?? []) {
+    if (!item?.name) continue;
+    const entry = {
+      name: item.name,
+      description: String(item.system?.description?.value ?? item.system?.description ?? ""),
+      category: item.type === "spell" ? "spell" : item.type === "weapon" ? "attack" : "ability"
+    };
+    if (item.type === "spell") spells.push(entry);
+    else if (item.type === "weapon") actions.push(entry);
+    else if (["feat", "class", "subclass", "background"].includes(item.type)) abilities.push(entry);
+  }
+  return { actions, abilities, spells };
+}
+
+function canonicalValue(value) {
+  if (Object.prototype.toString.call(value) === "[object Set]") return canonicalValue(Array.from(value));
+  if (Array.isArray(value)) return value.map(canonicalValue).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalValue(value[key])]));
+  }
+  return value;
+}
+
+function sourceDigest(source) {
+  let hash = 0x811c9dc5;
+  for (const character of JSON.stringify(canonicalValue(source))) {
+    hash = Math.imul(hash ^ character.charCodeAt(0), 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function soleTokenId(actor) {
+  const tokens = actor.getActiveTokens?.() ?? [];
+  if (tokens.length !== 1) return undefined;
+  const tokenId = tokens[0]?.document?.id ?? tokens[0]?.id;
+  return typeof tokenId === "string" && tokenId ? tokenId : undefined;
 }
 
 function actorPayload(actor, extra = {}) {
   const attributes = actor.system?.attributes ?? {};
   const hp = attributes.hp ?? {};
   const ac = attributes.ac;
+  const abilities = actor.system?.abilities ?? {};
+  const traits = actor.system?.traits ?? {};
+
+  const stats = Object.fromEntries(
+    ['str', 'dex', 'con', 'int', 'wis', 'cha'].map(key => [
+      key,
+      { value: numberValue(abilities[key]?.value), mod: numberValue(abilities[key]?.mod) }
+    ])
+  );
+
+  const traitList = (field) => {
+    const raw = traits[field]?.value;
+    if (!raw) return [];
+    if (raw instanceof Set) return [...raw];
+    if (Array.isArray(raw)) return raw;
+    return Object.keys(raw).filter(k => raw[k]);
+  };
+  const { actions, abilities: itemAbilities, spells } = itemData(actor);
+  const speed = `${numberValue(attributes.movement?.walk)} ft.`;
+  const source = {
+    hp: hp.value,
+    maxHp: hp.max,
+    tempHp: hp.temp,
+    ac: ac?.value ?? ac,
+    speed,
+    stats,
+    traits,
+    items: [...(actor.items ?? [])].map(item => ({ id: item.id, type: item.type, name: item.name, equipped: item.system?.equipped })),
+    effects: [...(actor.effects ?? [])].map(effect => ({ id: effect.id, disabled: effect.disabled, statuses: effect.statuses }))
+  };
+
   return {
     actorId: actor.id,
     _id: actor.id,
@@ -95,13 +167,25 @@ function actorPayload(actor, extra = {}) {
     maxHp: numberValue(hp.max),
     ac: numberValue(ac?.value ?? ac),
     spellSlots: spellSlotData(actor.system?.spells),
-    conditions: conditionData(actor),
+    speed,
+    stats,
+    resistances: traitList('dr'),
+    vulnerabilities: traitList('dv'),
+    damageImmunities: traitList('di'),
+    conditionImmunities: traitList('ci'),
+    actions,
+    abilities: itemAbilities,
+    spells,
+    worldId: game.world?.id,
+    sourceHash: sourceDigest(source),
+    lastSyncedAt: new Date().toISOString(),
     ...extra
   };
 }
 
 const revisions = new Map();
 const pendingActors = new Map();
+const actorDebounces = new Map();
 let syncQueue = Promise.resolve();
 
 function isSyncGM() {
@@ -135,6 +219,23 @@ function enqueueSync(work) {
     console.warn("Initiative Tracker live sync unavailable", error);
   });
   return syncQueue;
+}
+
+function scheduleActorSync(actor, extra = {}, preservePending = false) {
+  if (!isSyncGM() || !actor) return;
+  const existing = actorDebounces.get(actor.id);
+  if (existing) clearTimeout(existing.timer);
+  const debounce = {
+    extra: preservePending && existing ? { ...existing.extra, ...extra } : extra,
+    timer: null
+  };
+  debounce.timer = setTimeout(() => {
+    if (actorDebounces.get(actor.id) !== debounce) return;
+    actorDebounces.delete(actor.id);
+    pendingActors.set(actor.id, actorPayload(actor, debounce.extra));
+    return enqueueSync(flushActors);
+  }, 100);
+  actorDebounces.set(actor.id, debounce);
 }
 
 async function flushActors() {
@@ -224,6 +325,7 @@ Hooks.once("ready", () => {
 
 Hooks.on("updateActor", (actor, _changes, options = {}) => {
   if (!isSyncGM() || options[MODULE_ID]) return;
+  if (actorDebounces.has(actor.id)) return scheduleActorSync(actor, {}, true);
   pendingActors.set(actor.id, actorPayload(actor));
   return enqueueSync(flushActors);
 });
@@ -237,6 +339,17 @@ Hooks.on("updateCombatant", (combatant, _changes, options = {}) => {
 Hooks.on("updateToken", (token, _changes, options = {}) => {
   if (!isSyncGM() || options[MODULE_ID] || !token.actor) return;
   const conditions = tokenConditionData(token);
-  pendingActors.set(token.actor.id, actorPayload(token.actor, conditions.length > 0 ? { conditions } : {}));
-  return enqueueSync(flushActors);
+  return scheduleActorSync(token.actor, {
+    conditions,
+    ...(token.document?.id ?? token.id ? { tokenId: token.document?.id ?? token.id } : {})
+  });
 });
+
+for (const event of ["createItem", "updateItem", "deleteItem", "createActiveEffect", "updateActiveEffect", "deleteActiveEffect"]) {
+  Hooks.on(event, (document, _changes, options = {}) => {
+    if (options[MODULE_ID]) return;
+    const actor = document.actor ?? document.parent?.actor ?? document.parent;
+    const tokenId = soleTokenId(actor);
+    scheduleActorSync(actor, tokenId ? { tokenId } : {});
+  });
+}

@@ -57,6 +57,22 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
     (db.prepare('SELECT name, vulnerabilities, resistances, damageImmunities, conditionImmunities FROM monsters').all() as any[])
       .forEach(monster => monstersByName.set(monster.name.toLowerCase(), monster));
 
+    const syncByActorId = new Map<string, any>();
+    const syncByTokenId = new Map<string, any>();
+    try {
+      (db.prepare('SELECT actorId, tokenId, lastSyncedAt, pending FROM foundry_actor_sync').all() as any[])
+        .forEach((s: any) => { syncByActorId.set(s.actorId, s); if (s.tokenId) syncByTokenId.set(s.tokenId, s); });
+    } catch { /* table may not exist on older deployments */ }
+
+    const playerActorId = new Map<string, string>();
+    try {
+      (db.prepare("SELECT id, foundryActorId, dndBeyondId FROM players WHERE foundryActorId IS NOT NULL OR dndBeyondId LIKE 'foundry:%'").all() as any[])
+        .forEach((p: any) => {
+          const aid = p.foundryActorId ?? (typeof p.dndBeyondId === 'string' && p.dndBeyondId.startsWith('foundry:') ? p.dndBeyondId.slice(8) : null);
+          if (aid) playerActorId.set(p.id, aid);
+        });
+    } catch { /* column may not exist on older deployments */ }
+
     return combatants.map((combatant: any) => {
       const vulnerabilities = safeJson(combatant.vulnerabilities, []);
       const resistances = safeJson(combatant.resistances, []);
@@ -95,6 +111,11 @@ export function createEncountersRouter(db: any, dbAvailable: boolean, io: Server
         resistances: libraryMonster ? safeJson(libraryMonster.resistances, []) : resistances,
         damageImmunities: libraryMonster ? safeJson(libraryMonster.damageImmunities, []) : damageImmunities,
         conditionImmunities: libraryMonster ? safeJson(libraryMonster.conditionImmunities, []) : conditionImmunities,
+        foundrySync: (() => {
+          const s = (combatant.foundryTokenId && syncByTokenId.get(combatant.foundryTokenId))
+            ?? (combatant.playerId && playerActorId.has(combatant.playerId) ? syncByActorId.get(playerActorId.get(combatant.playerId)!) : undefined);
+          return s ? { actorId: s.actorId, lastSyncedAt: s.lastSyncedAt ?? undefined, pending: !!s.pending } : undefined;
+        })(),
       };
     });
   };

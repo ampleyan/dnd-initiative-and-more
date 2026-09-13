@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Sparkles, Shield, Heart, Zap, ArrowDown, EyeOff, Wind, ChevronDown, ChevronUp, Swords, UserPlus, X, Search, Trash2, BookOpen, Target, GripVertical, RotateCcw, Wand2, MoreHorizontal } from 'lucide-react';
+import { Edit2, Sparkles, Shield, Heart, Zap, ArrowDown, EyeOff, Wind, ChevronDown, ChevronUp, Swords, UserPlus, X, Search, Trash2, BookOpen, Target, GripVertical, RotateCcw, Wand2, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { DragControls } from 'motion/react';
 import { Combatant, MonsterTemplate } from '../types';
@@ -169,8 +169,7 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
   const dmgInputRef = React.useRef<HTMLInputElement>(null);
   const cancellingRef = React.useRef(false);
   const togglePlayerVisibility = () => {
-    const waveId = combatant.waveId ?? (window.prompt('Wave name', 'reinforcements') || 'default');
-    onUpdate({ ...combatant, hidden: !combatant.hidden, waveId });
+    onUpdate({ ...combatant, hidden: !combatant.hidden, waveId: combatant.waveId ?? 'default' });
     if (combatant.hidden) addLogEntry?.({ type: 'creature_revealed', actorName: combatant.name, actorId: combatant.id });
   };
   const commitHpEdit = () => {
@@ -497,6 +496,19 @@ export const CombatantRow: React.FC<CombatantRowProps> = ({
               </div>
             </div>
             <p className="text-[10px] text-outline italic font-body truncate max-w-[120px] sm:max-w-none">{combatant.subtitle}</p>
+            {combatant.foundrySync && (() => {
+              const { lastSyncedAt, pending } = combatant.foundrySync!;
+              const ageMs = lastSyncedAt ? Date.now() - new Date(lastSyncedAt).getTime() : Infinity;
+              const stale = ageMs > 5 * 60 * 1000;
+              const label = !lastSyncedAt ? 'Foundry' : ageMs < 60_000 ? 'just now' : ageMs < 3_600_000 ? `${Math.floor(ageMs / 60_000)}m ago` : `${Math.floor(ageMs / 3_600_000)}h ago`;
+              const textClass = stale ? 'text-amber-400/70' : 'text-emerald-400/70';
+              return (
+                <div className="flex items-center gap-1 mt-0.5" title={stale ? 'Foundry sync stale' : pending ? 'Foundry sync pending' : `Foundry synced ${label}`}>
+                  <RefreshCw className={cn('w-2.5 h-2.5', stale ? 'text-amber-400/60' : pending ? 'text-amber-400/80 animate-spin' : 'text-emerald-400/60')} />
+                  <span className={cn('text-[8px] font-bold tabular-nums', textClass)}>{label}</span>
+                </div>
+              );
+            })()}
             {isActive && (() => {
               const disadvNames = combatant.conditions
                 .filter(id => ATTACK_DISADVANTAGE_CONDITIONS.has(id))

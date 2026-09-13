@@ -1,5 +1,5 @@
-# Stage 1: Build the frontend and prepare production dependencies
-FROM node:26-slim AS build
+# Stage 1: Install all dependencies (cached unless package.json changes)
+FROM node:26-slim AS deps
 WORKDIR /app
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -8,18 +8,24 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
-COPY . .
-RUN npm run build && npm prune --omit=dev
 
-# Stage 2: Final runtime image
+# Stage 2: Prune to prod-only deps (cached unless package.json changes)
+FROM deps AS prod-deps
+RUN npm prune --omit=dev
+
+# Stage 3: Build frontend (only re-runs when source changes)
+FROM deps AS build
+COPY . .
+RUN npm run build
+
+# Stage 4: Final runtime image
 FROM node:26-slim AS runtime
 WORKDIR /app
-RUN apt-get update && apt-get install -y python3 python3-pip ffmpeg && \
-    pip3 install yt-dlp --break-system-packages && \
-    echo '--js-runtimes nodejs' > /etc/yt-dlp.conf && \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates ffmpeg && \
     rm -rf /var/lib/apt/lists/*
-# Only copy what's necessary
-COPY --from=build /app/node_modules ./node_modules
+COPY bin/yt-dlp /usr/local/bin/yt-dlp
+RUN chmod a+rx /usr/local/bin/yt-dlp && echo '--js-runtimes nodejs' > /etc/yt-dlp.conf
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server.ts ./
 COPY --from=build /app/package.json ./
@@ -29,12 +35,8 @@ COPY --from=build /app/routes ./routes
 COPY --from=build /app/src/lib/playerLog.ts ./src/lib/playerLog.ts
 COPY --from=build /app/src/lib/playerViewSettings.ts ./src/lib/playerViewSettings.ts
 COPY --from=build /app/scripts/update-monsters.ts ./scripts/update-monsters.ts
+COPY --from=build /app/scripts/monster-update-db.ts ./scripts/monster-update-db.ts
 
-# Expose the application port
 EXPOSE 3000
-
-# Set environment variables
 ENV NODE_ENV=production
-
-# Run the server using npx tsx
 CMD ["npx", "tsx", "server.ts"]

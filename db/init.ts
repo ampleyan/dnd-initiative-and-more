@@ -111,6 +111,7 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
       ['encounters', "weather TEXT DEFAULT 'none'"],
       ['combatants', 'hidden INTEGER DEFAULT 0'],
       ['combatants', "waveId TEXT DEFAULT 'default'"],
+      ['combatants', 'foundryTokenId TEXT DEFAULT NULL'],
       ['encounters', 'budget TEXT DEFAULT NULL'],
       ['encounters', "variants TEXT DEFAULT '[]'"],
       ['monsters', 'imported_at TEXT DEFAULT NULL'],
@@ -175,6 +176,8 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
       'hp_current INTEGER DEFAULT NULL',
       'imported_at TEXT DEFAULT NULL',
       'imported_from TEXT DEFAULT NULL',
+      'foundryWorldId TEXT DEFAULT NULL',
+      'foundryActorId TEXT DEFAULT NULL',
     ];
     for (const col of playerMigrations) {
       try { db.exec(`ALTER TABLE players ADD COLUMN ${col}`); } catch (e: any) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }
@@ -182,6 +185,8 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
 
     try { db.exec('CREATE INDEX IF NOT EXISTS idx_monsters_name_source ON monsters (name, source);'); } catch (e) {}
     try { db.exec('CREATE INDEX IF NOT EXISTS idx_players_dndBeyondId ON players (dndBeyondId);'); } catch (e) {}
+    try { db.exec('CREATE INDEX IF NOT EXISTS idx_players_foundry_provenance ON players (foundryWorldId, foundryActorId);'); } catch (e) {}
+    try { db.exec('CREATE INDEX IF NOT EXISTS idx_combatants_foundry_token ON combatants (foundryTokenId);'); } catch (e) {}
 
     try {
       db.exec(`CREATE TABLE IF NOT EXISTS class_features (
@@ -292,22 +297,48 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
         initiative INTEGER NOT NULL DEFAULT 0,
         conditions TEXT NOT NULL DEFAULT '[]',
         spellSlots TEXT NOT NULL DEFAULT '{}',
+        worldId TEXT,
+        tokenId TEXT,
+        sourceHash TEXT,
+        lastSyncedAt TEXT,
         revision INTEGER NOT NULL DEFAULT 1,
         pending INTEGER NOT NULL DEFAULT 0
       );
-      CREATE TRIGGER IF NOT EXISTS foundry_actor_changed
+    `);
+
+    db.exec('DROP TRIGGER IF EXISTS foundry_actor_changed');
+    db.exec(`
+      CREATE TRIGGER foundry_actor_changed
       AFTER UPDATE OF name, hp_current, hp_max, tempHp, ac, initiative, conditions, spellSlots ON combatants
+      WHEN NEW.name IS NOT OLD.name
+        OR NEW.hp_current IS NOT OLD.hp_current
+        OR NEW.hp_max IS NOT OLD.hp_max
+        OR COALESCE(NEW.tempHp, 0) IS NOT COALESCE(OLD.tempHp, 0)
+        OR NEW.ac IS NOT OLD.ac
+        OR NEW.initiative IS NOT OLD.initiative
+        OR COALESCE(NEW.conditions, '[]') IS NOT COALESCE(OLD.conditions, '[]')
+        OR COALESCE(NEW.spellSlots, '{}') IS NOT COALESCE(OLD.spellSlots, '{}')
       BEGIN
         INSERT INTO foundry_actor_sync (actorId, name, hp, tempHp, maxHp, ac, initiative, conditions, spellSlots, revision, pending)
         SELECT s.actorId, NEW.name, NEW.hp_current, COALESCE(NEW.tempHp, 0), NEW.hp_max, NEW.ac, NEW.initiative, COALESCE(NEW.conditions, '[]'), COALESCE(NEW.spellSlots, '{}'), s.revision + 1, 1
         FROM foundry_actor_sync s
-        WHERE lower(s.name) = lower(NEW.name)
+        WHERE (NEW.foundryTokenId IS NOT NULL AND s.tokenId = NEW.foundryTokenId)
+          OR EXISTS (
+            SELECT 1 FROM players p
+            WHERE p.id = NEW.playerId
+              AND ((p.foundryWorldId IS NOT NULL AND p.foundryWorldId = s.worldId AND p.foundryActorId = s.actorId)
+                OR p.dndBeyondId = 'foundry:' || s.actorId)
+          )
         ON CONFLICT(actorId) DO UPDATE SET
           name = excluded.name, hp = excluded.hp, tempHp = excluded.tempHp, maxHp = excluded.maxHp,
           ac = excluded.ac, initiative = excluded.initiative, conditions = excluded.conditions,
           spellSlots = excluded.spellSlots, revision = excluded.revision, pending = 1;
       END;
     `);
+
+    for (const col of ['worldId TEXT', 'tokenId TEXT', 'sourceHash TEXT', 'lastSyncedAt TEXT']) {
+      try { db.exec(`ALTER TABLE foundry_actor_sync ADD COLUMN ${col}`); } catch (e: any) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }
+    }
 
     // Seed one default sound if empty
     const soundCount = (db.prepare('SELECT COUNT(*) as count FROM sounds').get() as any).count;

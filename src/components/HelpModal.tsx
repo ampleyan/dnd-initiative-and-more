@@ -162,7 +162,11 @@ const SECTIONS: HelpSection[] = [
       },
       {
         title: 'Import from Foundry VTT',
-        body: 'Export your Foundry world as JSON and paste or upload it in Import → Source: Foundry. Monsters, spells, and player characters are extracted and mapped automatically.',
+        body: 'Export your Foundry world as JSON and paste or upload it in Import → Source: Foundry. Monsters, spells, and player characters are extracted and mapped automatically. Once imported, install the live-sync Foundry module to keep derived stats (AC, speed, spell slots, resistances) updated in real time without reimporting.',
+      },
+      {
+        title: 'Foundry live sync',
+        body: 'The live-sync Foundry module (Settings → Foundry) pushes actor snapshots to the tracker whenever you equip an item, apply an active effect, or change a stat in Foundry. A green sync badge on each linked combatant row shows the last sync time; amber means the link is stale (>5 min) or a push is in flight. Actors are matched by explicit world/actor ID or token ID — duplicate names return an error instead of silently updating the wrong combatant.',
       },
       {
         title: 'Review before importing',
