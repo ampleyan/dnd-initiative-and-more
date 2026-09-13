@@ -10,6 +10,35 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+type SoundImport = {
+  id: string;
+  name: string;
+  url: string;
+  category: string;
+  tags: string[];
+  volume: number;
+  pack?: string;
+  sourceType?: string;
+  sourceReference?: string;
+  storageType?: string;
+  filePath?: string;
+  duration?: number;
+  fileSize?: number;
+  checksum?: string;
+  license?: string;
+};
+
+export function insertSounds(db: any, sounds: SoundImport[]) {
+  const insert = db.prepare(`INSERT OR IGNORE INTO sounds (id, name, url, category, tags, spellId, volume, sourceType, sourceReference, storageType, filePath, duration, fileSize, checksum, license) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  let inserted = 0;
+  db.transaction(() => {
+    for (const sound of sounds) {
+      inserted += insert.run(sound.id, sound.name, sound.url, sound.category, JSON.stringify(sound.tags), sound.volume, sound.sourceType ?? null, sound.sourceReference ?? null, sound.storageType ?? null, sound.filePath ?? null, sound.duration ?? null, sound.fileSize ?? null, sound.checksum ?? null, sound.license ?? null).changes;
+    }
+  })();
+  return { inserted, skipped: sounds.length - inserted };
+}
+
 const COMBAT_TAGS  = new Set(['combat','battle','fight','war','raid','boss','epic','clash','heroic','action','siege','army']);
 const MAGIC_TAGS   = new Set(['magic','ethereal','astral','ritual','mystical','arcane','divine','ghost','strange','void','spooky','enchanted','necromancer','ominous']);
 const NATURE_TAGS  = new Set(['forest','rain','wind','ocean','cave','underwater','storm','desert','jungle','wilderness','woods','birds','insects','snow','cold','sea','winter','trees','breeze']);
@@ -39,6 +68,10 @@ async function fetchTabletopAudioLibrary(): Promise<any[]> {
     tags: t.tags ?? [],
     volume: 0.6,
     url: `/api/sound-proxy?url=${encodeURIComponent(t.src)}`,
+    sourceType: 'tabletopaudio',
+    sourceReference: t['$id'],
+    storageType: 'proxied-stream',
+    license: 'CC-BY-NC-ND',
   }));
   return cachedLibrary;
 }
@@ -154,13 +187,10 @@ export function createSoundsRouter(
     if (!dbAvailable) return res.status(503).json({ error: 'DB not available' });
     try {
       const library = await fetchTabletopAudioLibrary();
-      const ids: string[] | undefined = req.body.ids;
+      if (req.body.ids !== undefined && !Array.isArray(req.body.ids)) return res.status(400).json({ error: 'ids must be an array' });
+      const ids: string[] | undefined = Array.isArray(req.body.ids) ? [...new Set(req.body.ids.filter((id: unknown): id is string => typeof id === 'string'))] : undefined;
       const toImport = ids ? library.filter(s => ids.includes(s.id)) : library;
-      const insert = db.prepare(`INSERT OR IGNORE INTO sounds (id, name, url, category, tags, spellId, volume) VALUES (?, ?, ?, ?, ?, NULL, ?)`);
-      db.transaction(() => {
-        for (const s of toImport) insert.run(s.id, s.name, s.url, s.category, JSON.stringify(s.tags), s.volume);
-      })();
-      res.json({ imported: toImport.length });
+      res.json({ ...insertSounds(db, toImport), invalid: ids ? ids.length - toImport.length : 0 });
     } catch (e: any) {
       res.status(502).json({ error: e.message });
     }
@@ -168,7 +198,7 @@ export function createSoundsRouter(
 
   router.get('/sounds/local', (_req, res) => {
     if (!fs.existsSync(localAudioDir)) return res.json([]);
-    const results: any[] = [];
+    const results: SoundImport[] = [];
     for (const folder of fs.readdirSync(localAudioDir)) {
       if (folder.startsWith('.')) continue;
       const folderPath = path.join(localAudioDir, folder);
@@ -181,6 +211,9 @@ export function createSoundsRouter(
           pack: folder.replace(/ SoundPad.*| Patreon.*/i, ''),
           category, tags: [folder.replace(/ SoundPad.*| Patreon.*/i, '').toLowerCase()], volume: 0.8,
           url: `/audio/local/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`,
+          sourceType: 'local',
+          sourceReference: path.relative(localAudioDir, path.join(folder, file)),
+          storageType: 'mounted-file',
         });
       }
     }
@@ -190,9 +223,9 @@ export function createSoundsRouter(
   router.post('/sounds/local/import', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ error: 'DB not available' });
     if (!fs.existsSync(localAudioDir)) return res.status(404).json({ error: 'Local audio folder not found' });
-    const ids: string[] | undefined = req.body.ids;
-    const insert = db.prepare(`INSERT OR IGNORE INTO sounds (id, name, url, category, tags, spellId, volume) VALUES (?, ?, ?, ?, ?, NULL, ?)`);
-    const toInsert: any[] = [];
+    if (req.body.ids !== undefined && !Array.isArray(req.body.ids)) return res.status(400).json({ error: 'ids must be an array' });
+    const ids: string[] | undefined = Array.isArray(req.body.ids) ? [...new Set(req.body.ids.filter((id: unknown): id is string => typeof id === 'string'))] : undefined;
+    const toInsert: SoundImport[] = [];
     for (const folder of fs.readdirSync(localAudioDir)) {
       if (folder.startsWith('.')) continue;
       const folderPath = path.join(localAudioDir, folder);
@@ -201,11 +234,10 @@ export function createSoundsRouter(
       for (const file of fs.readdirSync(folderPath).filter(f => !f.startsWith('.') && /\.(ogg|mp3|wav)$/i.test(f))) {
         const id = `local-${folder.replace(/\W+/g, '-').toLowerCase()}-${file.replace(/\W+/g, '-').toLowerCase()}`;
         if (ids && !ids.includes(id)) continue;
-        toInsert.push({ id, name: prettifyFilename(file), category, tags: JSON.stringify([folder.replace(/ SoundPad.*| Patreon.*/i, '').toLowerCase()]), volume: 0.8, url: `/audio/local/${encodeURIComponent(folder)}/${encodeURIComponent(file)}` });
+        toInsert.push({ id, name: prettifyFilename(file), category, tags: [folder.replace(/ SoundPad.*| Patreon.*/i, '').toLowerCase()], volume: 0.8, url: `/audio/local/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`, sourceType: 'local', sourceReference: path.relative(localAudioDir, path.join(folder, file)), storageType: 'mounted-file' });
       }
     }
-    db.transaction(() => { for (const s of toInsert) insert.run(s.id, s.name, s.url, s.category, s.tags, s.volume); })();
-    res.json({ imported: toInsert.length });
+    res.json({ ...insertSounds(db, toInsert), invalid: ids ? ids.length - toInsert.length : 0 });
   });
 
   router.get('/sounds/ambiences', (_req, res) => {
@@ -232,15 +264,27 @@ export function createSoundsRouter(
 
   router.post('/sounds/ambiences/import', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ error: 'DB not available' });
-    const items: { id: string; name: string; url: string; genre: string }[] = req.body.items ?? [];
-    const insert = db.prepare(`INSERT OR IGNORE INTO sounds (id, name, url, category, tags, spellId, volume) VALUES (?, ?, ?, ?, ?, NULL, ?)`);
-    db.transaction(() => {
-      for (const item of items) {
-        const category = AMBIENCE_GENRE_TO_CATEGORY[item.genre] ?? 'ambient';
-        insert.run(item.id, item.name, item.url, category, JSON.stringify([item.genre.toLowerCase()]), 0.8);
-      }
-    })();
-    res.json({ imported: items.length });
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+    if (!fs.existsSync(ambiencesDir)) return res.status(404).json({ error: 'Ambiences folder not found' });
+    const available = new Map<string, { name: string; genre: string; urls: Set<string> }>();
+    for (const file of fs.readdirSync(ambiencesDir)) {
+      if (file.startsWith('.') || !/\.(mp3|ogg|wav)$/i.test(file)) continue;
+      const noExt = file.replace(/\.[^.]+$/, '');
+      const vmatch = noExt.match(/^(.+?)\s*\(([^)]+)\)$/);
+      const name = vmatch ? vmatch[1].trim() : noExt.trim();
+      const url = `/audio/ambiences/${encodeURIComponent(file)}`;
+      const id = `ambience-${name.replace(/[^\w]+/g, '-').toLowerCase()}`;
+      const entry = available.get(id) ?? { name, genre: classifyAmbience(name), urls: new Set<string>() };
+      entry.urls.add(url);
+      available.set(id, entry);
+    }
+    const sounds = items.flatMap((item: any) => {
+      if (typeof item?.id !== 'string' || typeof item?.url !== 'string') return [];
+      const source = available.get(item.id);
+      if (!source || !source.urls.has(item.url)) return [];
+      return [{ id: item.id, name: source.name, url: item.url, category: AMBIENCE_GENRE_TO_CATEGORY[source.genre] ?? 'ambient', tags: [source.genre.toLowerCase()], volume: 0.8 }];
+    });
+    res.json({ ...insertSounds(db, sounds), invalid: items.length - sounds.length });
   });
 
   // ── YouTube / yt-dlp import ────────────────────────────────────────────────
