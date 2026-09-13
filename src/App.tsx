@@ -19,7 +19,7 @@ import { MainContent } from './components/MainContent';
 import { PlayerView } from './components/PlayerView';
 import { ModalsContainer } from './components/ModalsContainer';
 import { ActionExecutionModal } from './components/ActionExecutionModal';
-import { WhatsNewModal, hasSeenWhatsNew } from './components/WhatsNewModal';
+import { WhatsNewModal } from './components/WhatsNewModal';
 import { OnboardingModal, hasCompletedOnboarding } from './components/OnboardingModal';
 import { AddEnemyModal } from './components/AddEnemyModal';
 import { SessionStatsModal } from './components/SessionStatsModal';
@@ -175,7 +175,7 @@ export default function App() {
 
   const [showLog, setShowLog] = React.useState(false);
   const [showLogToPlayers, setShowLogToPlayers] = React.useState(false);
-  const [showWhatsNew, setShowWhatsNew] = React.useState(() => !hasSeenWhatsNew());
+  const [showWhatsNew, setShowWhatsNew] = React.useState(false);
   const [showOnboarding, setShowOnboarding] = React.useState(false);
   const [showSessionStats, setShowSessionStats] = React.useState(false);
   const [showHelp, setShowHelp] = React.useState(false);

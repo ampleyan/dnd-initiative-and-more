@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Swords, BookOpen, Shield, Sparkles, Clock, Map as MapIcon, UploadCloud, ChevronRight, MapPin, Users, Play, Radio, ScrollText, Pencil, Check, X, ClipboardCheck } from 'lucide-react';
-import { Combatant, Encounter, MonsterTemplate, Player, Spell, Campaign, Session } from '../types';
+import { Swords, Clock, Map as MapIcon, ChevronRight, MapPin, Users, Play, Radio, ScrollText, Pencil, Check, X, ClipboardCheck } from 'lucide-react';
+import { Combatant, Encounter, Player, Campaign, Session } from '../types';
 
 type ActiveTab = 'dashboard' | 'monsters' | 'players' | 'encounters' | 'spells' | 'archive' | 'settings' | 'import' | 'campaigns' | 'abilities' | 'soundboard';
 
@@ -11,9 +11,7 @@ interface DashboardViewProps {
   currentRound: number;
   combatants: Combatant[];
   savedEncounters: Encounter[];
-  monsters: MonsterTemplate[];
   players: Player[];
-  spells: Spell[];
   campaigns?: Campaign[];
   activeCampaignId?: string | null;
   sessions?: Session[];
@@ -34,9 +32,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   currentRound,
   combatants,
   savedEncounters,
-  monsters,
   players,
-  spells,
   campaigns,
   activeCampaignId,
   sessions,
@@ -215,6 +211,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         ))}
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
       {(campaigns ?? []).length > 0 && (() => {
         const featuredCampaign = activeCampaign ?? [...(campaigns ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
         const otherCampaigns = [...(campaigns ?? [])].filter(c => c.id !== featuredCampaign.id).slice(0, 2);
@@ -229,7 +226,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <button
               onClick={() => onSelectCampaign?.(featuredCampaign.id)}
-              className="w-full relative overflow-hidden rounded-2xl h-64 text-left group"
+              className="w-full relative overflow-hidden rounded-2xl h-52 text-left group"
               style={{
                 background: featuredCampaign.mapImage
                   ? `url(${featuredCampaign.mapImage}) center/cover`
@@ -268,7 +265,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <h2 className="font-headline font-bold text-2xl text-white leading-tight mb-1">{featuredCampaign.name}</h2>
                   <p className="text-[11px] uppercase tracking-widest text-white/50 font-semibold">{campaignEncounters.length} encounter{campaignEncounters.length !== 1 ? 's' : ''} · {lastSession ? `Last played ${new Date(lastSession.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Not played yet'}</p>
-                  <p className="text-sm text-white/70 mt-2 line-clamp-2 max-w-xl">{featuredCampaign.description || 'No lore recorded yet.'}</p>
+                  <p className="text-sm text-white/70 mt-2 line-clamp-1 max-w-xl">{featuredCampaign.description || 'No objective recorded yet.'}</p>
                 </div>
                 <div className="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary font-bold text-xs uppercase tracking-widest rounded-xl shrink-0 group-hover:bg-primary/90 transition-all"
                   style={{ boxShadow: '0 4px 20px rgba(255,135,189,0.3)' }}>
@@ -350,6 +347,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       )}
+      </div>
 
       {players.length === 0 && savedEncounters.length === 0 && (
         <div className="text-center py-16 space-y-4">
