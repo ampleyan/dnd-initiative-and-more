@@ -611,29 +611,29 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   const cimm = activeMonster.conditionImmunities ?? [];
                   if (!vuln.length && !res.length && !dimm.length && !cimm.length) return null;
                   return (
-                    <div className="border-t border-white/8 px-3 py-2 flex flex-col gap-1">
+                    <div className="border-t border-white/8 px-3 py-2.5 flex flex-col gap-1.5">
                       {vuln.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-rose-500/10">
-                          <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wide w-20 shrink-0">V</span>
-                          <div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-rose-200 bg-rose-500/20 capitalize">{v}</span>)}</div>
+                        <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-rose-500/12 border border-rose-500/20">
+                          <span className="text-[10px] font-black text-rose-300 uppercase tracking-widest w-24 shrink-0 pt-px">Vulnerable</span>
+                          <div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-rose-100 bg-rose-500/30 border border-rose-400/30 capitalize">{v}</span>)}</div>
                         </div>
                       )}
                       {res.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-sky-500/10">
-                          <span className="text-[10px] font-bold text-sky-300 uppercase tracking-wide w-20 shrink-0">R</span>
-                          <div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-sky-200 bg-sky-500/20 capitalize">{r}</span>)}</div>
+                        <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-sky-500/12 border border-sky-500/20">
+                          <span className="text-[10px] font-black text-sky-300 uppercase tracking-widest w-24 shrink-0 pt-px">Resistant</span>
+                          <div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-sky-100 bg-sky-500/30 border border-sky-400/30 capitalize">{r}</span>)}</div>
                         </div>
                       )}
                       {dimm.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-purple-500/10">
-                          <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide w-20 shrink-0">I</span>
-                          <div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-purple-200 bg-purple-500/20 capitalize">{i}</span>)}</div>
+                        <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-purple-500/12 border border-purple-500/20">
+                          <span className="text-[10px] font-black text-purple-300 uppercase tracking-widest w-24 shrink-0 pt-px">Immune</span>
+                          <div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-purple-100 bg-purple-500/30 border border-purple-400/30 capitalize">{i}</span>)}</div>
                         </div>
                       )}
                       {cimm.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-amber-500/10">
-                          <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wide w-20 shrink-0">C</span>
-                          <div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-amber-200 bg-amber-500/20 capitalize">{i}</span>)}</div>
+                        <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-amber-500/12 border border-amber-500/20">
+                          <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest w-24 shrink-0 pt-px">Cond. Immune</span>
+                          <div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-100 bg-amber-500/30 border border-amber-400/30 capitalize">{i}</span>)}</div>
                         </div>
                       )}
                     </div>
@@ -982,19 +982,19 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         </div>
                       )}
                     </div>
-                    {/* Hunter's Mark reveals traits */}
-                    {!isPlayer && c.conditions.includes('hunters-mark') && (() => {
+                    {/* Combat traits on active monster card */}
+                    {!isPlayer && (() => {
                       const vuln = c.vulnerabilities ?? [];
                       const res  = c.resistances ?? [];
                       const dimm = c.damageImmunities ?? [];
                       const cimm = c.conditionImmunities ?? [];
                       if (!vuln.length && !res.length && !dimm.length && !cimm.length) return null;
                       return (
-                        <div className="border-t border-white/8 px-4 py-2 flex flex-col gap-1">
-                          {vuln.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-rose-500/10"><span className="text-[9px] font-bold text-rose-300 uppercase tracking-wide w-20 shrink-0">V</span><div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-rose-200 bg-rose-500/20 capitalize">{v}</span>)}</div></div>}
-                          {res.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-sky-500/10"><span className="text-[9px] font-bold text-sky-300 uppercase tracking-wide w-20 shrink-0">R</span><div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-sky-200 bg-sky-500/20 capitalize">{r}</span>)}</div></div>}
-                          {dimm.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-purple-500/10"><span className="text-[9px] font-bold text-purple-300 uppercase tracking-wide w-20 shrink-0">I</span><div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-purple-200 bg-purple-500/20 capitalize">{i}</span>)}</div></div>}
-                          {cimm.length > 0 && <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-amber-500/10"><span className="text-[9px] font-bold text-amber-300 uppercase tracking-wide w-20 shrink-0">C</span><div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-200 bg-amber-500/20 capitalize">{i}</span>)}</div></div>}
+                        <div className="border-t border-white/8 px-4 py-2.5 flex flex-col gap-1.5">
+                          {vuln.length > 0 && <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-rose-500/12 border border-rose-500/20"><span className="text-[10px] font-black text-rose-300 uppercase tracking-widest w-24 shrink-0 pt-px">Vulnerable</span><div className="flex flex-wrap gap-1">{vuln.map(v => <span key={v} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-rose-100 bg-rose-500/30 border border-rose-400/30 capitalize">{v}</span>)}</div></div>}
+                          {res.length > 0 && <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-sky-500/12 border border-sky-500/20"><span className="text-[10px] font-black text-sky-300 uppercase tracking-widest w-24 shrink-0 pt-px">Resistant</span><div className="flex flex-wrap gap-1">{res.map(r => <span key={r} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-sky-100 bg-sky-500/30 border border-sky-400/30 capitalize">{r}</span>)}</div></div>}
+                          {dimm.length > 0 && <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-purple-500/12 border border-purple-500/20"><span className="text-[10px] font-black text-purple-300 uppercase tracking-widest w-24 shrink-0 pt-px">Immune</span><div className="flex flex-wrap gap-1">{dimm.map(i => <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-purple-100 bg-purple-500/30 border border-purple-400/30 capitalize">{i}</span>)}</div></div>}
+                          {cimm.length > 0 && <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-amber-500/12 border border-amber-500/20"><span className="text-[10px] font-black text-amber-300 uppercase tracking-widest w-24 shrink-0 pt-px">Cond. Immune</span><div className="flex flex-wrap gap-1">{cimm.map(i => <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-100 bg-amber-500/30 border border-amber-400/30 capitalize">{i}</span>)}</div></div>}
                         </div>
                       );
                     })()}
@@ -1127,19 +1127,39 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         </div>
                       </motion.div>
                     )}
-                    {/* Hunter's Mark reveals traits on inactive row */}
-                    {!isPlayer && c.conditions.includes('hunters-mark') && (() => {
+                    {/* Combat traits on inactive monster row */}
+                    {!isPlayer && (() => {
                       const vuln = c.vulnerabilities ?? [];
                       const res  = c.resistances ?? [];
                       const dimm = c.damageImmunities ?? [];
                       const cimm = c.conditionImmunities ?? [];
                       if (!vuln.length && !res.length && !dimm.length && !cimm.length) return null;
                       return (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-rose-300 bg-rose-500/20 capitalize">V {v}</span>)}
-                          {res.map(r => <span key={r} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-sky-300 bg-sky-500/20 capitalize">R {r}</span>)}
-                          {dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-purple-300 bg-purple-500/20 capitalize">I {i}</span>)}
-                          {cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded text-[7px] font-bold text-amber-300 bg-amber-500/20 capitalize">C {i}</span>)}
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                          {vuln.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Vuln</span>
+                              <div className="flex flex-wrap gap-0.5">{vuln.map(v => <span key={v} className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-rose-200 bg-rose-500/25 border border-rose-500/30 capitalize">{v}</span>)}</div>
+                            </div>
+                          )}
+                          {res.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-black text-sky-400 uppercase tracking-wider">Resist</span>
+                              <div className="flex flex-wrap gap-0.5">{res.map(r => <span key={r} className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-sky-200 bg-sky-500/25 border border-sky-500/30 capitalize">{r}</span>)}</div>
+                            </div>
+                          )}
+                          {dimm.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-black text-purple-400 uppercase tracking-wider">Immune</span>
+                              <div className="flex flex-wrap gap-0.5">{dimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-purple-200 bg-purple-500/25 border border-purple-500/30 capitalize">{i}</span>)}</div>
+                            </div>
+                          )}
+                          {cimm.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider">Cond. Immune</span>
+                              <div className="flex flex-wrap gap-0.5">{cimm.map(i => <span key={i} className="px-1.5 py-0.5 rounded-md text-[9px] font-bold text-amber-200 bg-amber-500/25 border border-amber-500/30 capitalize">{i}</span>)}</div>
+                            </div>
+                          )}
                         </div>
                       );
                     })()}

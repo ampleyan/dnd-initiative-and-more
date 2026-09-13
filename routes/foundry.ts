@@ -1100,8 +1100,10 @@ export function createFoundryConfigRouter(db: any, dbAvailable: boolean) {
   router.get('/foundry/config', (_req, res) => {
     if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });
     const url = (db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_url') as { value?: string } | undefined)?.value ?? '';
-    const dataPath = (db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_data_path') as { value?: string } | undefined)?.value ?? '';
-    return res.json({ url, dataPath, configured: Boolean(dataPath) });
+    const dbPath = (db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_data_path') as { value?: string } | undefined)?.value ?? '';
+    const dataPath = dbPath || process.env.FOUNDRY_DATA_PATH || '';
+    const syncToken = (db.prepare('SELECT value FROM settings WHERE key = ?').get('foundry_sync_token') as { value?: string } | undefined)?.value ?? '';
+    return res.json({ url, dataPath, configured: Boolean(dataPath), syncToken });
   });
   router.put('/foundry/config', (req, res) => {
     if (!dbAvailable) return res.status(503).json({ error: 'Database unavailable' });

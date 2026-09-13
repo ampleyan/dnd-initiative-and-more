@@ -7,8 +7,6 @@ import { parseFoundryJournal } from '../../lib/adventureParser';
 import { FOUNDRY_SETTINGS_CHANGED } from '../FoundrySettingsPanel';
 import { MappedEntity } from './helpers';
 
-const LS_DATA_PATH = 'foundry_data_path';
-const LS_URL = 'foundry_url';
 
 interface Scene {
   id: string;
@@ -69,10 +67,10 @@ export const FoundryImport: React.FC<Props> = ({ onStageEntities, onImportScene,
   const [importingJournals, setImportingJournals] = useState(false);
   const journalSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [dataPath, setDataPath] = useState(() => localStorage.getItem(LS_DATA_PATH) ?? '');
-  const [foundryUrl, setFoundryUrl] = useState(() => localStorage.getItem(LS_URL) ?? '');
+  const [dataPath, setDataPath] = useState('');
+  const [foundryUrl, setFoundryUrl] = useState('');
   const [showConfig, setShowConfig] = useState(false);
-  const [connectedPath, setConnectedPath] = useState<string | undefined>(() => localStorage.getItem(LS_DATA_PATH) || undefined);
+  const [connectedPath, setConnectedPath] = useState<string | undefined>(undefined);
   const [connectStatus, setConnectStatus] = useState<'idle' | 'connecting' | 'ok' | 'error'>('idle');
   const [connectError, setConnectError] = useState('');
   const [selectingAllActors, setSelectingAllActors] = useState(false);
@@ -87,9 +85,8 @@ export const FoundryImport: React.FC<Props> = ({ onStageEntities, onImportScene,
     setConnectStatus('connecting');
     setConnectError('');
     try {
+      await api.foundry.saveConfig({ url: foundryUrl.trim(), dataPath: dataPath.trim() }).catch(() => {});
       const data = await api.foundry.worlds(path);
-      localStorage.setItem(LS_DATA_PATH, dataPath.trim());
-      localStorage.setItem(LS_URL, foundryUrl.trim());
       setConnectedPath(path);
       setWorlds(data);
       if (data.length > 0) setSelectedWorld(data[0].id);
@@ -101,39 +98,47 @@ export const FoundryImport: React.FC<Props> = ({ onStageEntities, onImportScene,
     }
   }, [dataPath, foundryUrl]);
 
-  // Auto-connect on mount if a path was previously saved
+  // Auto-connect on mount using DB config
   useEffect(() => {
-    if (!connectedPath) return;
-    setConnectStatus('connecting');
-    api.foundry.worlds(connectedPath)
-      .then(data => {
-        setWorlds(data);
-        if (data.length > 0) setSelectedWorld(data[0].id);
-        setConnectStatus('ok');
-      })
-      .catch(() => { setConnectStatus('error'); setConnectError('Could not read Foundry data at saved path'); });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const refreshSettings = () => {
-      const nextPath = localStorage.getItem(LS_DATA_PATH) ?? '';
-      const nextUrl = localStorage.getItem(LS_URL) ?? '';
-      setDataPath(nextPath);
-      setFoundryUrl(nextUrl);
-      setConnectedPath(nextPath || undefined);
-      if (nextPath) {
+    api.foundry.getConfig().then(config => {
+      setDataPath(config.dataPath);
+      setFoundryUrl(config.url);
+      const path = config.dataPath || undefined;
+      setConnectedPath(path);
+      if (path) {
         setConnectStatus('connecting');
-        api.foundry.worlds(nextPath)
+        api.foundry.worlds(path)
           .then(data => {
             setWorlds(data);
             if (data.length > 0) setSelectedWorld(data[0].id);
             setConnectStatus('ok');
           })
-          .catch(() => {
-            setConnectStatus('error');
-            setConnectError('Could not read Foundry data at saved path');
-          });
+          .catch(() => { setConnectStatus('error'); setConnectError('Could not read Foundry data at saved path'); });
       }
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const refreshSettings = () => {
+      api.foundry.getConfig().then(config => {
+        setDataPath(config.dataPath);
+        setFoundryUrl(config.url);
+        const path = config.dataPath || undefined;
+        setConnectedPath(path);
+        if (path) {
+          setConnectStatus('connecting');
+          api.foundry.worlds(path)
+            .then(data => {
+              setWorlds(data);
+              if (data.length > 0) setSelectedWorld(data[0].id);
+              setConnectStatus('ok');
+            })
+            .catch(() => {
+              setConnectStatus('error');
+              setConnectError('Could not read Foundry data at saved path');
+            });
+        }
+      }).catch(() => {});
     };
     window.addEventListener(FOUNDRY_SETTINGS_CHANGED, refreshSettings);
     return () => window.removeEventListener(FOUNDRY_SETTINGS_CHANGED, refreshSettings);

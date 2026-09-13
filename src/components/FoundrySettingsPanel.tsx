@@ -17,6 +17,7 @@ export const FoundrySettingsPanel: React.FC = () => {
     api.foundry.getConfig().then(config => {
       setUrl(config.url);
       setDataPath(config.dataPath);
+      setToken(config.syncToken ?? '');
     }).catch(() => {});
   }, []);
   const isConfigured = Boolean(dataPath.trim());

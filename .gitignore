@@ -23,3 +23,6 @@ coverage/
 !screenshots/
 !screenshots/*.png
 /data
+
+# Pre-downloaded binaries (too large for git; copy manually from bin/yt-dlp.README)
+bin/yt-dlp
