@@ -261,6 +261,38 @@ export function initDatabase(): { db: any; dbAvailable: boolean } {
     `);
 
     try { db.exec("ALTER TABLE sounds ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0"); } catch (e: any) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }
+    const soundMetadataMigrations = [
+      'sourceType TEXT DEFAULT NULL',
+      'sourceReference TEXT DEFAULT NULL',
+      'storageType TEXT DEFAULT NULL',
+      'filePath TEXT DEFAULT NULL',
+      'duration REAL DEFAULT NULL',
+      'fileSize INTEGER DEFAULT NULL',
+      'checksum TEXT DEFAULT NULL',
+      'license TEXT DEFAULT NULL',
+    ];
+    for (const column of soundMetadataMigrations) {
+      try { db.exec(`ALTER TABLE sounds ADD COLUMN ${column}`); } catch (e: any) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }
+    }
+    db.exec(`
+      UPDATE sounds
+      SET
+        sourceType = CASE
+          WHEN url LIKE '/uploads/sounds/%' THEN 'upload'
+          WHEN url LIKE '/audio/local/%' OR url LIKE '/audio/ambiences/%' THEN 'local'
+          WHEN url LIKE '/api/sound-proxy%' THEN 'tabletopaudio'
+          ELSE 'url'
+        END,
+        sourceReference = url,
+        storageType = CASE
+          WHEN url LIKE '/uploads/sounds/%' THEN 'managed-file'
+          WHEN url LIKE '/audio/local/%' OR url LIKE '/audio/ambiences/%' THEN 'mounted-file'
+          WHEN url LIKE '/api/sound-proxy%' THEN 'proxied-stream'
+          ELSE 'external-stream'
+        END,
+        filePath = CASE WHEN url LIKE '/uploads/sounds/%' THEN SUBSTR(url, LENGTH('/uploads/sounds/') + 1) ELSE NULL END
+      WHERE sourceType IS NULL
+    `);
     try { db.exec(`ALTER TABLE combatants ADD COLUMN polymorph_form TEXT`); } catch (e: any) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }
 
     db.exec(`

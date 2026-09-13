@@ -342,6 +342,14 @@ export interface Sound {
   id: string;
   name: string;
   url: string;
+  sourceType?: 'local' | 'foundry' | 'tabletopaudio' | 'youtube' | 'upload' | 'url';
+  sourceReference?: string | null;
+  storageType?: 'managed-file' | 'mounted-file' | 'external-stream' | 'proxied-stream';
+  filePath?: string | null;
+  duration?: number | null;
+  fileSize?: number | null;
+  checksum?: string | null;
+  license?: string | null;
   category: string;
   tags: string[];
   spellId: string | null;
