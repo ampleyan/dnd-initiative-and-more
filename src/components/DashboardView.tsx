@@ -82,8 +82,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setEditingNextSession(false);
   };
 
+  const primaryAction = isEncounterActive
+    ? () => setActiveTab('encounters')
+    : latestEncounter
+      ? () => handleLoadEncounter(latestEncounter)
+      : upcomingSession
+        ? () => setActiveTab('campaigns')
+        : () => setIsEncounterCreatorOpen(true);
+  const primaryActionLabel = isEncounterActive
+    ? 'Resume encounter'
+    : latestEncounter
+      ? `Resume ${latestEncounter.name}`
+      : upcomingSession
+        ? `Next ${upcomingSession.name}`
+        : 'Create encounter';
+
+  const sessionStatus = [
+    { label: 'Encounter', value: isEncounterActive ? 'Active' : 'No active encounter', icon: Swords, color: 'text-violet-400 bg-violet-400/10' },
+    { label: 'Next up', value: nextEncounter ?? 'Not set', icon: Clock, color: 'text-rose-400 bg-rose-400/10' },
+    { label: 'Party', value: `${players.length} member${players.length === 1 ? '' : 's'}`, icon: Users, color: 'text-emerald-400 bg-emerald-400/10' },
+    { label: 'Last session', value: lastSession ? new Date(lastSession.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Not recorded', icon: ClipboardCheck, color: 'text-sky-400 bg-sky-400/10' },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6 lg:space-y-8">
       <section className="bg-surface-container-low border border-primary/20 rounded-2xl p-5 sm:p-6 space-y-5">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -91,9 +113,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h2 className="font-headline font-bold text-2xl text-on-surface mt-1">{isEncounterActive ? encounterName : nextEncounter ?? 'Prepare the next encounter'}</h2>
             <p className="text-sm text-outline mt-1">{isEncounterActive ? `Round ${currentRound} is in progress.` : nextEncounter ? 'Ready when the table is.' : 'Create an encounter to get started.'}</p>
           </div>
-          <button onClick={() => isEncounterActive ? setActiveTab('encounters') : latestEncounter ? handleLoadEncounter(latestEncounter) : setIsEncounterCreatorOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-xs uppercase tracking-widest shrink-0 hover:bg-primary/90 transition-colors">
+          <button onClick={primaryAction} aria-label={primaryActionLabel} className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-xs uppercase tracking-widest shrink-0 hover:bg-primary/90 transition-colors">
             <Play className="w-3.5 h-3.5" fill="currentColor" />
-            {isEncounterActive || latestEncounter ? 'Resume' : 'Start'}
+            {isEncounterActive ? 'Resume encounter' : latestEncounter ? 'Resume encounter' : upcomingSession ? 'Open next session' : 'Create encounter'}
           </button>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
@@ -155,18 +177,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {([
-          { label: 'Encounters', value: savedEncounters.length, icon: Swords, color: 'text-violet-400 bg-violet-400/10', tab: 'encounters' as const },
-          { label: 'Monsters', value: monsters.length, icon: BookOpen, color: 'text-red-400 bg-red-400/10', tab: 'monsters' as const },
-          { label: 'Players', value: players.length, icon: Shield, color: 'text-emerald-400 bg-emerald-400/10', tab: 'import' as const },
-          { label: 'Spells', value: spells.length, icon: Sparkles, color: 'text-sky-400 bg-sky-400/10', tab: 'spells' as const },
-          { label: 'Campaigns', value: campaigns?.length ?? 0, icon: MapIcon, color: 'text-amber-400 bg-amber-400/10', tab: 'campaigns' as const },
-          { label: 'Last Session', value: savedEncounters.length > 0 ? new Date([...savedEncounters].sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())[0].lastModified).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—', icon: Clock, color: 'text-rose-400 bg-rose-400/10', tab: 'encounters' as const },
-        ] as Array<{ label: string; value: string | number; icon: React.ElementType; color: string; tab: ActiveTab }>).map(stat => (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {sessionStatus.map(stat => (
           <button
             key={stat.label}
-            onClick={() => setActiveTab(stat.tab)}
+            onClick={() => stat.label === 'Party' ? setActiveTab('import') : stat.label === 'Encounter' ? setActiveTab('encounters') : stat.label === 'Next up' ? setActiveTab('campaigns') : setActiveTab('encounters')}
             className="bg-surface-container-low rounded-2xl p-4 border border-white/5 flex flex-col gap-2 hover:border-white/10 hover:bg-white/5 transition-all text-left"
           >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stat.color}`}>
@@ -180,11 +195,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
+          { label: 'Resume Encounter', icon: Play, action: primaryAction, desc: isEncounterActive ? encounterName : latestEncounter?.name ?? upcomingSession?.name ?? 'Choose what to run next', iconColor: 'text-primary', bgColor: 'bg-primary/10', hoverBorder: 'hover:border-primary/40', hoverBg: 'hover:bg-primary/5' },
           { label: 'New Encounter', icon: Swords, action: () => setIsEncounterCreatorOpen(true), desc: 'Build and launch combat', iconColor: 'text-violet-400', bgColor: 'bg-violet-400/10', hoverBorder: 'hover:border-violet-400/40', hoverBg: 'hover:bg-violet-400/5' },
-          { label: 'Browse Monsters', icon: BookOpen, action: () => setActiveTab('monsters'), desc: 'Search your library', iconColor: 'text-red-400', bgColor: 'bg-red-400/10', hoverBorder: 'hover:border-red-400/40', hoverBg: 'hover:bg-red-400/5' },
-          { label: 'Import Data', icon: UploadCloud, action: () => setActiveTab('import'), desc: 'Monsters, spells, players', iconColor: 'text-sky-400', bgColor: 'bg-sky-400/10', hoverBorder: 'hover:border-sky-400/40', hoverBg: 'hover:bg-sky-400/5' },
+          { label: 'Campaign Board', icon: MapIcon, action: () => setActiveTab('campaigns'), desc: 'Plan the next session', iconColor: 'text-teal-400', bgColor: 'bg-teal-400/10', hoverBorder: 'hover:border-teal-400/40', hoverBg: 'hover:bg-teal-400/5' },
         ].map(btn => (
           <button
             key={btn.label}
