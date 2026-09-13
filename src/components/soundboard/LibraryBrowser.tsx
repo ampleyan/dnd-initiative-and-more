@@ -37,6 +37,7 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
   const [localLibrary, setLocalLibrary] = useState<LibrarySound[]>([]);
   const [ambienceLibrary, setAmbienceLibrary] = useState<AmbienceTrack[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libSource, setLibSource] = useState<'ambiences' | 'local' | 'online' | 'youtube' | 'foundry'>('ambiences');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
@@ -112,20 +113,21 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
   };
 
   const loadLibSource = useCallback(async (src: 'ambiences' | 'local' | 'online', forceReload = false) => {
+    setLibraryError(null);
     if (src === 'ambiences' && (ambienceLibrary.length === 0 || forceReload)) {
       setLibraryLoading(true);
-      try { const d = await api.sounds.ambiences(); setAmbienceLibrary(d as AmbienceTrack[]); } catch {}
-      setLibraryLoading(false);
+      try { const d = await api.sounds.ambiences(); setAmbienceLibrary(d as AmbienceTrack[]); } catch (e: any) { setLibraryError(e.message ?? 'Could not load ambiences'); }
+      finally { setLibraryLoading(false); }
     }
     if (src === 'local' && (localLibrary.length === 0 || forceReload)) {
       setLibraryLoading(true);
-      try { const d = await api.sounds.local(); setLocalLibrary(d as LibrarySound[]); } catch {}
-      setLibraryLoading(false);
+      try { const d = await api.sounds.local(); setLocalLibrary(d as LibrarySound[]); } catch (e: any) { setLibraryError(e.message ?? 'Could not load local sounds'); }
+      finally { setLibraryLoading(false); }
     }
     if (src === 'online' && (library.length === 0 || forceReload)) {
       setLibraryLoading(true);
-      try { const d = await api.sounds.library(); setLibrary(d as LibrarySound[]); } catch {}
-      setLibraryLoading(false);
+      try { const d = await api.sounds.library(); setLibrary(d as LibrarySound[]); } catch (e: any) { setLibraryError(e.message ?? 'Could not load online library'); }
+      finally { setLibraryLoading(false); }
     }
   }, [ambienceLibrary.length, localLibrary.length, library.length]);
 
@@ -135,6 +137,7 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
       setSelectedIds(new Set());
       setSelectedVariants({});
       setImportStatus(null);
+      setLibraryError(null);
       setLibSource('ambiences');
       setLibCategory('all');
       setLibSearch('');
@@ -188,20 +191,27 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
 
   const loadFoundryWorlds = useCallback(async () => {
     setFoundryLoading(true);
+    setLibraryError(null);
     try {
-      const data = await api.foundry.worlds(foundryDataPath.trim() || undefined);
+      const configured = foundryDataPath.trim() || (await api.foundry.getConfig()).dataPath;
+      if (configured && configured !== foundryDataPath) {
+        setFoundryDataPath(configured);
+        localStorage.setItem('foundry_data_path', configured);
+      }
+      const data = await api.foundry.worlds(configured || undefined);
       setWorlds(data);
-    } catch {}
-    setFoundryLoading(false);
+    } catch (e: any) { setLibraryError(e.message ?? 'Could not load Foundry worlds'); }
+    finally { setFoundryLoading(false); }
   }, [foundryDataPath]);
 
   const loadFoundryPlaylists = useCallback(async (worldId: string) => {
     setFoundryLoading(true);
+    setLibraryError(null);
     try {
       const data = await api.foundry.playlists(worldId, foundryDataPath.trim() || undefined);
       setPlaylists(data);
-    } catch {}
-    setFoundryLoading(false);
+    } catch (e: any) { setLibraryError(e.message ?? 'Could not load Foundry playlists'); }
+    finally { setFoundryLoading(false); }
   }, [foundryDataPath]);
 
   useEffect(() => {
@@ -326,11 +336,11 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
         {/* Source tabs */}
         <div className="flex gap-1 px-6 pt-3 shrink-0 border-b border-outline/5">
           {([
-            { key: 'ambiences', label: 'Ambiences',  Icon: Music2 },
-            { key: 'local',     label: 'SFX Packs',  Icon: FolderOpen },
-            { key: 'online',    label: 'Online',      Icon: Globe },
-            { key: 'foundry',   label: 'Foundry',     Icon: ScrollText },
-            { key: 'youtube',   label: 'Web Search',  Icon: Search },
+            { key: 'ambiences', label: 'Ambiences · local',  Icon: Music2 },
+            { key: 'local',     label: 'SFX Packs · local',  Icon: FolderOpen },
+            { key: 'online',    label: 'Tabletop Audio · stream', Icon: Globe },
+            { key: 'foundry',   label: 'Foundry · copy',     Icon: ScrollText },
+            { key: 'youtube',   label: 'YouTube · download', Icon: Search },
           ] as const).map(({ key: src, label, Icon }) => (
             <button
               key={src}
@@ -374,10 +384,16 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
             <div className="flex items-center justify-center py-16 text-outline/30">
               <div className="text-sm font-headline uppercase tracking-widest animate-pulse">Loading…</div>
             </div>
+          ) : libraryError ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+              <AlertCircle className="w-8 h-8 text-error/70" />
+              <p className="text-sm text-error">{libraryError}</p>
+              <button onClick={() => libSource === 'foundry' ? loadFoundryWorlds() : loadLibSource(libSource as 'ambiences' | 'local' | 'online', true)} className="px-3 py-1.5 text-xs font-semibold text-on-surface bg-white/5 border border-outline/15 rounded-lg hover:bg-white/10">Retry</button>
+            </div>
           ) : libSource === 'foundry' ? (
             <div className="py-4 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-outline/60 px-1">Foundry Data Path</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-outline/60 px-1">Foundry Data Path · server source</label>
                 <input
                   type="text"
                   value={foundryDataPath}
@@ -393,7 +409,7 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
                   placeholder="/path/to/FoundryVTT/Data"
                   className="w-full bg-surface-container-high border border-outline/20 rounded-xl px-3 py-2 text-xs font-mono text-on-surface placeholder:text-outline/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
-                <p className="text-[10px] text-outline/40 px-1">Filesystem path to your FoundryVTT Data folder</p>
+                <p className="text-[10px] text-outline/40 px-1">Used to browse; imports always use the server-approved path.</p>
               </div>
 
               <div className="space-y-1.5">

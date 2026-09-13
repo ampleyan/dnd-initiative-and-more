@@ -15,6 +15,18 @@ export type SpatialMode = '5.1' | 'stereo';
 export interface PlaybackInfo {
   currentTime: number;
   duration: number;
+  error?: string;
+}
+
+const LIVE_SETTINGS_KEY = 'soundboard.live-settings';
+
+function loadLiveSettings(): Record<string, LiveSettings> {
+  try {
+    const stored = localStorage.getItem(LIVE_SETTINGS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
 }
 
 /**
@@ -41,9 +53,10 @@ export function useSoundboard(masterVolume: number, isMuted: boolean, spatialCha
   const repeatTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const [playingIds, setPlayingIds] = useState<Set<string>>(new Set());
-  const [liveSettings, setLiveSettings] = useState<Record<string, LiveSettings>>({});
+  const [liveSettings, setLiveSettings] = useState<Record<string, LiveSettings>>(loadLiveSettings);
+  const [playbackErrors, setPlaybackErrors] = useState<Record<string, string>>({});
   const [spatialMode, setSpatialMode] = useState<SpatialMode>('stereo');
-  const liveSettingsRef = useRef<Record<string, LiveSettings>>({});
+  const liveSettingsRef = useRef<Record<string, LiveSettings>>(loadLiveSettings());
 
   const getCtx = useCallback(() => {
     if (!audioContextRef.current) {
@@ -117,6 +130,7 @@ export function useSoundboard(masterVolume: number, isMuted: boolean, spatialCha
     const next = { ...getLive(id), ...patch };
     liveSettingsRef.current = { ...liveSettingsRef.current, [id]: next };
     setLiveSettings(prev => ({ ...prev, [id]: next }));
+    localStorage.setItem(LIVE_SETTINGS_KEY, JSON.stringify(liveSettingsRef.current));
 
     const audio = audioRefs.current.get(id);
     if (audio) audio.loop = next.loop && next.repeatSecs === 0;
@@ -188,6 +202,12 @@ export function useSoundboard(masterVolume: number, isMuted: boolean, spatialCha
   }, [getCtx, makePanner]);
 
   const togglePlay = useCallback((sound: Sound) => {
+    setPlaybackErrors(prev => {
+      if (!prev[sound.id]) return prev;
+      const next = { ...prev };
+      delete next[sound.id];
+      return next;
+    });
     const existing = audioRefs.current.get(sound.id);
     const timer = repeatTimers.current.get(sound.id);
     if (existing || timer) {
@@ -219,10 +239,23 @@ export function useSoundboard(masterVolume: number, isMuted: boolean, spatialCha
       audioRefs.current.set(sound.id, audio);
       audio.onplay = () => {
         if (audioRefs.current.get(sound.id) === audio && !audio.paused) {
+          setPlaybackErrors(prev => {
+            if (!prev[sound.id]) return prev;
+            const next = { ...prev };
+            delete next[sound.id];
+            return next;
+          });
           setPlayingIds(prev => new Set(prev).add(sound.id));
         }
       };
-      audio.play().catch(() => removeAudio(sound.id, audio));
+      audio.onerror = () => {
+        setPlaybackErrors(prev => ({ ...prev, [sound.id]: 'Audio could not be loaded' }));
+        removeAudio(sound.id, audio);
+      };
+      audio.play().catch(() => {
+        setPlaybackErrors(prev => ({ ...prev, [sound.id]: 'Playback was blocked or unavailable' }));
+        removeAudio(sound.id, audio);
+      });
     };
 
     startPlayback();
@@ -241,11 +274,12 @@ export function useSoundboard(masterVolume: number, isMuted: boolean, spatialCha
 
   const getPlaybackInfo = useCallback((id: string): PlaybackInfo | null => {
     const audio = audioRefs.current.get(id);
+    if (playbackErrors[id]) return { currentTime: 0, duration: 0, error: playbackErrors[id] };
     if (!audio || !Number.isFinite(audio.currentTime) || !Number.isFinite(audio.duration) || audio.duration <= 0) {
       return null;
     }
     return { currentTime: audio.currentTime, duration: audio.duration };
-  }, []);
+  }, [playbackErrors]);
 
   useEffect(() => {
     return () => {
@@ -264,6 +298,7 @@ export function useSoundboard(masterVolume: number, isMuted: boolean, spatialCha
     setVolume,
     getAudioCtx,
     getPlaybackInfo,
+    playbackErrors,
     audioRefs,
   };
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { Play, Square, VolumeX, Repeat } from 'lucide-react';
 import { Sound } from '../../types';
 import { CATEGORIES, categoryMeta } from './constants';
-import { LiveSettings, DEFAULT_LIVE } from './SoundCard';
+import { LiveSettings, DEFAULT_LIVE, sourceLabel, storageLabel } from './SoundCard';
 
 interface CompactSoundListProps {
   sounds: Sound[];
@@ -11,6 +11,7 @@ interface CompactSoundListProps {
   activeCategory: string;
   activeTag: string | null;
   playingIds: Set<string>;
+  getPlaybackInfo?: (id: string) => { error?: string } | null;
   liveSettingsState: Record<string, LiveSettings>;
   onSetActiveCategory: (cat: string) => void;
   onSetActiveTag: (tag: string | null) => void;
@@ -22,7 +23,7 @@ interface CompactSoundListProps {
 
 export const CompactSoundList = React.memo<CompactSoundListProps>(({
   sounds, visible, allCustomTags,
-  activeCategory, activeTag, playingIds, liveSettingsState,
+  activeCategory, activeTag, playingIds, getPlaybackInfo, liveSettingsState,
   onSetActiveCategory, onSetActiveTag,
   onTogglePlay, onStopAll, onPatchLive, onVolumeChange,
 }) => {
@@ -99,6 +100,10 @@ export const CompactSoundList = React.memo<CompactSoundListProps>(({
                   : 'bg-surface-container border-outline/10 hover:border-outline/25'
               }`}
             >
+              {(() => {
+                const playbackError = getPlaybackInfo?.(sound.id)?.error;
+                return playbackError ? <div className="px-3 pt-2 text-[8px] uppercase tracking-wider text-error">{playbackError} · retry</div> : null;
+              })()}
               {/* Row 1: play + icon + name + loop + repeat */}
               <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
                 <button
@@ -117,6 +122,7 @@ export const CompactSoundList = React.memo<CompactSoundListProps>(({
                 <span className={`flex-1 min-w-0 text-xs font-semibold truncate ${isPlaying ? 'text-on-surface' : 'text-on-surface/80'}`}>
                   {sound.name}
                 </span>
+                <span className="text-[8px] text-outline/50 uppercase tracking-wider shrink-0">{sourceLabel(sound)}</span>
                 <button
                   onClick={() => onPatchLive(sound.id, { loop: !live.loop })}
                   title="Loop"
@@ -136,6 +142,9 @@ export const CompactSoundList = React.memo<CompactSoundListProps>(({
                   <option value={120}>2 min</option>
                   <option value={300}>5 min</option>
                 </select>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 pb-1 text-[8px] uppercase tracking-wider text-outline/40">
+                <span>{storageLabel(sound)}</span>
               </div>
 
               {/* Row 2: volume slider + L/R pan slider + 2D pad */}

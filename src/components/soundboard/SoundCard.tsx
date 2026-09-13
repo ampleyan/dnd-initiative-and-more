@@ -13,6 +13,22 @@ export interface LiveSettings {
 
 export const DEFAULT_LIVE: LiveSettings = { loop: false, repeatSecs: 0, panX: 0, panZ: 0 };
 
+export function sourceLabel(sound: Sound): string {
+  if (sound.sourceType === 'foundry') return 'Foundry';
+  if (sound.sourceType === 'tabletopaudio') return 'Tabletop Audio';
+  if (sound.sourceType === 'youtube') return 'YouTube';
+  if (sound.sourceType === 'upload') return 'Upload';
+  if (sound.sourceType === 'local') return 'Local';
+  return 'URL';
+}
+
+export function storageLabel(sound: Sound): string {
+  if (sound.storageType === 'managed-file') return 'Managed';
+  if (sound.storageType === 'mounted-file') return 'Mounted';
+  if (sound.storageType === 'proxied-stream') return 'Stream';
+  return 'External';
+}
+
 interface CategoryMeta {
   id: string;
   label: string;
@@ -33,6 +49,7 @@ interface SoundCardProps {
   isManageMode: boolean;
   cat: CategoryMeta;
   linkedSpell?: Spell | null;
+  playbackError?: string;
   onTogglePlay: (sound: Sound) => void;
   onVolumeChange: (sound: Sound, value: number) => void;
   onPatchLive: (id: string, patch: Partial<LiveSettings>) => void;
@@ -41,7 +58,7 @@ interface SoundCardProps {
 }
 
 export const SoundCard = React.memo<SoundCardProps>(({
-  sound, spells, isPlaying, live, isManageMode, cat, linkedSpell,
+  sound, spells, isPlaying, live, isManageMode, cat, linkedSpell, playbackError,
   onTogglePlay, onVolumeChange, onPatchLive, onDelete, onUpdate,
 }) => {
   const CatIcon = cat.Icon;
@@ -130,6 +147,11 @@ export const SoundCard = React.memo<SoundCardProps>(({
               ✦ {linkedSpell.name}
             </p>
           )}
+          <div className="flex items-center justify-center gap-1.5 mt-2 flex-wrap">
+            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-outline/60 border border-outline/10">{sourceLabel(sound)}</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-outline/40 border border-outline/10">{storageLabel(sound)}</span>
+          </div>
+          {playbackError && <p className="text-[9px] text-error mt-1">{playbackError} · click to retry</p>}
         </div>
       </button>
 
