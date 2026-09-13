@@ -6,6 +6,60 @@ import crypto from 'node:crypto';
 const DB_CACHE_DIR = '/tmp/foundry-db-cache';
 const DB_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+type FoundryLiveSnapshot = {
+  actorId: string;
+  name?: string;
+  hp?: number;
+  tempHp?: number;
+  maxHp?: number;
+  ac?: number;
+  initiative?: number;
+  conditions?: string[];
+  spellSlots?: Record<string, unknown>;
+  speed?: string;
+  stats?: Record<string, unknown>;
+  resistances?: unknown[];
+  vulnerabilities?: unknown[];
+  damageImmunities?: unknown[];
+  conditionImmunities?: unknown[];
+  actions?: Record<string, unknown>[];
+  abilities?: Record<string, unknown>[];
+  spells?: Record<string, unknown>[];
+  worldId?: string;
+  tokenId?: string;
+  sourceHash?: string;
+  lastSyncedAt?: string;
+  revision?: number;
+};
+
+type FoundrySyncRecord = Required<Pick<FoundryLiveSnapshot, 'actorId'>> & Omit<FoundryLiveSnapshot, 'actorId'> & { name: string; revision: number };
+
+type FoundryLinkedCombatant = {
+  id: string;
+  encounterId: string | null;
+  hp_current: number;
+  hp_max: number;
+  tempHp: number;
+  ac: number;
+  initiative: number;
+  conditions: string | null;
+  spellSlots: string | null;
+};
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isNamedDerivedEntry(value: unknown): value is Record<string, unknown> {
+  return isPlainObject(value)
+    && typeof value.name === 'string'
+    && !!value.name.trim()
+    && (value.description === undefined || typeof value.description === 'string')
+    && (value.category === undefined || typeof value.category === 'string');
+}
+
 function getCachedDbPath(originalPath: string): string {
   const hash = originalPath.replace(/[^a-z0-9]/gi, '_');
   return path.join(DB_CACHE_DIR, hash);
@@ -1101,9 +1155,13 @@ export function createFoundryLiveRouter(db: any, dbAvailable: boolean, io: any) 
     next();
   });
   router.get('/foundry/live-sync', (_req, res) => {
-    const syncedActors = db.prepare(`SELECT actorId, name, hp, tempHp, maxHp, ac, initiative, conditions, spellSlots, revision, pending
+    const syncedActors = db.prepare(`SELECT actorId, name, hp, tempHp, maxHp, ac, initiative, conditions, spellSlots, worldId, tokenId, sourceHash, lastSyncedAt, revision, pending
       FROM foundry_actor_sync`).all().map((actor: any) => ({
         ...actor,
+        ...(actor.worldId ? { worldId: actor.worldId } : {}),
+        ...(actor.tokenId ? { tokenId: actor.tokenId } : {}),
+        ...(actor.sourceHash ? { sourceHash: actor.sourceHash } : {}),
+        ...(actor.lastSyncedAt ? { lastSyncedAt: actor.lastSyncedAt } : {}),
         conditions: JSON.parse(actor.conditions || '[]'),
         spellSlots: JSON.parse(actor.spellSlots || '{}'),
       }));
@@ -1129,33 +1187,65 @@ export function createFoundryLiveRouter(db: any, dbAvailable: boolean, io: any) 
     res.json({ updated: true });
   });
   router.post('/foundry/live-sync', (req, res) => {
-    const { actorId, name, hp, tempHp, maxHp, ac, initiative, conditions, spellSlots, revision = 0 } = req.body ?? {};
+    const snapshot = (req.body ?? {}) as Partial<FoundryLiveSnapshot>;
+    const { actorId, name, hp, tempHp, maxHp, ac, initiative, conditions, spellSlots, speed, stats, resistances, vulnerabilities, damageImmunities, conditionImmunities, actions, abilities, spells, worldId, tokenId, sourceHash, lastSyncedAt } = snapshot;
+    const revision = snapshot.revision ?? 0;
     if (typeof actorId !== 'string' || !actorId) return res.status(400).json({ error: 'actorId is required' });
     if ([hp, tempHp, maxHp, ac, initiative, revision].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 0))) return res.status(400).json({ error: 'Numeric sync values must be non-negative integers' });
     if (conditions !== undefined && (!Array.isArray(conditions) || conditions.some(value => typeof value !== 'string'))) return res.status(400).json({ error: 'conditions must be an array of strings' });
-    if (spellSlots !== undefined && (typeof spellSlots !== 'object' || Array.isArray(spellSlots))) return res.status(400).json({ error: 'spellSlots must be an object' });
-    const current = db.prepare('SELECT * FROM foundry_actor_sync WHERE actorId = ?').get(actorId) as any;
-    const legacyCurrent = db.prepare('SELECT * FROM foundry_hp_sync WHERE playerId = (SELECT id FROM players WHERE dndBeyondId = ?)').get(`foundry:${actorId}`) as any;
+    if (spellSlots !== undefined && !isPlainObject(spellSlots)) return res.status(400).json({ error: 'spellSlots must be an object' });
+    if (speed !== undefined && typeof speed !== 'string') return res.status(400).json({ error: 'speed must be a string' });
+    if (stats !== undefined && !isPlainObject(stats)) return res.status(400).json({ error: 'stats must be an object' });
+    if ([resistances, vulnerabilities, damageImmunities, conditionImmunities].some(value => value !== undefined && (!Array.isArray(value) || value.some(entry => typeof entry !== 'string')))) return res.status(400).json({ error: 'Derived trait collections must be arrays of strings' });
+    if ([actions, abilities, spells].some(value => value !== undefined && (!Array.isArray(value) || value.some(entry => !isNamedDerivedEntry(entry))))) return res.status(400).json({ error: 'Derived entries must be named objects' });
+    if ([worldId, tokenId, sourceHash].some(value => value !== undefined && (typeof value !== 'string' || !value.trim()))) return res.status(400).json({ error: 'Foundry provenance values must be non-empty strings' });
+    if (lastSyncedAt !== undefined && (typeof lastSyncedAt !== 'string' || Number.isNaN(Date.parse(lastSyncedAt)) || new Date(lastSyncedAt).toISOString() !== lastSyncedAt)) return res.status(400).json({ error: 'lastSyncedAt must be an ISO timestamp' });
+    const current = db.prepare('SELECT * FROM foundry_actor_sync WHERE actorId = ?').get(actorId) as FoundrySyncRecord | undefined;
+    const legacyCurrent = db.prepare('SELECT * FROM foundry_hp_sync WHERE playerId = (SELECT id FROM players WHERE dndBeyondId = ?)').get(`foundry:${actorId}`) as FoundrySyncRecord | undefined;
     const syncCurrent = current ?? legacyCurrent;
     if (syncCurrent && revision !== syncCurrent.revision) return res.status(409).json({ error: 'Actor changed; fetch the latest update' });
-    const existingPlayer = db.prepare('SELECT id, hp_current, hp_max FROM players WHERE dndBeyondId = ?').get(`foundry:${actorId}`) as { id: string; hp_current: number | null; hp_max: number } | undefined;
-    const existingCombatant = db.prepare('SELECT * FROM combatants WHERE playerId = ? OR (lower(name) = lower(?) AND type != \'player\') LIMIT 1').get(existingPlayer?.id ?? '', name ?? '') as any;
-    if (!existingPlayer && !existingCombatant && !name) return res.status(404).json({ error: 'Foundry actor is not linked to a tracker combatant' });
+    const explicitPlayers = worldId
+      ? db.prepare('SELECT id, hp_current, hp_max FROM players WHERE foundryWorldId = ? AND foundryActorId = ? ORDER BY id LIMIT 2').all(worldId, actorId) as { id: string; hp_current: number | null; hp_max: number }[]
+      : [];
+    const legacyPlayers = db.prepare('SELECT id, hp_current, hp_max FROM players WHERE dndBeyondId = ? ORDER BY id LIMIT 2').all(`foundry:${actorId}`) as { id: string; hp_current: number | null; hp_max: number }[];
+    const playerCandidates = explicitPlayers.length ? explicitPlayers : legacyPlayers;
+    if (playerCandidates.length > 1) return res.status(409).json({ error: 'Foundry actor link is ambiguous', candidateIds: playerCandidates.map(player => player.id) });
+    const existingPlayer = playerCandidates[0];
+    const tokenCombatants = !existingPlayer && tokenId
+      ? db.prepare('SELECT * FROM combatants WHERE foundryTokenId = ? ORDER BY id LIMIT 2').all(tokenId) as FoundryLinkedCombatant[]
+      : [];
+    const nameCombatants = !existingPlayer && tokenCombatants.length === 0 && name
+      ? db.prepare("SELECT * FROM combatants WHERE lower(name) = lower(?) AND type != 'player' ORDER BY id LIMIT 2").all(name) as FoundryLinkedCombatant[]
+      : [];
+    const candidates = tokenCombatants.length ? tokenCombatants : nameCombatants;
+    if (candidates.length > 1) return res.status(409).json({ error: 'Foundry actor link is ambiguous', candidateIds: candidates.map(candidate => candidate.id) });
+    const existingCombatant = existingPlayer
+      ? db.prepare('SELECT * FROM combatants WHERE playerId = ? ORDER BY id LIMIT 1').get(existingPlayer.id) as FoundryLinkedCombatant | undefined
+      : candidates[0];
+    if (!existingPlayer && !existingCombatant) return res.status(404).json({ error: 'Foundry actor is not linked to a tracker combatant' });
     const slotJson = spellSlots && typeof spellSlots === 'object' ? JSON.stringify(spellSlots) : null;
-    const conditionJson = conditions ? JSON.stringify(conditions) : null;
-    const updatePlayer = existingPlayer && db.prepare('UPDATE players SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), ac = COALESCE(?, ac), spell_slots = COALESCE(?, spell_slots), lastImported = ? WHERE id = ?');
-    const updateCombatant = db.prepare(`UPDATE combatants SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), tempHp = COALESCE(?, tempHp), ac = COALESCE(?, ac), initiative = COALESCE(?, initiative), conditions = COALESCE(?, conditions), spellSlots = COALESCE(?, spellSlots) WHERE (playerId = ? OR (lower(name) = lower(?) AND type != 'player')) AND (polymorph_form IS NULL OR polymorph_form = 'null')`);
+    const jsonValue = (value: unknown) => value === undefined ? null : JSON.stringify(value);
+    const statsJson = jsonValue(stats);
+    const resistancesJson = jsonValue(resistances);
+    const vulnerabilitiesJson = jsonValue(vulnerabilities);
+    const damageImmunitiesJson = jsonValue(damageImmunities);
+    const conditionImmunitiesJson = jsonValue(conditionImmunities);
+    const actionsJson = jsonValue(actions);
+    const abilitiesJson = jsonValue(abilities);
+    const spellsJson = jsonValue(spells);
+    const updatePlayer = existingPlayer && db.prepare('UPDATE players SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), ac = COALESCE(?, ac), speed = COALESCE(?, speed), stats = COALESCE(?, stats), actions = COALESCE(?, actions), abilities = COALESCE(?, abilities), spells = COALESCE(?, spells), spell_slots = COALESCE(?, spell_slots), lastImported = ? WHERE id = ?');
+    const updateCombatant = db.prepare(`UPDATE combatants SET name = COALESCE(?, name), hp_max = COALESCE(?, hp_max), hp_current = COALESCE(?, hp_current), tempHp = COALESCE(?, tempHp), ac = COALESCE(?, ac), speed = COALESCE(?, speed), stats = COALESCE(?, stats), resistances = COALESCE(?, resistances), vulnerabilities = COALESCE(?, vulnerabilities), damageImmunities = COALESCE(?, damageImmunities), conditionImmunities = COALESCE(?, conditionImmunities), actions = COALESCE(?, actions), abilities = COALESCE(?, abilities), spells = COALESCE(?, spells), spellSlots = COALESCE(?, spellSlots) WHERE ${existingPlayer ? 'playerId = ?' : 'id = ?'} AND (polymorph_form IS NULL OR polymorph_form = 'null')`);
     const rows = existingPlayer
       ? db.prepare('SELECT DISTINCT encounterId FROM combatants WHERE playerId = ? AND encounterId IS NOT NULL').all(existingPlayer.id) as { encounterId: string }[]
-      : db.prepare('SELECT DISTINCT encounterId FROM combatants WHERE lower(name) = lower(?) AND type != \'player\' AND encounterId IS NOT NULL').all(name) as { encounterId: string }[];
+      : existingCombatant?.encounterId ? [{ encounterId: existingCombatant.encounterId }] : [];
     const nextRevision = (syncCurrent?.revision ?? 0) + 1;
     db.transaction(() => {
-      if (updatePlayer) updatePlayer.run(name || null, maxHp ?? null, hp ?? null, ac ?? null, slotJson, new Date().toISOString(), existingPlayer!.id);
-      updateCombatant.run(name || null, maxHp ?? null, hp ?? null, tempHp ?? null, ac ?? null, initiative ?? null, conditionJson, slotJson, existingPlayer?.id ?? '', name ?? '');
-      db.prepare(`INSERT INTO foundry_actor_sync (actorId, name, hp, tempHp, maxHp, ac, initiative, conditions, spellSlots, revision, pending)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-        ON CONFLICT(actorId) DO UPDATE SET name = excluded.name, hp = excluded.hp, tempHp = excluded.tempHp, maxHp = excluded.maxHp, ac = excluded.ac, initiative = excluded.initiative, conditions = excluded.conditions, spellSlots = excluded.spellSlots, revision = excluded.revision, pending = 0`)
-        .run(actorId, name || syncCurrent?.name || actorId, hp ?? syncCurrent?.hp ?? existingPlayer?.hp_current ?? existingCombatant?.hp_current ?? 0, tempHp ?? syncCurrent?.tempHp ?? existingCombatant?.tempHp ?? 0, maxHp ?? syncCurrent?.maxHp ?? existingPlayer?.hp_max ?? existingCombatant?.hp_max ?? 0, ac ?? syncCurrent?.ac ?? existingCombatant?.ac ?? 0, initiative ?? syncCurrent?.initiative ?? existingCombatant?.initiative ?? 0, conditionJson ?? syncCurrent?.conditions ?? existingCombatant?.conditions ?? '[]', slotJson ?? syncCurrent?.spellSlots ?? existingCombatant?.spellSlots ?? '{}', nextRevision);
+      if (updatePlayer) updatePlayer.run(name || null, maxHp ?? null, hp ?? null, ac ?? null, speed ?? null, statsJson, actionsJson, abilitiesJson, spellsJson, slotJson, new Date().toISOString(), existingPlayer!.id);
+      updateCombatant.run(name || null, maxHp ?? null, hp ?? null, tempHp ?? null, ac ?? null, speed ?? null, statsJson, resistancesJson, vulnerabilitiesJson, damageImmunitiesJson, conditionImmunitiesJson, actionsJson, abilitiesJson, spellsJson, slotJson, existingPlayer?.id ?? existingCombatant.id);
+      db.prepare(`INSERT INTO foundry_actor_sync (actorId, name, hp, tempHp, maxHp, ac, initiative, conditions, spellSlots, worldId, tokenId, sourceHash, lastSyncedAt, revision, pending)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        ON CONFLICT(actorId) DO UPDATE SET name = excluded.name, hp = excluded.hp, tempHp = excluded.tempHp, maxHp = excluded.maxHp, ac = excluded.ac, initiative = excluded.initiative, conditions = excluded.conditions, spellSlots = excluded.spellSlots, worldId = excluded.worldId, tokenId = excluded.tokenId, sourceHash = excluded.sourceHash, lastSyncedAt = excluded.lastSyncedAt, revision = excluded.revision, pending = 0`)
+        .run(actorId, name || syncCurrent?.name || actorId, hp ?? syncCurrent?.hp ?? existingPlayer?.hp_current ?? existingCombatant?.hp_current ?? 0, tempHp ?? syncCurrent?.tempHp ?? existingCombatant?.tempHp ?? 0, maxHp ?? syncCurrent?.maxHp ?? existingPlayer?.hp_max ?? existingCombatant?.hp_max ?? 0, ac ?? syncCurrent?.ac ?? existingCombatant?.ac ?? 0, syncCurrent?.initiative ?? existingCombatant?.initiative ?? 0, syncCurrent?.conditions ?? existingCombatant?.conditions ?? '[]', slotJson ?? syncCurrent?.spellSlots ?? existingCombatant?.spellSlots ?? '{}', worldId ?? syncCurrent?.worldId ?? null, tokenId ?? syncCurrent?.tokenId ?? null, sourceHash ?? syncCurrent?.sourceHash ?? null, lastSyncedAt ?? syncCurrent?.lastSyncedAt ?? null, nextRevision);
     })();
     for (const row of rows) io.emit('encounter-updated', { encounterId: row.encounterId });
     res.json({ updated: true, encounters: rows.length, revision: nextRevision });

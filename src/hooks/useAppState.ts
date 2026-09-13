@@ -16,7 +16,7 @@ import { computeEncounterStats, enrichStatsFromLog, CombatantTracking } from '..
 import { toPlayerLog } from '../lib/playerLog';
 
 function mergePlayerSpellSlots(rosterSlots: SpellSlots | undefined, combatantSlots: SpellSlots | undefined): SpellSlots | undefined {
-  if (!rosterSlots) return combatantSlots;
+  if (!rosterSlots || Object.keys(rosterSlots).length === 0) return combatantSlots;
   return Object.fromEntries(Object.entries(rosterSlots).map(([level, slot]) => [
     level,
     {

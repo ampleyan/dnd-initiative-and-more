@@ -164,6 +164,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [portraitsOpen, setPortraitsOpen] = useState(true);
   const [logOpen, setLogOpen] = useState(false);
   const [expandedAbilities, setExpandedAbilities] = useState<Set<string>>(new Set());
+  const [expandedSlots, setExpandedSlots] = useState<Set<string>>(new Set());
+  const toggleSlots = (id: string) => setExpandedSlots(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const previousActiveCombatantId = useRef<string | null>(null);
   const [turnCueActive, setTurnCueActive] = useState(false);
 
@@ -771,7 +773,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       </div>
                     </div>
                     <div className="shrink-0">
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${barColor}25`, color: barColor }}>{s.label}</span>
+                      <span className="px-1.5 py-0.5 rounded text-[16px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${barColor}25`, color: barColor }}>{s.label}</span>
                     </div>
                     {animationLevel === 'full' && <ParticleBurst particles={particles} combatantId={c.id} />}
                   </div>
@@ -849,6 +851,31 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                             <div className="flex items-center gap-1.5 mt-1">
                               <Sparkles className="w-3 h-3 text-violet-400 shrink-0" />
                               <span className="text-[10px] text-violet-300 font-bold">{c.concentratingOn}</span>
+                            </div>
+                          )}
+                          {isPlayer && c.spellSlots && Object.keys(c.spellSlots).length > 0 && (
+                            <div className="mt-1.5">
+                              <button onClick={() => toggleSlots(c.id)} className="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest text-violet-400/60 hover:text-violet-400/90 transition-colors">
+                                <span>Spell Slots</span>
+                                {expandedSlots.has(c.id) ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                              </button>
+                              {expandedSlots.has(c.id) && (
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                  {(Object.entries(c.spellSlots) as [string, { total: number; used: number }][])
+                                    .sort(([a], [b]) => Number(a) - Number(b))
+                                    .map(([level, slot]) => {
+                                      const available = slot.total - slot.used;
+                                      return (
+                                        <div key={level} className="flex items-center gap-1">
+                                          <span className="text-[8px] font-black text-violet-400/70 tabular-nums w-2.5">{level}</span>
+                                          {Array.from({ length: slot.total }, (_, i) => (
+                                            <span key={i} className={cn('w-2 h-2 rounded-full', i < available ? 'bg-violet-400' : 'bg-violet-400/15 border border-violet-400/30')} />
+                                          ))}
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              )}
                             </div>
                           )}
                           {(() => {
@@ -978,6 +1005,31 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         />
                       </div>
                     )}
+                    {isPlayer && c.spellSlots && Object.keys(c.spellSlots).length > 0 && (
+                      <div className="mt-1">
+                        <button onClick={() => toggleSlots(c.id)} className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-widest text-violet-400/50 hover:text-violet-400/80 transition-colors">
+                          <span>Slots</span>
+                          {expandedSlots.has(c.id) ? <ChevronUp className="w-2 h-2" /> : <ChevronDown className="w-2 h-2" />}
+                        </button>
+                        {expandedSlots.has(c.id) && (
+                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                            {(Object.entries(c.spellSlots) as [string, { total: number; used: number }][])
+                              .sort(([a], [b]) => Number(a) - Number(b))
+                              .map(([level, slot]) => {
+                                const available = slot.total - slot.used;
+                                return (
+                                  <div key={level} className="flex items-center gap-0.5">
+                                    <span className="text-[7px] font-black text-violet-400/60 tabular-nums w-2">{level}</span>
+                                    {Array.from({ length: slot.total }, (_, i) => (
+                                      <span key={i} className={cn('w-1.5 h-1.5 rounded-full', i < available ? 'bg-violet-400' : 'bg-violet-400/15 border border-violet-400/25')} />
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {isPlayer && c.deathSaves && c.hp.current <= 0 && (
                       <DeathSavesView ds={c.deathSaves} />
                     )}
@@ -1053,7 +1105,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       </div>
                     )}
                     <div>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${healthColor(c)}25`, color: healthColor(c) }}>
+                      <span className="px-1.5 py-0.5 rounded text-[16px] font-black uppercase whitespace-nowrap" style={{ backgroundColor: `${healthColor(c)}25`, color: healthColor(c) }}>
                         {s.label}
                       </span>
                     </div>
