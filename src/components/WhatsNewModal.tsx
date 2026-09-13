@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 
-const APP_VERSION = '1.12.0';
+const APP_VERSION = '1.13.0';
 
 interface Release {
   version: string;
@@ -10,6 +10,32 @@ interface Release {
 }
 
 const RELEASES: Release[] = [
+  {
+    version: '1.13.0',
+    date: 'September 2026',
+    features: [
+      {
+        icon: '🔄',
+        title: 'Foundry Live Sync — Derived Stats',
+        description: 'Equipping or unequipping an item in Foundry now updates the linked combatant\'s AC in the tracker instantly — no reimport needed. Active-effect changes (buffs, debuffs) follow the same path. A 100 ms debounce collapses rapid item/effect bursts into a single clean snapshot.',
+      },
+      {
+        icon: '🔗',
+        title: 'Stable Actor Linking',
+        description: 'Foundry actors can now be linked by world ID + actor ID or by token ID, eliminating silent name-based guesses. Duplicate names return an unambiguous 409 with candidate IDs instead of updating the wrong combatant.',
+      },
+      {
+        icon: '🟢',
+        title: 'Foundry Sync Status Badge',
+        description: 'Each Foundry-linked combatant row shows a live sync indicator — green "just now" fades to amber when the last sync is more than 5 minutes old or a push is in flight. No manual refresh required.',
+      },
+      {
+        icon: '🎰',
+        title: 'Spell Slots on Player View',
+        description: 'Players\' spell slots now appear on the shared Player View in a collapsible pip row — filled circles for available slots, faded for spent ones. Expands per combatant so the screen stays uncluttered by default.',
+      },
+    ],
+  },
   {
     version: '1.12.0',
     date: 'September 2026',

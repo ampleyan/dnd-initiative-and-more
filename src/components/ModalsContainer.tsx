@@ -99,6 +99,7 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
         displayName={editingCombatantDisplayName}
         onSave={handleUpdateCombatant}
         onDelete={handleDeleteCombatant}
+        existingWaveIds={Array.from(new Set(combatants.filter(c => c.type === 'monster' && c.waveId).map(c => c.waveId!)))}
       />
       <StatusManagerModal
         isOpen={isStatusModalOpen}

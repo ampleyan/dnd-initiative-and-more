@@ -14,10 +14,12 @@ RUN npm run build && npm prune --omit=dev
 # Stage 2: Final runtime image
 FROM node:26-slim AS runtime
 WORKDIR /app
-RUN apt-get update && apt-get install -y python3 python3-pip ffmpeg && \
-    pip3 install yt-dlp --break-system-packages && \
-    echo '--js-runtimes nodejs' > /etc/yt-dlp.conf && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates ffmpeg curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux \
+         -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp && \
+    echo '--js-runtimes nodejs' > /etc/yt-dlp.conf
 # Only copy what's necessary
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
@@ -29,6 +31,7 @@ COPY --from=build /app/routes ./routes
 COPY --from=build /app/src/lib/playerLog.ts ./src/lib/playerLog.ts
 COPY --from=build /app/src/lib/playerViewSettings.ts ./src/lib/playerViewSettings.ts
 COPY --from=build /app/scripts/update-monsters.ts ./scripts/update-monsters.ts
+COPY --from=build /app/scripts/monster-update-db.ts ./scripts/monster-update-db.ts
 
 # Expose the application port
 EXPOSE 3000

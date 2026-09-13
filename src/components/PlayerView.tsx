@@ -307,9 +307,19 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         100% { transform: scale(1); opacity: 1; }
       }
       .turn-cue-enter { animation: turnCue .7s ease-out; }
-      @keyframes weatherDrift { to { background-position: 0 260px; } }
+      @keyframes wxSnow    { to { background-position: 12px 200px; } }
+      @keyframes wxSnow2   { to { background-position: -8px 180px; } }
+      @keyframes wxRain    { to { background-position: -40px 120px; } }
+      @keyframes wxStorm   { to { background-position: -60px 100px; } }
+      @keyframes wxAsh     { to { background-position: 20px 240px; } }
+      @keyframes wxAsh2    { to { background-position: -14px 200px; } }
+      @keyframes wxFog     { 0%  { background-position: 0% 50%; } 100% { background-position: 120% 50%; } }
+      @keyframes wxFog2    { 0%  { background-position: 100% 50%; } 100% { background-position: -20% 50%; } }
+      @keyframes wxMotes   { 0%  { background-position: 0 0; opacity: .5; } 50% { opacity: 1; } 100% { background-position: -10px -180px; opacity: .5; } }
+      @keyframes wxLeaves  { 0%  { background-position: 0 0; } 100% { background-position: 60px 220px; } }
+      @keyframes wxSand    { to { background-position: 300px 30px; } }
       @media (prefers-reduced-motion: reduce) {
-        .turn-cue-enter, [data-testid="weather-overlay"] { animation: none !important; }
+        .turn-cue-enter, [data-testid="weather-overlay"], [data-testid="weather-overlay2"] { animation: none !important; }
       }
     `}</style>
     <div className="fixed inset-0 z-50 bg-surface-container-lowest overflow-y-auto overflow-x-hidden">
@@ -332,7 +342,45 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         <div className="absolute top-[-10%] left-[15%] w-[700px] h-[700px] rounded-full bg-indigo-950/40 blur-[140px]" />
         <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[400px] rounded-full bg-blue-950/30 blur-[120px]" />
         <div className="absolute top-[40%] left-[40%] w-[600px] h-[200px] rounded-full bg-primary/5 blur-[100px]" />
-        {weather !== 'none' && animationLevel !== 'none' && <div data-testid="weather-overlay" className={`absolute inset-0 weather-${weather}`} style={{ backgroundImage: weather === 'fog' ? 'radial-gradient(ellipse, rgba(230,235,240,.18), transparent 65%)' : 'radial-gradient(circle, rgba(255,255,255,.65) 1px, transparent 1.5px)', backgroundSize: '28px 28px', animation: 'weatherDrift 8s linear infinite' }} />}
+        {weather !== 'none' && animationLevel !== 'none' && (() => {
+          const base = 'absolute inset-0 pointer-events-none';
+          if (weather === 'snow') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,.7) 1px, transparent 1.5px)', backgroundSize: '32px 32px', animation: 'wxSnow 10s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,.4) 1px, transparent 1px)', backgroundSize: '18px 18px', animation: 'wxSnow2 14s linear infinite' }} />
+          </>;
+          if (weather === 'rain') return <>
+            <div data-testid="weather-overlay" className={base} style={{ backgroundImage: 'linear-gradient(170deg, rgba(180,210,255,.55) 1px, transparent 1px)', backgroundSize: '14px 18px', animation: 'wxRain 0.55s linear infinite' }} />
+          </>;
+          if (weather === 'storm') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'linear-gradient(168deg, rgba(180,215,255,.65) 1px, transparent 1px)', backgroundSize: '10px 14px', animation: 'wxStorm 0.3s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'linear-gradient(168deg, rgba(200,225,255,.35) 1px, transparent 1px)', backgroundSize: '20px 22px', animation: 'wxStorm 0.45s linear infinite', opacity: 0.7 }} />
+            <div className={base} style={{ background: 'rgba(100,140,200,.04)' }} />
+          </>;
+          if (weather === 'ash') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(180,175,170,.6) 1px, transparent 1.5px)', backgroundSize: '26px 26px', animation: 'wxAsh 16s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(160,155,150,.35) 1px, transparent 1px)', backgroundSize: '14px 14px', animation: 'wxAsh2 22s linear infinite' }} />
+            <div className={base} style={{ background: 'rgba(80,70,60,.07)' }} />
+          </>;
+          if (weather === 'fog') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(ellipse 80% 40% at 50% 50%, rgba(220,228,235,.22), transparent)', backgroundSize: '200% 100%', animation: 'wxFog 18s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(ellipse 60% 30% at 50% 50%, rgba(210,220,230,.15), transparent)', backgroundSize: '200% 100%', animation: 'wxFog2 24s linear infinite' }} />
+            <div className={base} style={{ background: 'rgba(200,210,220,.05)' }} />
+          </>;
+          if (weather === 'motes') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(180,160,255,.8) 1px, transparent 1.5px)', backgroundSize: '40px 40px', animation: 'wxMotes 8s ease-in-out infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(220,200,255,.5) 1px, transparent 1px)', backgroundSize: '22px 22px', animation: 'wxMotes 12s ease-in-out infinite reverse' }} />
+          </>;
+          if (weather === 'leaves') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(ellipse 3px 2px, rgba(120,180,60,.7), transparent)', backgroundSize: '48px 38px', animation: 'wxLeaves 7s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(ellipse 2px 3px, rgba(180,130,40,.55), transparent)', backgroundSize: '34px 52px', animation: 'wxLeaves 10s linear infinite reverse' }} />
+          </>;
+          if (weather === 'sand') return <>
+            <div data-testid="weather-overlay"  className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(210,180,100,.55) 1px, transparent 1px)', backgroundSize: '8px 12px', animation: 'wxSand 1.2s linear infinite' }} />
+            <div data-testid="weather-overlay2" className={base} style={{ backgroundImage: 'radial-gradient(circle, rgba(190,155,80,.35) 1px, transparent 1px)', backgroundSize: '14px 18px', animation: 'wxSand 2s linear infinite', opacity: 0.6 }} />
+            <div className={base} style={{ background: 'rgba(150,110,40,.06)' }} />
+          </>;
+          return null;
+        })()}
       </div>
 
       {/* Encounter Ended Banner */}

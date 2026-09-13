@@ -30,6 +30,64 @@ describe('CombatantRow', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it('shows Foundry sync status for a linked combatant', () => {
+    const linked: Combatant = {
+      ...combatant,
+      foundrySync: { actorId: 'actor-1', lastSyncedAt: new Date(Date.now() - 30_000).toISOString(), pending: false },
+    };
+    render(
+      <CombatantRow
+        combatant={linked}
+        isActive={false}
+        queueIndex={1}
+        onEdit={vi.fn()}
+        onStatus={vi.fn()}
+        onQuickAction={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    );
+    expect(screen.getByTitle(/Foundry synced/)).toBeInTheDocument();
+    expect(screen.queryByText(/actor-1/)).toBeNull();
+  });
+
+  it('warns when Foundry sync is stale', () => {
+    const stale: Combatant = {
+      ...combatant,
+      foundrySync: { actorId: 'actor-1', lastSyncedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(), pending: false },
+    };
+    render(
+      <CombatantRow
+        combatant={stale}
+        isActive={false}
+        queueIndex={1}
+        onEdit={vi.fn()}
+        onStatus={vi.fn()}
+        onQuickAction={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    );
+    expect(screen.getByTitle('Foundry sync stale')).toBeInTheDocument();
+  });
+
+  it('shows pending state when a Foundry sync is in flight', () => {
+    const pending: Combatant = {
+      ...combatant,
+      foundrySync: { actorId: 'actor-1', lastSyncedAt: new Date(Date.now() - 5_000).toISOString(), pending: true },
+    };
+    render(
+      <CombatantRow
+        combatant={pending}
+        isActive={false}
+        queueIndex={1}
+        onEdit={vi.fn()}
+        onStatus={vi.fn()}
+        onQuickAction={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    );
+    expect(screen.getByTitle('Foundry sync pending')).toBeInTheDocument();
+  });
+
   it('allows condition tooltips to extend beyond the row', () => {
     const { container } = render(
       <CombatantRow

@@ -84,6 +84,7 @@ export interface Combatant {
   polymorphForm?: PolymorphForm;
   hidden?: boolean;
   waveId?: string;
+  foundrySync?: { actorId: string; lastSyncedAt?: string; pending: boolean };
 }
 
 export interface EncounterBudget {

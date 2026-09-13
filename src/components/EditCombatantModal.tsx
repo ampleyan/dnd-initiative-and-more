@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { Save, Trash2, PlusCircle, ChevronUp, ChevronDown, EyeOff, Eye } from 'lucide-react';
 import { Modal } from './Modal';
 import { Combatant, MonsterAction } from '../types';
 import { CR_TABLE } from '../constants/crTable';
@@ -11,6 +11,7 @@ interface EditCombatantModalProps {
   onSave: (updated: Combatant) => void;
   onDelete: (id: string) => void;
   displayName?: string;
+  existingWaveIds?: string[];
 }
 
 const INPUT = 'w-full bg-surface-container-high border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary/50';
@@ -35,6 +36,7 @@ export const EditCombatantModal: React.FC<EditCombatantModalProps> = ({
   onSave,
   onDelete,
   displayName,
+  existingWaveIds = [],
 }) => {
   const [formData, setFormData] = useState<Combatant | null>(null);
   const [prevCr, setPrevCr] = useState('');
@@ -43,6 +45,8 @@ export const EditCombatantModal: React.FC<EditCombatantModalProps> = ({
   const [showBossSettings, setShowBossSettings] = useState(!!combatant?.legendaryActions);
   const [legendaryEnabled, setLegendaryEnabled] = useState(!!combatant?.legendaryActions);
   const [legendaryMax, setLegendaryMax] = useState(combatant?.legendaryActions?.max ?? 3);
+  const [newWaveName, setNewWaveName] = useState('');
+  const [creatingWave, setCreatingWave] = useState(false);
 
   useEffect(() => {
     if (combatant) {
@@ -54,6 +58,8 @@ export const EditCombatantModal: React.FC<EditCombatantModalProps> = ({
       setShowBossSettings(!!combatant.legendaryActions);
       setLegendaryEnabled(!!combatant.legendaryActions);
       setLegendaryMax(combatant.legendaryActions?.max ?? 3);
+      setNewWaveName('');
+      setCreatingWave(false);
     }
   }, [combatant]);
 
@@ -106,6 +112,76 @@ export const EditCombatantModal: React.FC<EditCombatantModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Edit ${displayName ?? formData.name}`} size="xl">
       <div className="space-y-5">
+
+        {/* Wave assignment (monsters only) */}
+        {formData.type !== 'player' && (
+          <div className="space-y-3 pb-1 border-b border-outline-variant/10">
+            <label className={LABEL}>Wave &amp; Visibility</label>
+            <div className="flex gap-2 items-start flex-wrap">
+              <div className="flex-1 min-w-[140px] space-y-1">
+                <label className="text-[10px] text-outline uppercase tracking-widest">Wave</label>
+                {!creatingWave ? (
+                  <select
+                    className={INPUT}
+                    value={formData.waveId ?? 'default'}
+                    onChange={e => {
+                      if (e.target.value === '__new__') {
+                        setCreatingWave(true);
+                        setNewWaveName('');
+                      } else {
+                        setFormData({ ...formData, waveId: e.target.value });
+                      }
+                    }}
+                  >
+                    {Array.from(new Set(['default', ...existingWaveIds])).map(id => (
+                      <option key={id} value={id}>{id === 'default' ? 'Default (visible)' : id}</option>
+                    ))}
+                    <option value="__new__">+ New wave…</option>
+                  </select>
+                ) : (
+                  <div className="flex gap-1">
+                    <input
+                      autoFocus
+                      className={INPUT}
+                      placeholder="Wave name (e.g. reinforcements)"
+                      value={newWaveName}
+                      onChange={e => setNewWaveName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && newWaveName.trim()) {
+                          setFormData({ ...formData, waveId: newWaveName.trim() });
+                          setCreatingWave(false);
+                        }
+                        if (e.key === 'Escape') {
+                          setCreatingWave(false);
+                          setNewWaveName('');
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newWaveName.trim()) setFormData({ ...formData, waveId: newWaveName.trim() });
+                        setCreatingWave(false);
+                        setNewWaveName('');
+                      }}
+                      className="px-2 py-1 rounded-lg bg-primary text-on-primary text-xs font-bold shrink-0"
+                    >OK</button>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-1 pt-5">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, hidden: !formData.hidden })}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-bold transition-colors ${formData.hidden ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20' : 'border-white/10 text-outline hover:text-on-surface hover:bg-white/5'}`}
+                >
+                  {formData.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  {formData.hidden ? 'Hidden from players' : 'Visible to players'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Name + Subtitle */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

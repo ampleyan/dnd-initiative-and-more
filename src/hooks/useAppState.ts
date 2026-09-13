@@ -247,11 +247,7 @@ export function useAppState() {
           }
           return c;
         });
-        const turnIdx = current?.currentTurnIndex ?? 0;
-        const sortedForActive = sortWithCompanions(merged);
-        const activeId = sortedForActive[turnIdx]?.id;
-        const mergedWithActive = merged.map(c => ({ ...c, isCurrentTurn: c.id === activeId }));
-        setCombatants(mergedWithActive);
+        setCombatants(merged);
         // Enrich player combatants immediately from the player roster ref,
         // so we don't depend on the players effect firing order.
         const currentPlayers = playersRef.current;
@@ -273,7 +269,7 @@ export function useAppState() {
           }));
         }
         if (selectedCombatantIdRef.current === null) {
-          const cur = mergedWithActive.find((c: Combatant) => c.isCurrentTurn);
+          const cur = merged.find((c: Combatant) => c.isCurrentTurn);
           if (cur) setSelectedCombatantId(cur.id);
         }
       }

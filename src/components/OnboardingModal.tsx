@@ -62,7 +62,7 @@ const STEPS: Step[] = [
     bullets: [
       { icon: '🐉', text: 'Drop a 5etools bestiary JSON to bulk-import monsters.' },
       { icon: '🔮', text: "Browse your Foundry world's actors and import any character or NPC." },
-      { icon: '🔍', text: 'Every item is tagged New / Update / Unchanged before you confirm.' },
+      { icon: '🔄', text: 'Foundry actors stay live — equipping an item in Foundry updates AC here instantly via the live sync module.' },
     ],
     target: '[data-onboarding="nav-import"]',
     placement: 'right',
@@ -74,7 +74,7 @@ const STEPS: Step[] = [
     bullets: [
       { icon: '💡', text: 'Hue lights sync to combat conditions and scene colours automatically.' },
       { icon: '🏠', text: 'Home Assistant triggers scene events on combat start, end, and more.' },
-      { icon: '🎬', text: 'Scene start auto-applies background, music, and lighting when you start combat.' },
+      { icon: '🟢', text: 'Foundry live sync pushes derived stats (AC, speed, spell slots) to linked combatants in real time — no reimport needed.' },
     ],
     target: '[data-onboarding="nav-settings"]',
     placement: 'right',
