@@ -21,10 +21,11 @@ RUN npm run build
 # Stage 4: Final runtime image
 FROM node:26-slim AS runtime
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates ffmpeg && \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg && \
     rm -rf /var/lib/apt/lists/*
-COPY bin/yt-dlp /usr/local/bin/yt-dlp
-RUN chmod a+rx /usr/local/bin/yt-dlp && echo '--js-runtimes nodejs' > /etc/yt-dlp.conf
+RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp && \
+    echo '--js-runtimes nodejs' > /etc/yt-dlp.conf
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server.ts ./

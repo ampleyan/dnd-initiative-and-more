@@ -1,6 +1,4 @@
-Before running `docker compose up --build`, download the yt-dlp Linux binary here:
+The Dockerfile downloads the yt-dlp Linux binary during the image build.
 
-  curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o bin/yt-dlp
-
-This file is excluded from git (too large). The Dockerfile copies it directly,
-eliminating the network dependency during `docker build`.
+For local non-Docker development, install yt-dlp separately and make sure it is
+available on PATH.
