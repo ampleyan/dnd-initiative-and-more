@@ -79,9 +79,10 @@ export function useEncounterManagement(params: EncounterManagementParams) {
   };
 
   const handleSaveEncounter = async (name: string, overrideCombatants?: Combatant[], backgroundImage?: string, youtubeUrl?: string, folder?: string, difficulty?: string, backgroundOpacity?: number, panelOpacity?: number, soundIds?: string[], animationLevel?: AnimationLevel, huePreset?: string) => {
-    if (isSaving) return;
+    if (isSaving) return false;
     const id = currentEncounterId || uuid();
     const combatantsToSave = overrideCombatants || combatants;
+    let saved = false;
 
     let existing: Partial<Encounter> = {};
     if (currentEncounterId) {
@@ -133,6 +134,7 @@ export function useEncounterManagement(params: EncounterManagementParams) {
         const encounterList = await api.encounters.list();
         setSavedEncounters(encounterList);
         showSuccess('Encounter saved');
+        saved = true;
       } catch (e) {
         showError(e instanceof ApiError ? e.message : 'Failed to save encounter');
       } finally {
@@ -141,9 +143,12 @@ export function useEncounterManagement(params: EncounterManagementParams) {
     } else {
       setCurrentEncounterId(id);
       setEncounterName(name);
+      saved = true;
     }
 
+    if (!saved) return false;
     setIsSaveEncounterModalOpen(false);
+    return true;
   };
 
   const handleImportEncounters = async (encounters: Encounter[]) => {

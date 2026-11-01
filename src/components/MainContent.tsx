@@ -600,7 +600,10 @@ export const MainContent: React.FC<MainContentProps> = ({
               players={players}
               onLoadEncounter={handleLoadEncounter}
               loadingEncounterId={loadingEncounterId}
-              onNewEncounter={() => setIsEncounterCreatorOpen(true)}
+              onNewEncounter={() => {
+                handleNewEncounter();
+                setIsEncounterCreatorOpen(true);
+              }}
               onUpdateEncounter={onUpdateEncounter}
               onDeleteEncounters={onDeleteEncounters}
               sounds={sounds}

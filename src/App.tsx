@@ -869,17 +869,19 @@ export default function App() {
           initialSoundIds={savedEncounters.find(e => e.id === currentEncounterId)?.soundIds ?? []}
           initialHuePreset={savedEncounters.find(e => e.id === currentEncounterId)?.huePreset ?? ''}
           existingFolders={savedEncounters.map(e => e.folder ?? '').filter(Boolean)}
-          onLaunch={(updatedCombatants, name, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset) => {
+          onLaunch={async (updatedCombatants, name, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset) => {
+            const saved = await handleSaveEncounter(name, updatedCombatants, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset);
+            if (!saved) return;
             setCombatants(updatedCombatants);
             setEncounterName(name);
-            handleSaveEncounter(name, updatedCombatants, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset);
             setIsEncounterCreatorOpen(false);
             setIsInitiativeModalOpen(true);
           }}
-          onSave={(updatedCombatants, name, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset) => {
+          onSave={async (updatedCombatants, name, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset) => {
+            const saved = await handleSaveEncounter(name, updatedCombatants, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset);
+            if (!saved) return;
             setCombatants(updatedCombatants);
             setEncounterName(name);
-            handleSaveEncounter(name, updatedCombatants, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset);
             setIsEncounterCreatorOpen(false);
           }}
           onAutoSave={(updatedCombatants, name, backgroundImage, youtubeUrl, folder, difficulty, backgroundOpacity, panelOpacity, soundIds, animationLevel, huePreset) => {
