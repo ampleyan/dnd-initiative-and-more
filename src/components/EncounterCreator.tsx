@@ -357,6 +357,7 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
   };
 
   const youtubeId = parseYoutubeId(youtubeUrl);
+  const canSaveEncounter = currentCombatants.length > 0 && encounterName.trim().length > 0;
 
   if (!isOpen) return null;
 
@@ -745,17 +746,23 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
 
           {/* Difficulty Bar — sticky at bottom */}
           <footer className="border-t border-white/5 bg-[#05070A] px-4 sm:px-12 py-3 shrink-0 space-y-3">
-            {/* Launch / Save — mobile only; desktop has these in the right sidebar */}
-            <div className="md:hidden flex gap-2">
+            {!canSaveEncounter && (
+              <p className="text-xs text-amber-400/80 text-center">
+                {encounterName.trim() ? 'Add at least one combatant to save or launch.' : 'Enter an encounter name and add at least one combatant.'}
+              </p>
+            )}
+            <div className="flex gap-2">
               <button
+                disabled={!canSaveEncounter}
                 onClick={() => { onSave(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
-                className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-xs border border-white/5 transition-all uppercase tracking-wide"
+                className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-xs border border-white/5 transition-all uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/5"
               >
                 Save
               </button>
               <button
+                disabled={!canSaveEncounter}
                 onClick={() => { onLaunch(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-primary to-blue-600 text-on-primary rounded-xl font-bold text-xs transition-all uppercase tracking-wide"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-primary to-blue-600 text-on-primary rounded-xl font-bold text-xs transition-all uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <Zap className="w-3.5 h-3.5" /> Launch
               </button>
@@ -1133,18 +1140,20 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
             </section>
 
             <div className="space-y-4">
-              {!encounterName.trim() && (
-                <p className="text-xs text-amber-400/80 text-center">Enter an encounter name to continue.</p>
+              {!canSaveEncounter && (
+                <p className="text-xs text-amber-400/80 text-center">
+                  {encounterName.trim() ? 'Add at least one combatant to continue.' : 'Enter an encounter name and add at least one combatant to continue.'}
+                </p>
               )}
               <button
-                disabled={!encounterName.trim()}
+                disabled={!canSaveEncounter}
                 onClick={() => { onLaunch(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
                 className="w-full py-4 bg-gradient-to-r from-primary to-blue-600 text-on-primary rounded-xl font-headline font-black text-sm tracking-widest shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all uppercase disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 Launch Encounter
               </button>
               <button
-                disabled={!encounterName.trim()}
+                disabled={!canSaveEncounter}
                 onClick={() => { onSave(currentCombatants, encounterName.trim(), backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
                 className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-headline font-black text-sm tracking-widest border border-white/5 transition-all uppercase disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/5"
               >

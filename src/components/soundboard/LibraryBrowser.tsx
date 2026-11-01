@@ -1,28 +1,8 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Library, X, Check, Download, Music2, FolderOpen, Globe, Play, Square, Youtube, AlertCircle, Info, Search, ChevronRight, ChevronDown, ScrollText } from 'lucide-react';
 import { Sound } from '../../types';
 import { CATEGORIES, categoryMeta } from './constants';
-import { api } from '../../api/client';
-
-interface LibrarySound {
-  id: string;
-  name: string;
-  description?: string;
-  pack?: string;
-  category: string;
-  tags: string[];
-  volume: number;
-  url: string;
-}
-
-interface AmbienceVariant { label: string; url: string; }
-interface AmbienceTrack {
-  id: string;
-  name: string;
-  genre: string;
-  defaultUrl: string;
-  variants: AmbienceVariant[];
-}
+import { AmbienceTrack, LibrarySound, useSoundLibrary } from '../../hooks/useSoundLibrary';
 
 interface LibraryBrowserProps {
   show: boolean;
@@ -33,22 +13,34 @@ interface LibraryBrowserProps {
 }
 
 export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, sounds, onRefresh, initialYtQuery }) => {
-  const [library, setLibrary] = useState<LibrarySound[]>([]);
-  const [localLibrary, setLocalLibrary] = useState<LibrarySound[]>([]);
-  const [ambienceLibrary, setAmbienceLibrary] = useState<AmbienceTrack[]>([]);
-  const [libraryLoading, setLibraryLoading] = useState(false);
-  const [libraryError, setLibraryError] = useState<string | null>(null);
-  const [libSource, setLibSource] = useState<'ambiences' | 'local' | 'online' | 'youtube' | 'foundry'>('ambiences');
+  const soundLibrary = useSoundLibrary({ onRefresh, onClose });
+  const {
+    library,
+    localLibrary,
+    ambienceLibrary,
+    libraryLoading,
+    libraryError,
+    source: libSource,
+    setSource: setLibSource,
+    importing,
+    importStatus,
+    setImportStatus,
+    loadSource: loadLibSource,
+    importSelected,
+    importFoundry,
+    importAll,
+    reset: resetLibrary,
+  } = soundLibrary;
+  const { worlds, selectedWorld, setSelectedWorld, playlists, loading: foundryLoading, dataPath: foundryDataPath, setDataPath: setFoundryDataPath, loadWorlds: loadFoundryWorlds } = soundLibrary.foundry;
+  const { url: ytUrl, setUrl: setYtUrl, name: ytName, setName: setYtName, category: ytCategory, setCategory: setYtCategory, volume: ytVolume, setVolume: setYtVolume, fetching: ytFetching, downloading: ytDownloading, error: ytError, success: ytSuccess, results: ytResults, searching: ytSearching, recent: ytRecent, search: handleYoutubeSearch, download: handleYoutubeDownload } = soundLibrary.youtube;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
-  const [importing, setImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
   const [libCategory, setLibCategory] = useState('all');
   const [libSearch, setLibSearch] = useState('');
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [expandedPlaylists, setExpandedPlaylists] = useState<Set<string>>(new Set());
 
-  // YouTube import state
   const QUICK_MOODS = [
     { label: 'Combat',   q: 'epic fantasy battle music', icon: '⚔️' },
     { label: 'Tavern',   q: 'medieval tavern ambience with music', icon: '🍺' },
@@ -59,43 +51,6 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
     { label: 'Storm',    q: 'heavy rain and thunder ambience', icon: '⛈️' },
     { label: 'Horror',   q: 'dark horror ambient drone', icon: '👻' },
   ];
-  const [ytUrl, setYtUrl] = useState('');
-  const [ytName, setYtName] = useState('');
-  const [ytCategory, setYtCategory] = useState('ambient');
-  const [ytVolume, setYtVolume] = useState(0.8);
-  const [ytFetching, setYtFetching] = useState(false);
-  const [ytDownloading, setYtDownloading] = useState(false);
-  const [ytError, setYtError] = useState<string | null>(null);
-  const [ytSuccess, setYtSuccess] = useState<string | null>(null);
-  const [ytResults, setYtResults] = useState<any[]>([]);
-  const [ytSearching, setYtSearching] = useState(false);
-  const [ytRecent, setYtRecent] = useState<string[]>([]);
-
-  const handleYoutubeSearch = useCallback(async (query: string) => {
-    if (!query.trim() || ytSearching) return;
-    setYtSearching(true);
-    setYtError(null);
-    setYtResults([]);
-    try {
-      const results = await api.sounds.youtubeSearch(query);
-      setYtResults(results);
-      setYtRecent(prev => {
-        const next = [query, ...prev.filter(q => q !== query)].slice(0, 5);
-        return next;
-      });
-    } catch (e: any) {
-      setYtError(e.message ?? 'Search failed');
-    }
-    setYtSearching(false);
-  }, [ytSearching]);
-
-  // Foundry state
-  const [foundryDataPath, setFoundryDataPath] = useState<string>(() => localStorage.getItem('foundry_data_path') ?? '');
-  const [worlds, setWorlds] = useState<{ id: string; title: string }[]>([]);
-  const [selectedWorld, setSelectedWorld] = useState<string>('');
-  const [playlists, setPlaylists] = useState<any[]>([]);
-  const [expandedPlaylists, setExpandedPlaylists] = useState<Set<string>>(new Set());
-  const [foundryLoading, setFoundryLoading] = useState(false);
 
   const togglePreview = (url: string, id: string) => {
     if (previewingId === id) {
@@ -112,38 +67,15 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
     setPreviewingId(id);
   };
 
-  const loadLibSource = useCallback(async (src: 'ambiences' | 'local' | 'online', forceReload = false) => {
-    setLibraryError(null);
-    if (src === 'ambiences' && (ambienceLibrary.length === 0 || forceReload)) {
-      setLibraryLoading(true);
-      try { const d = await api.sounds.ambiences(); setAmbienceLibrary(d as AmbienceTrack[]); } catch (e: any) { setLibraryError(e.message ?? 'Could not load ambiences'); }
-      finally { setLibraryLoading(false); }
-    }
-    if (src === 'local' && (localLibrary.length === 0 || forceReload)) {
-      setLibraryLoading(true);
-      try { const d = await api.sounds.local(); setLocalLibrary(d as LibrarySound[]); } catch (e: any) { setLibraryError(e.message ?? 'Could not load local sounds'); }
-      finally { setLibraryLoading(false); }
-    }
-    if (src === 'online' && (library.length === 0 || forceReload)) {
-      setLibraryLoading(true);
-      try { const d = await api.sounds.library(); setLibrary(d as LibrarySound[]); } catch (e: any) { setLibraryError(e.message ?? 'Could not load online library'); }
-      finally { setLibraryLoading(false); }
-    }
-  }, [ambienceLibrary.length, localLibrary.length, library.length]);
-
   // When modal opens, reset selection state and load initial source
   useEffect(() => {
     if (show) {
       setSelectedIds(new Set());
       setSelectedVariants({});
-      setImportStatus(null);
-      setLibraryError(null);
-      setLibSource('ambiences');
+      resetLibrary();
       setLibCategory('all');
       setLibSearch('');
-      setYtUrl(''); setYtName(''); setYtCategory('ambient'); setYtVolume(0.8);
-      setYtError(null); setYtSuccess(null);
-      setWorlds([]); setSelectedWorld(''); setPlaylists([]); setExpandedPlaylists(new Set());
+      setExpandedPlaylists(new Set());
       loadLibSource('ambiences');
     } else {
       previewAudioRef.current?.pause();
@@ -159,75 +91,6 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
     }
   }, [show, initialYtQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-fetch YouTube title when URL is pasted
-  useEffect(() => {
-    if (libSource !== 'youtube' || !ytUrl.trim() || !ytUrl.startsWith('http')) return;
-    const timer = setTimeout(async () => {
-      setYtFetching(true);
-      try {
-        const { title } = await api.sounds.youtubeMeta(ytUrl);
-        if (title) setYtName(prev => prev || title);
-      } catch {}
-      setYtFetching(false);
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [ytUrl, libSource]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleYoutubeDownload = useCallback(async () => {
-    if (!ytUrl.trim() || ytDownloading) return;
-    setYtDownloading(true);
-    setYtError(null);
-    setYtSuccess(null);
-    try {
-      const result = await api.sounds.youtubeDownload({ url: ytUrl, name: ytName.trim() || undefined, category: ytCategory, volume: ytVolume });
-      setYtSuccess(`"${result.name}" imported successfully!`);
-      setYtUrl(''); setYtName('');
-      await onRefresh();
-    } catch (e: any) {
-      setYtError(e.message ?? 'Download failed');
-    }
-    setYtDownloading(false);
-  }, [ytUrl, ytName, ytCategory, ytVolume, ytDownloading, onRefresh]);
-
-  const loadFoundryWorlds = useCallback(async () => {
-    setFoundryLoading(true);
-    setLibraryError(null);
-    try {
-      const configured = foundryDataPath.trim() || (await api.foundry.getConfig()).dataPath;
-      if (configured && configured !== foundryDataPath) {
-        setFoundryDataPath(configured);
-        localStorage.setItem('foundry_data_path', configured);
-      }
-      const data = await api.foundry.worlds(configured || undefined);
-      setWorlds(data);
-    } catch (e: any) { setLibraryError(e.message ?? 'Could not load Foundry worlds'); }
-    finally { setFoundryLoading(false); }
-  }, [foundryDataPath]);
-
-  const loadFoundryPlaylists = useCallback(async (worldId: string) => {
-    setFoundryLoading(true);
-    setLibraryError(null);
-    try {
-      const data = await api.foundry.playlists(worldId, foundryDataPath.trim() || undefined);
-      setPlaylists(data);
-    } catch (e: any) { setLibraryError(e.message ?? 'Could not load Foundry playlists'); }
-    finally { setFoundryLoading(false); }
-  }, [foundryDataPath]);
-
-  useEffect(() => {
-    if (libSource === 'foundry' && worlds.length === 0) {
-      loadFoundryWorlds();
-    }
-  }, [libSource, worlds.length, loadFoundryWorlds]);
-
-  useEffect(() => {
-    if (selectedWorld) {
-      loadFoundryPlaylists(selectedWorld);
-    } else {
-      setPlaylists([]);
-    }
-  }, [selectedWorld, loadFoundryPlaylists]);
-
   const toggleLibrarySelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -236,75 +99,39 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
     });
   }, []);
 
-  const handleImport = useCallback(async () => {
-    if (selectedIds.size === 0) return;
-    setImporting(true);
+  const handleImport = async () => {
     try {
-      if (libSource === 'ambiences') {
-        const items = Array.from(selectedIds).map(id => {
-          const track = ambienceLibrary.find(t => t.id === id)!;
-          const url = selectedVariants[id] ?? track.defaultUrl;
-          return { id, name: track.name, url, genre: track.genre };
-        });
-        await api.sounds.importAmbiences(items);
-      } else {
-        const endpoint = libSource === 'local' ? '/api/sounds/local/import' : '/api/sounds/library/import';
-        await api.sounds.importBulkVisible(endpoint, Array.from(selectedIds));
-      }
-      await onRefresh();
-      onClose();
+      await importSelected(selectedIds, selectedVariants);
     } catch (e: any) {
       alert(e.message || 'Import failed');
-    } finally {
-      setImporting(false);
     }
-  }, [selectedIds, libSource, ambienceLibrary, selectedVariants, onRefresh, onClose]);
+  };
 
-  const handleFoundryImport = useCallback(async () => {
-    if (selectedIds.size === 0) return;
-    setImporting(true);
-    try {
-      const result = await api.sounds.importFoundry(selectedWorld, Array.from(selectedIds));
-      await onRefresh();
-      setSelectedIds(new Set());
-      setImportStatus(`Imported ${result.inserted}; skipped ${result.skipped}; unavailable ${result.invalid}.`);
-    } catch (e: any) {
-      setImportStatus(e.message || 'Foundry import failed');
-    } finally {
-      setImporting(false);
+  const handleFoundryImport = async () => {
+    if (await importFoundry(selectedIds)) setSelectedIds(new Set());
+  };
+
+  const handleImportAll = async () => {
+    const q = libSearch.toLowerCase();
+    let ids: string[];
+    if (libSource === 'ambiences') {
+      ids = ambienceLibrary.filter(track =>
+        (!q || track.name.toLowerCase().includes(q) || track.genre.toLowerCase().includes(q)) &&
+        !sounds.some(sound => sound.id === track.id)
+      ).map(track => track.id);
+    } else {
+      const activeLibrary = libSource === 'local' ? localLibrary : library;
+      ids = activeLibrary.filter(sound =>
+        (libCategory === 'all' || sound.category === libCategory) &&
+        (!q || sound.name.toLowerCase().includes(q) || sound.tags.some(tag => tag.toLowerCase().includes(q)) || (sound.pack && sound.pack.toLowerCase().includes(q)))
+      ).map(sound => sound.id);
     }
-  }, [selectedIds, selectedWorld, onRefresh]);
-
-  const handleImportAll = useCallback(async () => {
-    setImporting(true);
     try {
-      const q = libSearch.toLowerCase();
-      if (libSource === 'ambiences') {
-        const visible = ambienceLibrary.filter(t =>
-          (!q || t.name.toLowerCase().includes(q) || t.genre.toLowerCase().includes(q)) &&
-          !sounds.some(s => s.id === t.id)
-        );
-        const items = visible.map(t => ({
-          id: t.id, name: t.name, url: selectedVariants[t.id] ?? t.defaultUrl, genre: t.genre,
-        }));
-        await api.sounds.importAmbiences(items);
-      } else {
-        const activeLib = libSource === 'local' ? localLibrary : library;
-        const endpoint = libSource === 'local' ? '/api/sounds/local/import' : '/api/sounds/library/import';
-        const visible = activeLib.filter(s =>
-          (libCategory === 'all' || s.category === libCategory) &&
-          (!q || s.name.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q)) || (s.pack && s.pack.toLowerCase().includes(q)))
-        );
-        await api.sounds.importBulkVisible(endpoint, visible.map(s => s.id));
-      }
-      await onRefresh();
-      onClose();
+      await importAll(ids, selectedVariants);
     } catch (e: any) {
       alert(e.message || 'Import failed');
-    } finally {
-      setImporting(false);
     }
-  }, [libSource, library, localLibrary, ambienceLibrary, libSearch, libCategory, selectedVariants, sounds, onRefresh, onClose]);
+  };
 
   if (!show) return null;
 
@@ -397,13 +224,7 @@ export const LibraryBrowser = React.memo<LibraryBrowserProps>(({ show, onClose, 
                 <input
                   type="text"
                   value={foundryDataPath}
-                  onChange={e => {
-                    setFoundryDataPath(e.target.value);
-                    localStorage.setItem('foundry_data_path', e.target.value);
-                    setWorlds([]);
-                    setSelectedWorld('');
-                    setPlaylists([]);
-                  }}
+                  onChange={e => setFoundryDataPath(e.target.value)}
                   onBlur={() => { if (libSource === 'foundry') loadFoundryWorlds(); }}
                   onKeyDown={e => { if (e.key === 'Enter') loadFoundryWorlds(); }}
                   placeholder="/path/to/FoundryVTT/Data"

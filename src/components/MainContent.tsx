@@ -600,7 +600,10 @@ export const MainContent: React.FC<MainContentProps> = ({
               players={players}
               onLoadEncounter={handleLoadEncounter}
               loadingEncounterId={loadingEncounterId}
-              onNewEncounter={() => setIsEncounterCreatorOpen(true)}
+              onNewEncounter={() => {
+                handleNewEncounter();
+                setIsEncounterCreatorOpen(true);
+              }}
               onUpdateEncounter={onUpdateEncounter}
               onDeleteEncounters={onDeleteEncounters}
               sounds={sounds}
@@ -1541,8 +1544,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                 <AlertTriangle className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <h2 className="text-lg font-headline font-bold text-on-surface">End Encounter?</h2>
-                <p className="text-sm text-outline mt-1">This will reset the turn order and rounds.</p>
+                <h2 className="text-lg font-headline font-bold text-on-surface">End Combat?</h2>
+                <p className="text-sm text-outline mt-1">This ends initiative and opens the encounter results. Turn order and round count will reset.</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -1556,7 +1559,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 onClick={() => { setIsEndConfirmOpen(false); handleEndEncounter(); }}
                 className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm transition-all active:scale-95 shadow-lg shadow-red-900/30"
               >
-                End Encounter
+                End Combat
               </button>
             </div>
           </motion.div>
