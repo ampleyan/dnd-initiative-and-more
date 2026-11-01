@@ -72,12 +72,10 @@ function refreshDbCache(originalPath: string): string {
   if (fs.existsSync(stampFile)) {
     const age = Date.now() - parseInt(fs.readFileSync(stampFile, 'utf-8') || '0');
     if (age < DB_CACHE_TTL_MS) {
-      console.log(`[foundry] using cached DB (${Math.round(age / 1000)}s old): ${cachePath}`);
       return cachePath;
     }
   }
 
-  console.log(`[foundry] copying DB to cache: ${originalPath} → ${cachePath}`);
   fs.mkdirSync(DB_CACHE_DIR, { recursive: true });
   if (fs.existsSync(cachePath)) fs.rmSync(cachePath, { recursive: true, force: true });
 
@@ -97,7 +95,6 @@ function refreshDbCache(originalPath: string): string {
   // (LevelDB opens fine with no .log as long as the MANIFEST is consistent.)
 
   fs.writeFileSync(stampFile, String(Date.now()));
-  console.log(`[foundry] DB cache ready: ${cachePath}`);
   return cachePath;
 }
 
@@ -802,7 +799,6 @@ async function readActors(dbPath: string, opts: {
   actorType?: 'npc' | 'character';
   dataPathOverride?: string;
 }): Promise<{ actors: any[]; total: number }> {
-  console.log(`[foundry] readActors dbPath=${dbPath} opts=${JSON.stringify({ ...opts, ids: opts.ids?.length })}`);
   const db = await openLevel(dbPath);
   try {
     const idSet = opts.ids && opts.ids.length > 0 ? new Set(opts.ids) : null;
@@ -822,8 +818,6 @@ async function readActors(dbPath: string, opts: {
       }
       allActors.push(v);
     }
-
-    console.log(`[foundry] scanned DB — matched ${allActors.length} actors${idSet ? ` (id-filter: wanted ${idSet.size}, got ${allActors.length})` : ''}`);
 
     if (idSet && allActors.length !== idSet.size) {
       const foundIds = new Set(allActors.map(a => a._id));
@@ -848,13 +842,10 @@ async function readActors(dbPath: string, opts: {
       for await (const [, item] of db.iterator({ gte: prefix, lte: prefix + '~' })) {
         items.push(item as any);
       }
-      console.log(`[foundry] actor "${actor.name}" (_id=${actor._id}) — ${items.length} embedded items`);
       const t = opts.actorType === 'character' ? transformFoundryCharacter(actor, items, opts.dataPathOverride) : transformFoundryActor(actor, items, opts.dataPathOverride);
-      console.log(`[foundry]   → transformed: hp=${t.hp ?? t.hp_max} ac=${t.ac} actions=${t.actions?.length ?? 0}`);
       transformed.push(t);
     }
     await db.close();
-    console.log(`[foundry] returning ${transformed.length} transformed actors`);
     return { actors: transformed, total };
   } catch (e) {
     console.error('[foundry] readActors error:', e);
@@ -1043,12 +1034,9 @@ export function createFoundryRouter(portraitsDir: string = '', getApprovedRoot: 
     if (!world) return res.status(400).json({ error: 'world required' });
 
     const parsedIds = ids ? ids.split(',').filter(Boolean) : undefined;
-    console.log(`[foundry] GET /foundry/actors world=${world} pack=${pack ?? '(all)'} search=${search ?? ''} full=${full} ids=${parsedIds?.join(',') ?? 'none'} offset=${offset} limit=${limit}`);
-
     try {
       const result = await readActorsForRequest({ world, pack, search, offset, limit, full, ids, dataPath });
       if (!result) return res.status(404).json({ error: 'Pack database not found' });
-      console.log(`[foundry] responding with ${result.actors.length} actors (total=${result.total})`);
       res.json(result);
     } catch (e: any) {
       console.error('[foundry] route error:', e);
