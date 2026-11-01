@@ -66,7 +66,7 @@ describe('Foundry configuration API', () => {
 
     const read = await agent.get('/api/foundry/config');
     expect(read.status).toBe(200);
-    expect(read.body).toEqual({ ...config, configured: true });
+    expect(read.body).toEqual({ ...config, configured: true, syncToken: '' });
   });
 });
 

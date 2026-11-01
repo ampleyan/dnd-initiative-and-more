@@ -35,7 +35,7 @@ export function computeEncounterStats(
     highlights.push({ icon: 'Swords', label: 'Total Annihilation', value: 'All enemies defeated' });
   }
   if (enemiesEscaped > 0) {
-    highlights.push({ icon: 'Wind', label: 'Enemies Escaped', value: `${enemiesEscaped} foe${enemiesEscaped > 1 ? 's' : ''} fled` });
+    highlights.push({ icon: 'Wind', label: 'Enemies Remaining', value: `${enemiesEscaped} foe${enemiesEscaped > 1 ? 's' : ''} still standing` });
   }
 
   const lowestHpPlayer = [...players].sort((a, b) => (a.hp.current / a.hp.max) - (b.hp.current / b.hp.max))[0];
@@ -96,7 +96,9 @@ export function enrichStatsFromLog(
     highlights.push({
       icon: 'Swords',
       label: 'Largest Hit',
-      value: `${biggest.actorName} → ${biggest.targetName ?? '?'} for ${biggest.value}${biggest.actionName ? ` (${biggest.actionName})` : ''}`,
+      value: biggest.actorId && biggest.actorId === biggest.targetId
+        ? `${biggest.actorName} took ${biggest.value}${biggest.actionName ? ` (${biggest.actionName})` : ''}`
+        : `${biggest.actorName} → ${biggest.targetName ?? '?'} for ${biggest.value}${biggest.actionName ? ` (${biggest.actionName})` : ''}`,
     });
   }
 

@@ -745,8 +745,7 @@ export const EncounterCreator: React.FC<EncounterCreatorProps> = ({
 
           {/* Difficulty Bar — sticky at bottom */}
           <footer className="border-t border-white/5 bg-[#05070A] px-4 sm:px-12 py-3 shrink-0 space-y-3">
-            {/* Launch / Save — mobile only; desktop has these in the right sidebar */}
-            <div className="md:hidden flex gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => { onSave(currentCombatants, encounterName, backgroundImageUrl, youtubeUrl, folder, difficulty?.label, backgroundOpacity, panelOpacity, selectedSoundIds, animationLevel, huePreset); onSaveMeta?.(currentBudget, variants); }}
                 className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-xs border border-white/5 transition-all uppercase tracking-wide"
