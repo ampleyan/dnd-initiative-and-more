@@ -25,7 +25,7 @@ export function computeEncounterStats(
   const highlights: EncounterStats['highlights'] = [];
 
   if (playersFallen === 0 && players.length > 0) {
-    highlights.push({ icon: 'Shield', label: 'Flawless Victory', value: 'No party members fell' });
+    highlights.push({ icon: 'Shield', label: 'No Casualties', value: 'No party members fell' });
   }
   if (playersFallen > 0) {
     const fallen = players.filter(c => c.hp.current <= 0).map(c => c.name).join(', ');
